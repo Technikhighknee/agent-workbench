@@ -1,0 +1,23 @@
+{
+  "name": "agent-workbench",
+  "version": "early-prototyping",
+  "description": "Inspired by the concept of IDE – translated into the world of AI-Agents.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Technikhighknee/agent-workbench.git"
+  },
+  "workspaces": [
+    "packages/process-host/"
+  ],
+  "keywords": [],
+  "author": "Jason Posch <Technikhighknee>",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/Technikhighknee/agent-workbench/issues"
+  },
+  "homepage": "https://github.com/Technikhighknee/agent-workbench#readme"
+}

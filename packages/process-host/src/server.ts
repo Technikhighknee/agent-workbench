@@ -9,7 +9,6 @@ const server = new McpServer({
   version: "prototype",
 });
 
-// ------------------------- start_process -------------------------
 
 server.registerTool(
   "start_process",

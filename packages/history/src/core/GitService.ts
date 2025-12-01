@@ -185,10 +185,11 @@ export class GitService {
       : path.join(this.rootPath, filePath);
     const relPath = path.relative(this.rootPath, absPath);
 
+    // Use %x00 (null byte) as delimiter to handle | in commit messages
     const result = await this.exec([
       "log",
       `--max-count=${limit}`,
-      "--format=%H|%h|%an|%ae|%aI|%s|%P",
+      "--format=%H%x00%h%x00%an%x00%ae%x00%aI%x00%s%x00%P",
       "--follow",
       "--",
       relPath,
@@ -198,7 +199,7 @@ export class GitService {
       return err(result.error);
     }
 
-    const commits = this.parseLogOutput(result.value);
+    const commits = this.parseLogOutput(result.value, "\x00");
     return ok(commits);
   }
 
@@ -206,11 +207,11 @@ export class GitService {
    * Get recent changes across the repository.
    */
   async recentChanges(count: number = 10): Promise<Result<RecentChanges>> {
-    // Get commits with stats
+    // Use %x00 as delimiter for commit fields, but keep commits separated by newlines
     const logResult = await this.exec([
       "log",
       `--max-count=${count}`,
-      "--format=%H|%h|%an|%ae|%aI|%s|%P",
+      "--format=%H%x00%h%x00%an%x00%ae%x00%aI%x00%s%x00%P",
       "--stat",
       "--stat-width=1000",
     ]);
@@ -224,14 +225,14 @@ export class GitService {
     let totalAdditions = 0;
     let totalDeletions = 0;
 
-    // Parse log with stats
-    const sections = logResult.value.split(/\n(?=[a-f0-9]{40}\|)/);
+    // Parse log with stats - commits start with a 40-char hash followed by null byte
+    const sections = logResult.value.split(/\n(?=[a-f0-9]{40}\x00)/);
     for (const section of sections) {
       if (!section.trim()) continue;
 
       const lines = section.split("\n");
       const firstLine = lines[0];
-      const parts = firstLine.split("|");
+      const parts = firstLine.split("\x00");
       if (parts.length < 6) continue;
 
       const commit: Commit = {
@@ -287,12 +288,12 @@ export class GitService {
    * Get details of a specific commit.
    */
   async commitInfo(ref: string): Promise<Result<Commit>> {
-    // Get commit metadata
+    // Get commit metadata using null byte delimiter
     const metaResult = await this.exec([
       "log",
       "-1",
       ref,
-      "--format=%H|%h|%an|%ae|%aI|%s|%P",
+      "--format=%H%x00%h%x00%an%x00%ae%x00%aI%x00%s%x00%P",
     ]);
 
     if (!metaResult.ok) {
@@ -300,7 +301,7 @@ export class GitService {
     }
 
     const metaLine = metaResult.value.trim();
-    const parts = metaLine.split("|");
+    const parts = metaLine.split("\x00");
 
     if (parts.length < 6) {
       return err("Failed to parse commit info");
@@ -362,7 +363,7 @@ export class GitService {
     const result = await this.exec([
       "log",
       `--max-count=${limit}`,
-      "--format=%H|%h|%an|%ae|%aI|%s|%P",
+      "--format=%H%x00%h%x00%an%x00%ae%x00%aI%x00%s%x00%P",
       "--grep",
       query,
       "-i", // case insensitive
@@ -372,7 +373,7 @@ export class GitService {
       return err(result.error);
     }
 
-    const commits = this.parseLogOutput(result.value);
+    const commits = this.parseLogOutput(result.value, "\x00");
     return ok(commits);
   }
 
@@ -401,12 +402,12 @@ export class GitService {
   /**
    * Parse standard log format output.
    */
-  private parseLogOutput(output: string): Commit[] {
+  private parseLogOutput(output: string, delimiter: string = "|"): Commit[] {
     const commits: Commit[] = [];
     const lines = output.trim().split("\n").filter(Boolean);
 
     for (const line of lines) {
-      const parts = line.split("|");
+      const parts = line.split(delimiter);
       if (parts.length < 6) continue;
 
       commits.push({

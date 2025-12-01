@@ -37,6 +37,12 @@ async function main() {
   console.log(`   Version: ${info.version}`);
   console.log(`   Scripts: ${info.scripts.length}`);
   console.log(`   Dependencies: ${info.dependencies.length}`);
+  if (info.workspaces) {
+    console.log(`   Workspaces: ${info.workspaces.length}`);
+    for (const ws of info.workspaces) {
+      console.log(`     - ${ws.name} @ ${ws.path}`);
+    }
+  }
   console.log("   PASS\n");
 
   // Test: findConfigs

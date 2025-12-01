@@ -49,6 +49,20 @@ export interface ProjectInfo {
   scripts: Script[];
   /** Dependencies */
   dependencies: Dependency[];
+  /** Workspace packages (for monorepos) */
+  workspaces?: WorkspacePackage[];
+}
+
+/**
+ * A package in a monorepo workspace.
+ */
+export interface WorkspacePackage {
+  /** Package name */
+  name: string;
+  /** Path relative to root */
+  path: string;
+  /** Package version */
+  version?: string;
 }
 
 /**
@@ -81,6 +95,10 @@ export type ConfigType =
   | "gitlab"
   | "editor"
   | "git"
+  | "node"
+  | "monorepo"
+  | "linter"
+  | "env"
   | "other";
 
 /**

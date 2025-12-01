@@ -15,30 +15,36 @@ import {
   type Script,
   type ConfigFile,
   type ConfigType,
+  type WorkspacePackage,
 } from "./model.js";
 
 /**
  * Known config files and their types.
  */
 const CONFIG_FILES: Record<string, ConfigType> = {
+  // TypeScript
   "tsconfig.json": "typescript",
   "tsconfig.base.json": "typescript",
   "jsconfig.json": "typescript",
+  // ESLint
   ".eslintrc": "eslint",
   ".eslintrc.js": "eslint",
   ".eslintrc.cjs": "eslint",
   ".eslintrc.json": "eslint",
   "eslint.config.js": "eslint",
   "eslint.config.mjs": "eslint",
+  // Prettier
   ".prettierrc": "prettier",
   ".prettierrc.js": "prettier",
   ".prettierrc.json": "prettier",
   "prettier.config.js": "prettier",
+  // Testing
   "jest.config.js": "jest",
   "jest.config.ts": "jest",
   "jest.config.json": "jest",
   "vitest.config.ts": "vitest",
   "vitest.config.js": "vitest",
+  // Build tools
   ".babelrc": "babel",
   "babel.config.js": "babel",
   "babel.config.json": "babel",
@@ -48,14 +54,36 @@ const CONFIG_FILES: Record<string, ConfigType> = {
   "vite.config.ts": "vite",
   "rollup.config.js": "rollup",
   "rollup.config.ts": "rollup",
+  // Docker
   "Dockerfile": "docker",
   "docker-compose.yml": "docker",
   "docker-compose.yaml": "docker",
+  // CI/CD
   ".github": "github",
   ".gitlab-ci.yml": "gitlab",
+  // Editor
   ".editorconfig": "editor",
+  // Git
   ".gitignore": "git",
   ".gitattributes": "git",
+  // Node version
+  ".nvmrc": "node",
+  ".node-version": "node",
+  // Monorepo tools
+  "turbo.json": "monorepo",
+  "nx.json": "monorepo",
+  "pnpm-workspace.yaml": "monorepo",
+  "lerna.json": "monorepo",
+  // Other linters
+  "biome.json": "linter",
+  "biome.jsonc": "linter",
+  ".oxlintrc.json": "linter",
+  // Environment
+  ".env": "env",
+  ".env.local": "env",
+  ".env.example": "env",
+  ".env.development": "env",
+  ".env.production": "env",
 };
 
 export class ProjectService {
@@ -156,6 +184,12 @@ export class ProjectService {
         }
       }
 
+      // Detect workspaces
+      let workspaces: WorkspacePackage[] | undefined;
+      if (pkg.workspaces) {
+        workspaces = await this.parseNpmWorkspaces(pkg.workspaces);
+      }
+
       return ok({
         name: pkg.name || path.basename(this.rootPath),
         version: pkg.version || "unknown",
@@ -165,10 +199,70 @@ export class ProjectService {
         rootPath: this.rootPath,
         scripts,
         dependencies,
+        workspaces,
       });
     } catch (error) {
       return err(`Failed to parse package.json: ${error}`);
     }
+  }
+
+  /**
+   * Parse npm workspaces and resolve to actual packages.
+   */
+  private async parseNpmWorkspaces(
+    workspacesConfig: string[] | { packages: string[] }
+  ): Promise<WorkspacePackage[]> {
+    const patterns = Array.isArray(workspacesConfig)
+      ? workspacesConfig
+      : workspacesConfig.packages || [];
+
+    const workspaces: WorkspacePackage[] = [];
+
+    for (const pattern of patterns) {
+      // Simple glob expansion - handle "packages/*" pattern
+      if (pattern.includes("*")) {
+        const baseDir = pattern.replace(/\/\*.*$/, "");
+        const basePath = path.join(this.rootPath, baseDir);
+
+        try {
+          const entries = await fs.readdir(basePath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory()) {
+              const pkgPath = path.join(basePath, entry.name, "package.json");
+              try {
+                const content = await fs.readFile(pkgPath, "utf-8");
+                const pkg = JSON.parse(content);
+                workspaces.push({
+                  name: pkg.name || entry.name,
+                  path: path.join(baseDir, entry.name),
+                  version: pkg.version,
+                });
+              } catch {
+                // Not a package, skip
+              }
+            }
+          }
+        } catch {
+          // Directory doesn't exist, skip
+        }
+      } else {
+        // Direct path
+        const pkgPath = path.join(this.rootPath, pattern, "package.json");
+        try {
+          const content = await fs.readFile(pkgPath, "utf-8");
+          const pkg = JSON.parse(content);
+          workspaces.push({
+            name: pkg.name || path.basename(pattern),
+            path: pattern,
+            version: pkg.version,
+          });
+        } catch {
+          // Not a package, skip
+        }
+      }
+    }
+
+    return workspaces.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**

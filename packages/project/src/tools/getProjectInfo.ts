@@ -60,5 +60,16 @@ export async function getProjectInfo(service: ProjectService): Promise<string> {
     output.push("");
   }
 
+  // Workspaces (monorepo)
+  if (info.workspaces && info.workspaces.length > 0) {
+    output.push("## Workspaces (Monorepo)");
+    output.push("");
+    for (const ws of info.workspaces) {
+      const version = ws.version ? ` (${ws.version})` : "";
+      output.push(`- **${ws.name}**${version}: \`${ws.path}\``);
+    }
+    output.push("");
+  }
+
   return output.join("\n");
 }

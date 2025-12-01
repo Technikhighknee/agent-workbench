@@ -10,7 +10,6 @@ import { TypeScriptAnalyzer } from "./TypeScriptAnalyzer.js";
 import { QueryEngine } from "./QueryEngine.js";
 import {
   GraphNode,
-  GraphEdge,
   QueryOptions,
   QueryResult,
   SymbolKind,

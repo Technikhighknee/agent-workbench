@@ -5,7 +5,7 @@
 
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
-import { GraphNode, GraphEdge, SymbolKind, EdgeKind } from "../core/model.js";
+import { GraphNode, GraphEdge } from "../core/model.js";
 
 interface ExtractedSymbol {
   node: GraphNode;
@@ -77,7 +77,7 @@ export class TypeScriptAnalyzer {
     let match;
 
     while ((match = funcRegex.exec(content)) !== null) {
-      const [fullMatch, indent, exported, async, name, params] = match;
+      const [, indent, exported, async, name, params] = match;
       const line = content.slice(0, match.index).split("\n").length;
       const column = (indent?.length || 0) + 1;
 
@@ -112,7 +112,7 @@ export class TypeScriptAnalyzer {
     const arrowRegex = /^(\s*)(export\s+)?(const|let)\s+(\w+)\s*=\s*(async\s+)?\([^)]*\)\s*=>/gm;
 
     while ((match = arrowRegex.exec(content)) !== null) {
-      const [fullMatch, indent, exported, _varType, name, async] = match;
+      const [, indent, exported, , name, async] = match;
       const line = content.slice(0, match.index).split("\n").length;
       const column = (indent?.length || 0) + 1;
 
@@ -147,7 +147,7 @@ export class TypeScriptAnalyzer {
     const classRegex = /^(\s*)(export\s+)?class\s+(\w+)(\s+extends\s+(\w+))?(\s+implements\s+([^{]+))?\s*\{/gm;
 
     while ((match = classRegex.exec(content)) !== null) {
-      const [fullMatch, indent, exported, name, , extendsClass, , implementsInterfaces] = match;
+      const [, indent, exported, name, , extendsClass] = match;
       const line = content.slice(0, match.index).split("\n").length;
       const column = (indent?.length || 0) + 1;
 
@@ -286,7 +286,6 @@ export class TypeScriptAnalyzer {
       const lineMcRegex = /(\w+)\.(\w+)\s*\(/g;
       while ((match = lineMcRegex.exec(line)) !== null) {
         const target = `${match[1]}.${match[2]}`;
-        const posKey = `${baseLine + lineNum}:${match.index + 1}`;
 
         // Skip this.foo if we want just the method name for resolution
         if (match[1] === "this") {

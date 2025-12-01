@@ -188,10 +188,36 @@ export class TreeSitterParser implements ParserPort {
   }
 
   private extractChildSymbols(node: Parser.SyntaxNode, source: string, language: string): Symbol[] {
+    // Only extract children from container types (classes, interfaces, modules)
+    // Skip function/method bodies to avoid capturing local variables as symbols
+    const containerNodeTypes = new Set([
+      // TypeScript/JavaScript
+      "class_declaration",
+      "class",
+      "interface_declaration",
+      "namespace_declaration",
+      "module",
+      "enum_declaration",
+      // Python
+      "class_definition",
+      // Go
+      "type_declaration",
+      // Rust
+      "struct_item",
+      "trait_item",
+      "impl_item",
+      "enum_item",
+      "mod_item",
+    ]);
+
+    if (!containerNodeTypes.has(node.type)) {
+      return [];
+    }
+
     const symbols: Symbol[] = [];
     let precedingComment: Parser.SyntaxNode | undefined;
 
-    // Find the body node for classes/functions
+    // Find the body node for classes
     const bodyNode = this.findBodyNode(node, language);
     const searchNode = bodyNode ?? node;
 

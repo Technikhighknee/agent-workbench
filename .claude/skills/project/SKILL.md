@@ -1,7 +1,7 @@
 ---
 name: project
 description: "MANDATORY: Use INSTEAD of Read package.json. Structured project info, scripts, deps. NEVER read package.json directly."
-allowed-tools: mcp__project__get_session_guide, mcp__project__get_project_info, mcp__project__get_scripts, mcp__project__get_dependencies, mcp__project__find_configs, mcp__project__read_config
+allowed-tools: mcp__project__get_session_guide, mcp__project__get_project_info, mcp__project__get_scripts, mcp__project__get_dependencies, mcp__project__find_configs, mcp__project__read_config, mcp__project__get_quickstart, mcp__project__get_tech_stack, mcp__project__get_structure
 ---
 
 # project
@@ -18,6 +18,9 @@ allowed-tools: mcp__project__get_session_guide, mcp__project__get_project_info, 
 | Find config files | `Glob: *config*` | `find_configs({})` |
 | Read a config file | `Read: tsconfig.json` | `read_config({ path: 'tsconfig.json' })` |
 | Check if monorepo | `Glob` + manual check | `get_project_info({})` → workspaces |
+| Get install/build/test commands | Search scripts manually | `get_quickstart({})` |
+| Know what frameworks are used | Read & analyze package.json | `get_tech_stack({})` |
+| Understand directory layout | `ls` + manual exploration | `get_structure({})` |
 
 ## WHY MANDATORY
 
@@ -50,16 +53,32 @@ Use project tools at **SESSION START**:
 | `get_dependencies` | Packages (production/dev/all) |
 | `find_configs` | tsconfig, eslint, etc. |
 | `read_config` | Read any config file |
+| `get_quickstart` | **NEW CODEBASE?** - install, build, test, run commands |
+| `get_tech_stack` | **WHAT TECH?** - frameworks, libraries, build tools detected |
+| `get_structure` | **EXPLORE** - directory layout with descriptions |
 
 ## Quick Examples
 
 ```
+// Orientation in new codebase
+get_quickstart({})      // How to install, build, test, run
+get_tech_stack({})      // React? TypeScript? Vite?
+get_structure({})       // What directories exist, where to start
+
+// Detailed project info
 get_project_info({})
 get_scripts({})
 get_dependencies({ type: 'production' })
 find_configs({})
 read_config({ path: 'tsconfig.json' })
 ```
+
+## Recommended Flow for New Codebases
+
+1. `get_session_guide({})` - Learn which MCP tools to use
+2. `get_quickstart({})` - Know how to build/test
+3. `get_tech_stack({})` - Understand the technology
+4. `get_structure({})` - See directory layout
 
 **Works from any subdirectory** - auto-detects project root.
 **Supports:** npm, cargo, python, go

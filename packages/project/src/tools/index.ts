@@ -11,6 +11,9 @@ import { registerGetDependencies } from "./getDependencies.js";
 import { registerFindConfigs } from "./findConfigs.js";
 import { registerReadConfig } from "./readConfig.js";
 import { registerGetSessionGuide } from "./getSessionGuide.js";
+import { registerGetQuickstart } from "./getQuickstart.js";
+import { registerGetTechStack } from "./getTechStack.js";
+import { registerGetStructure } from "./getStructure.js";
 
 /**
  * Register all project tools with an MCP server.
@@ -26,6 +29,9 @@ export function registerTools(server: McpServer, projectRoot: string): void {
   registerGetDependencies(server, service);
   registerFindConfigs(server, service);
   registerReadConfig(server, service);
+  registerGetQuickstart(server, service);
+  registerGetTechStack(server, service);
+  registerGetStructure(server, service);
 }
 
 export * from "./types.js";

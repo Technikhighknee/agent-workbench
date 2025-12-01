@@ -80,7 +80,9 @@ For deep code understanding:
 | See git history | \`mcp__history__file_history\` |
 | Read a function | \`mcp__syntax__read_symbol\` |
 | Edit a function | \`mcp__syntax__edit_symbol\` |
-| Find who calls X | \`mcp__syntax__get_callers\` |
+| Find who calls X | \`mcp__graph__graph_get_callers\` |
+| Trace call chains | \`mcp__graph__graph_trace\` |
+| Find path A→B | \`mcp__graph__graph_find_paths\` |
 | Start dev server | \`mcp__process-host__spawn_process\` |
 | Check npm scripts | \`mcp__project__get_scripts\` |
 `;

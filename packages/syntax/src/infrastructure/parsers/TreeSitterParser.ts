@@ -802,7 +802,7 @@ export class TreeSitterParser implements ParserPort {
     language: string,
     precedingComment?: Parser.SyntaxNode
   ): Symbol | null {
-    const kind = this.getSymbolKind(node.type, language);
+    const kind = this.getSymbolKind(node.type, language, node);
     if (!kind) return null;
 
     const name = this.getSymbolName(node, language);
@@ -905,7 +905,7 @@ export class TreeSitterParser implements ParserPort {
     return null;
   }
 
-  private getSymbolKind(nodeType: string, language: string): SymbolKind | null {
+  private getSymbolKind(nodeType: string, language: string, node?: Parser.SyntaxNode): SymbolKind | null {
     // TypeScript/JavaScript
     if (language === "typescript" || language === "javascript") {
       switch (nodeType) {
@@ -947,6 +947,16 @@ export class TreeSitterParser implements ParserPort {
           return "class";
         case "function_definition":
           return "function";
+        case "decorated_definition":
+          // Look inside to find the decorated function or class
+          if (node) {
+            const inner = node.children.find(
+              (c) => c.type === "function_definition" || c.type === "class_definition"
+            );
+            if (inner?.type === "class_definition") return "class";
+            if (inner?.type === "function_definition") return "function";
+          }
+          return "function"; // Default to function for decorated items
         case "assignment":
         case "expression_statement":
           return "variable";
@@ -962,7 +972,8 @@ export class TreeSitterParser implements ParserPort {
     if (language === "go") {
       switch (nodeType) {
         case "type_declaration":
-          return "type_alias";
+          // Check if it's a struct or interface type
+          return node ? this.getGoTypeKind(node) : "type_alias";
         case "function_declaration":
           return "function";
         case "method_declaration":
@@ -1009,7 +1020,48 @@ export class TreeSitterParser implements ParserPort {
     return null;
   }
 
-  private getSymbolName(node: Parser.SyntaxNode, _language: string): string | null {
+  /**
+   * Determine the kind for a Go type_declaration.
+   * Looks inside type_spec to see if it's a struct, interface, or regular type alias.
+   */
+  private getGoTypeKind(node: Parser.SyntaxNode): SymbolKind {
+    const typeSpec = node.children.find((c) => c.type === "type_spec");
+    if (typeSpec) {
+      for (const child of typeSpec.children) {
+        if (child.type === "struct_type") return "class";
+        if (child.type === "interface_type") return "interface";
+      }
+    }
+    return "type_alias";
+  }
+
+  private getSymbolName(node: Parser.SyntaxNode, language: string): string | null {
+    // Go methods: method_declaration has field_identifier for the method name
+    if (language === "go" && node.type === "method_declaration") {
+      const fieldIdent = node.children.find((c) => c.type === "field_identifier");
+      if (fieldIdent) return fieldIdent.text;
+    }
+
+    // Go type declarations: look for type_spec with type_identifier
+    if (language === "go" && node.type === "type_declaration") {
+      const typeSpec = node.children.find((c) => c.type === "type_spec");
+      if (typeSpec) {
+        const typeName = typeSpec.children.find((c) => c.type === "type_identifier");
+        if (typeName) return typeName.text;
+      }
+    }
+
+    // Python decorated definitions: look inside for the function/class name
+    if (language === "python" && node.type === "decorated_definition") {
+      const inner = node.children.find(
+        (c) => c.type === "function_definition" || c.type === "class_definition"
+      );
+      if (inner) {
+        const nameNode = inner.children.find((c) => c.type === "identifier");
+        if (nameNode) return nameNode.text;
+      }
+    }
+
     // Look for identifier/name child nodes
     const nameNodeTypes = ["identifier", "name", "property_identifier", "type_identifier"];
 

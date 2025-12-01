@@ -7,6 +7,8 @@
     "build": "npm run build --workspaces",
     "build:syntax": "npm run build -w @agent-workbench/syntax",
     "build:process-host": "npm run build -w @agent-workbench/process-host",
+    "build:history": "npm run build -w @agent-workbench/history",
+    "build:project": "npm run build -w @agent-workbench/project",
     "clean": "rm -rf packages/*/dist",
     "test": "npm run test --workspaces --if-present"
   },
@@ -16,7 +18,9 @@
   },
   "workspaces": [
     "packages/process-host",
-    "packages/syntax"
+    "packages/syntax",
+    "packages/history",
+    "packages/project"
   ],
   "keywords": [
     "ai-agent",

@@ -106,23 +106,5 @@ export interface BranchDiff {
   mergeBase?: string;
 }
 
-/**
- * Result type for operations that can fail.
- */
-export type Result<T, E = string> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
-
-/**
- * Create a success result.
- */
-export function ok<T>(value: T): Result<T, never> {
-  return { ok: true, value };
-}
-
-/**
- * Create an error result.
- */
-export function err<E>(error: E): Result<never, E> {
-  return { ok: false, error };
-}
+// Re-export Result utilities from core
+export { Result, ok, err } from "@agent-workbench/core";

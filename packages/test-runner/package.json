@@ -49,6 +49,7 @@
     "@modelcontextprotocol/sdk": "^1.23.0",
     "glob": "^11.0.0",
     "typescript": "^5.9.3",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "@agent-workbench/core": "^0.1.0"
   }
 }

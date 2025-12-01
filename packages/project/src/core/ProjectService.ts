@@ -165,7 +165,7 @@ export class ProjectService {
   /**
    * Get complete project info.
    */
-  async getProjectInfo(): Promise<Result<ProjectInfo>> {
+  async getProjectInfo(): Promise<Result<ProjectInfo, string>> {
     const type = await this.detectType();
 
     switch (type) {
@@ -192,7 +192,7 @@ export class ProjectService {
   /**
    * Parse npm/Node.js project.
    */
-  private async parseNpmProject(): Promise<Result<ProjectInfo>> {
+  private async parseNpmProject(): Promise<Result<ProjectInfo, string>> {
     const projectRoot = await this.getProjectRoot();
     const pkgPath = path.join(projectRoot, "package.json");
 
@@ -318,7 +318,7 @@ export class ProjectService {
   /**
    * Parse Rust/Cargo project.
    */
-  private async parseCargoProject(): Promise<Result<ProjectInfo>> {
+  private async parseCargoProject(): Promise<Result<ProjectInfo, string>> {
     const projectRoot = await this.getProjectRoot();
     const cargoPath = path.join(projectRoot, "Cargo.toml");
 
@@ -383,7 +383,7 @@ export class ProjectService {
   /**
    * Parse Python project.
    */
-  private async parsePythonProject(): Promise<Result<ProjectInfo>> {
+  private async parsePythonProject(): Promise<Result<ProjectInfo, string>> {
     const projectRoot = await this.getProjectRoot();
     // Try pyproject.toml first
     const pyprojectPath = path.join(projectRoot, "pyproject.toml");
@@ -432,7 +432,7 @@ export class ProjectService {
   /**
    * Parse Go project.
    */
-  private async parseGoProject(): Promise<Result<ProjectInfo>> {
+  private async parseGoProject(): Promise<Result<ProjectInfo, string>> {
     const projectRoot = await this.getProjectRoot();
     const goModPath = path.join(projectRoot, "go.mod");
 
@@ -483,7 +483,7 @@ export class ProjectService {
   /**
    * Find configuration files in the project.
    */
-  async findConfigs(): Promise<Result<ConfigFile[]>> {
+  async findConfigs(): Promise<Result<ConfigFile[], string>> {
     const projectRoot = await this.getProjectRoot();
     const configs: ConfigFile[] = [];
 
@@ -531,7 +531,7 @@ export class ProjectService {
   /**
    * Read a specific config file.
    */
-  async readConfig(configPath: string): Promise<Result<string>> {
+  async readConfig(configPath: string): Promise<Result<string, string>> {
     const projectRoot = await this.getProjectRoot();
     const fullPath = path.isAbsolute(configPath)
       ? configPath

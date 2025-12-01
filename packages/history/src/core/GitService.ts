@@ -22,7 +22,7 @@ export class GitService {
   /**
    * Execute a git command and return stdout.
    */
-  private async exec(args: string[]): Promise<Result<string>> {
+  private async exec(args: string[]): Promise<Result<string, string>> {
     return new Promise((resolve) => {
       const proc = spawn("git", args, {
         cwd: this.rootPath,
@@ -65,7 +65,7 @@ export class GitService {
   /**
    * Get blame for a file.
    */
-  async blame(filePath: string): Promise<Result<BlameResult>> {
+  async blame(filePath: string): Promise<Result<BlameResult, string>> {
     // Use porcelain format for machine parsing
     const absPath = path.isAbsolute(filePath)
       ? filePath
@@ -179,7 +179,7 @@ export class GitService {
   async fileHistory(
     filePath: string,
     limit: number = 20
-  ): Promise<Result<Commit[]>> {
+  ): Promise<Result<Commit[], string>> {
     const absPath = path.isAbsolute(filePath)
       ? filePath
       : path.join(this.rootPath, filePath);
@@ -206,7 +206,7 @@ export class GitService {
   /**
    * Get recent changes across the repository.
    */
-  async recentChanges(count: number = 10): Promise<Result<RecentChanges>> {
+  async recentChanges(count: number = 10): Promise<Result<RecentChanges, string>> {
     // Use %x00 as delimiter for commit fields, but keep commits separated by newlines
     const logResult = await this.exec([
       "log",
@@ -287,7 +287,7 @@ export class GitService {
   /**
    * Get details of a specific commit.
    */
-  async commitInfo(ref: string): Promise<Result<Commit>> {
+  async commitInfo(ref: string): Promise<Result<Commit, string>> {
     // Get commit metadata using null byte delimiter
     const metaResult = await this.exec([
       "log",
@@ -359,7 +359,7 @@ export class GitService {
   async searchCommits(
     query: string,
     limit: number = 20
-  ): Promise<Result<Commit[]>> {
+  ): Promise<Result<Commit[], string>> {
     const result = await this.exec([
       "log",
       `--max-count=${limit}`,
@@ -384,7 +384,7 @@ export class GitService {
     filePath: string,
     fromRef: string = "HEAD~1",
     toRef: string = "HEAD"
-  ): Promise<Result<string>> {
+  ): Promise<Result<string, string>> {
     const absPath = path.isAbsolute(filePath)
       ? filePath
       : path.join(this.rootPath, filePath);
@@ -406,7 +406,7 @@ export class GitService {
   async branchDiff(
     base: string = "main",
     head: string = "HEAD"
-  ): Promise<Result<import("./model.js").BranchDiff>> {
+  ): Promise<Result<import("./model.js").BranchDiff, string>> {
     // Get the merge base
     const mergeBaseResult = await this.exec(["merge-base", base, head]);
     if (!mergeBaseResult.ok) {

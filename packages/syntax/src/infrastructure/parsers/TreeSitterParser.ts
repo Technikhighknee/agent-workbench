@@ -1,6 +1,6 @@
 import Parser from "tree-sitter";
 import { Parser as ParserPort, ParseResult, ParseError } from "../../core/ports/Parser.js";
-import { Result, Ok, Err } from "../../core/result.js";
+import { Result, Ok, Err } from "@agent-workbench/core";
 import { SymbolTree } from "../../core/symbolTree.js";
 import { Symbol, SymbolKind, Language, LANGUAGES, detectLanguage, Span, Location, CallInfo, ImportInfo, ImportBinding, ImportType, ExportInfo, ExportBinding, ExportType } from "../../core/model.js";
 

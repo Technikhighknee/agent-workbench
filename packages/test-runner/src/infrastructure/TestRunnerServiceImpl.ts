@@ -1,7 +1,7 @@
 import { glob } from "glob";
 
-import type { Result } from "../core/result.js";
-import { Ok, Err } from "../core/result.js";
+import type { Result } from "@agent-workbench/core";
+import { Ok, Err } from "@agent-workbench/core";
 import type {
   TestRun,
   TestConfig,

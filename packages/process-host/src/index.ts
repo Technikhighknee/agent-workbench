@@ -1,6 +1,5 @@
 // Core domain
 export * from "./core/model.js";
-export * from "./core/result.js";
 export * from "./core/ports/index.js";
 export { ProcessService, type StartProcessParams, type StopProcessParams } from "./core/services/ProcessService.js";
 

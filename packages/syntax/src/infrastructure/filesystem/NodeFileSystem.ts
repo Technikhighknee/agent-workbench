@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { FileSystem, FileStats } from "../../core/ports/FileSystem.js";
-import { Result, Ok, Err } from "../../core/result.js";
+import { Result, Ok, Err } from "@agent-workbench/core";
 
 /**
  * Node.js implementation of the FileSystem port.

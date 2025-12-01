@@ -46,6 +46,7 @@
     "@types/node": "^24.10.1"
   },
   "dependencies": {
+    "@agent-workbench/core": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.23.0",
     "typescript": "^5.9.3",
     "zod": "^4.1.13"

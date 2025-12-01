@@ -47,7 +47,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "@agent-workbench/core": "^0.1.0"
   },
   "optionalDependencies": {
     "@cfworker/json-schema": "^4.1.1"

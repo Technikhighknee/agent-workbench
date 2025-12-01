@@ -1,4 +1,4 @@
-import { Result } from "../result.js";
+import { Result } from "@agent-workbench/core";
 import { SymbolTree } from "../symbolTree.js";
 import { Language, Span, ImportInfo, ExportInfo, CallInfo } from "../model.js";
 

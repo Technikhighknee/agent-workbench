@@ -2,8 +2,8 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 
-import type { Result } from "../../core/result.js";
-import { Ok, Err } from "../../core/result.js";
+import type { Result } from "@agent-workbench/core";
+import { Ok, Err } from "@agent-workbench/core";
 import type {
   TestRun,
   TestResult,

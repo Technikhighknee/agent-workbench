@@ -1,4 +1,4 @@
-import type { Result } from "../result.js";
+import type { Result } from "@agent-workbench/core";
 import type {
   TestRun,
   TestConfig,

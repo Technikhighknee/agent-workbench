@@ -1,4 +1,4 @@
-import { Result, Ok, Err } from "../result.js";
+import { Result, Ok, Err } from "@agent-workbench/core";
 import { Parser, ParseResult } from "../ports/Parser.js";
 import { FileSystem } from "../ports/FileSystem.js";
 import { SymbolCache } from "../ports/Cache.js";

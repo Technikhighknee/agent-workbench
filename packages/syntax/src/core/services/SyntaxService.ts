@@ -3,7 +3,7 @@ import { Parser, ParseResult } from "../ports/Parser.js";
 import { FileSystem } from "../ports/FileSystem.js";
 import { SymbolCache } from "../ports/Cache.js";
 import { SymbolTree, findByNamePath, toSymbolInfoList, toSymbolInfo } from "../symbolTree.js";
-import { SymbolInfo, SymbolContent, EditResult, SymbolKind, Symbol, ImportInfo } from "../model.js";
+import { SymbolInfo, SymbolContent, EditResult, SymbolKind, Symbol, ImportInfo, ExportInfo } from "../model.js";
 
 export interface ListSymbolsParams {
   filePath: string;
@@ -81,6 +81,30 @@ export class SyntaxService {
 
     // Extract imports
     const result = await this.parser.extractImports(sourceResult.value, filePath);
+    if (!result.ok) {
+      return Err(result.error.message);
+    }
+
+    return Ok(result.value);
+  }
+
+  /**
+   * Get all exports from a file.
+   */
+  async getExports(filePath: string): Promise<Result<ExportInfo[], string>> {
+    // Check file exists
+    if (!this.fs.exists(filePath)) {
+      return Err(`File not found: ${filePath}`);
+    }
+
+    // Read the source file
+    const sourceResult = this.fs.read(filePath);
+    if (!sourceResult.ok) {
+      return Err(sourceResult.error.message);
+    }
+
+    // Extract exports
+    const result = await this.parser.extractExports(sourceResult.value, filePath);
     if (!result.ok) {
       return Err(result.error.message);
     }

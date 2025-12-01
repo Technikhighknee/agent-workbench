@@ -168,6 +168,80 @@ import "side-effects";
   }
   console.log("   ✓ Side-effect import: side-effects");
 
+  // Test 5: Export extraction
+  console.log("\n5. Testing export extraction...");
+  const exportSource = `
+export default function main() {}
+export { foo, bar as baz };
+export const VALUE = 42;
+export class MyClass {}
+export type MyType = string;
+export * from "./utils.js";
+export { renamed as exported } from "./other.js";
+`;
+
+  const exportResult = await parser.extractExports(exportSource, "test.ts");
+  if (!exportResult.ok) {
+    console.error("❌ Export extraction failed:", exportResult.error);
+    process.exit(1);
+  }
+
+  const exports = exportResult.value;
+  console.log(`   Found ${exports.length} exports`);
+
+  // Check default export
+  const defaultExport = exports.find((e) => e.type === "default");
+  if (!defaultExport) {
+    console.error("❌ Default export not found");
+    process.exit(1);
+  }
+  console.log("   ✓ Default export: function main");
+
+  // Check named exports
+  const namedExport = exports.find(
+    (e) => e.type === "named" && e.bindings.some((b) => b.name === "foo")
+  );
+  if (!namedExport) {
+    console.error("❌ Named exports not found");
+    process.exit(1);
+  }
+  const exportBazBinding = namedExport.bindings.find((b) => b.name === "baz");
+  if (!exportBazBinding || exportBazBinding.localName !== "bar") {
+    console.error("❌ Aliased export not captured:", exportBazBinding);
+    process.exit(1);
+  }
+  console.log("   ✓ Named exports with alias: foo, bar as baz");
+
+  // Check declaration exports
+  const valueExport = exports.find(
+    (e) => e.type === "declaration" && e.bindings.some((b) => b.name === "VALUE")
+  );
+  if (!valueExport) {
+    console.error("❌ Const export not found");
+    process.exit(1);
+  }
+  console.log("   ✓ Declaration export: VALUE");
+
+  // Check namespace re-export
+  const namespaceExport = exports.find(
+    (e) => e.type === "namespace" && e.source === "./utils.js"
+  );
+  if (!namespaceExport) {
+    console.error("❌ Namespace re-export not found");
+    process.exit(1);
+  }
+  console.log("   ✓ Namespace re-export: * from ./utils.js");
+
+  // Check named re-export
+  const reexport = exports.find(
+    (e) => e.type === "reexport" && e.source === "./other.js"
+  );
+  if (!reexport) {
+    console.error("❌ Named re-export not found");
+    process.exit(1);
+  }
+  console.log("   ✓ Named re-export: renamed as exported from ./other.js");
+
   console.log("\n✅ All smoke tests passed!\n");
 }
 

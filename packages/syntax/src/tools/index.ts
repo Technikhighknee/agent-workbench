@@ -8,6 +8,7 @@ import { registerReadSymbol } from "./readSymbol.js";
 import { registerEditSymbol } from "./editSymbol.js";
 import { registerEditLines } from "./editLines.js";
 import { registerGetImports } from "./getImports.js";
+import { registerGetExports } from "./getExports.js";
 import { registerSearchSymbols } from "./searchSymbols.js";
 import { registerFindReferences } from "./findReferences.js";
 import { registerRenameSymbol } from "./renameSymbol.js";
@@ -27,6 +28,7 @@ export function registerAllTools(server: McpServer, services: Services): void {
   registerEditSymbol(server, services.syntax);
   registerEditLines(server, services.syntax);
   registerGetImports(server, services.syntax);
+  registerGetExports(server, services.syntax);
 
   // Project-level operations (ProjectIndex) - auto-indexed on startup
   registerSearchSymbols(server, services.index);

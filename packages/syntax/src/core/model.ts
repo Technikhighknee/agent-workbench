@@ -238,3 +238,43 @@ export interface ImportInfo {
   /** Full import statement text */
   raw: string;
 }
+
+/**
+ * Type of export statement.
+ */
+export type ExportType =
+  | "default"       // export default foo
+  | "named"         // export { foo, bar }
+  | "declaration"   // export function foo() {}
+  | "reexport"      // export { foo } from "module"
+  | "namespace";    // export * from "module"
+
+/**
+ * A single exported binding.
+ */
+export interface ExportBinding {
+  /** Exported name (what consumers import) */
+  name: string;
+  /** Local name (if aliased, e.g., "foo" in "export { foo as bar }") */
+  localName?: string;
+  /** Whether this is a type-only export */
+  isType?: boolean;
+  /** Symbol kind if from a declaration */
+  kind?: SymbolKind;
+}
+
+/**
+ * Information about an export statement.
+ */
+export interface ExportInfo {
+  /** Type of export */
+  type: ExportType;
+  /** Exported bindings */
+  bindings: ExportBinding[];
+  /** Re-export source (for reexports) */
+  source?: string;
+  /** Line number */
+  line: number;
+  /** Full export statement text */
+  raw: string;
+}

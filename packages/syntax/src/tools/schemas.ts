@@ -82,3 +82,26 @@ export const ImportInfoSchema = z.object({
   isDynamic: z.boolean().optional(),
   raw: z.string(),
 });
+
+export const ExportTypeSchema = z.enum([
+  "default",
+  "named",
+  "declaration",
+  "reexport",
+  "namespace",
+]);
+
+export const ExportBindingSchema = z.object({
+  name: z.string(),
+  localName: z.string().optional(),
+  isType: z.boolean().optional(),
+  kind: SymbolKindSchema.optional(),
+});
+
+export const ExportInfoSchema = z.object({
+  type: ExportTypeSchema,
+  bindings: z.array(ExportBindingSchema),
+  source: z.string().optional(),
+  line: z.number(),
+  raw: z.string(),
+});

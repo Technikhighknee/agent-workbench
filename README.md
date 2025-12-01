@@ -1,8 +1,22 @@
 # agent-workbench
+> Inspired by IDE    
 
-Inspired by the concept of IDE – translated into the world of AI-Agents.
+**At it's current state: A collection of MCP servers that form an extensive operating toolbelt for AI-Agents like Claude Code**  
 
-## Packages
+This monorepo provides the agent with:
+
+- Long-running processes then don't lose
+- Symbol-aware code editing
+- Real project orientation
+- Git history with intent
+- TypeScript verification
+- Test execution
+- Semantic graph navigation
+
+Each package solves one foundational pain point.
+Together, they form a minimal "development environment" for autonomous or semi-autonomous AI coding.
+
+## Packages (./packages)
 
 ### [@agent-workbench/syntax](packages/syntax/)
 Symbol-aware code operations for AI agents. Read and edit code by function/class name, not line numbers.

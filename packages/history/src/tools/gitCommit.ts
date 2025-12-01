@@ -44,6 +44,11 @@ export const registerGitCommit: ToolRegistrar = (server, service) => {
         output.push(`  ${stats.join(", ")}`);
       }
 
+      output.push("");
+      output.push("---");
+      output.push("**Tip:** Use `git_status` to see if there are more changes to commit.");
+      output.push("**Tip:** Don't forget to push when you're ready to share your changes.");
+
       return {
         content: [{ type: "text", text: output.join("\n") }],
         structuredContent: {

@@ -2,7 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProcessService } from "../core/services/ProcessService.js";
 import type { ToolRegistrar } from "./types.js";
 
-import { registerStartProcess } from "./startProcess.js";
+import { registerRunProcess } from "./runProcess.js";
+import { registerSpawnProcess } from "./spawnProcess.js";
 import { registerGetLogs } from "./getLogs.js";
 import { registerStopProcess } from "./stopProcess.js";
 import { registerWriteStdin } from "./writeStdin.js";
@@ -17,7 +18,8 @@ import { registerGetStats } from "./getStats.js";
 import { registerWaitForPattern } from "./waitForPattern.js";
 
 const allTools: ToolRegistrar[] = [
-  registerStartProcess,
+  registerRunProcess,
+  registerSpawnProcess,
   registerGetLogs,
   registerStopProcess,
   registerWriteStdin,

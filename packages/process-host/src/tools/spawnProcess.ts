@@ -1,8 +1,8 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, ProcessSummary } from "./types.js";
-import { ProcessStatusSchema, ProcessSummarySchema } from "./schemas.js";
+import { ProcessSummarySchema } from "./schemas.js";
 
-interface StartProcessInput {
+interface SpawnProcessInput {
   command: string;
   cwd?: string;
   env?: Record<string, string>;
@@ -10,25 +10,26 @@ interface StartProcessInput {
   timeout_ms?: number;
 }
 
-interface StartProcessOutput extends Record<string, unknown> {
+interface SpawnProcessOutput extends Record<string, unknown> {
   success: boolean;
   error?: string;
   process?: ProcessSummary;
 }
 
-export const registerStartProcess: ToolRegistrar = (server, service) => {
+export const registerSpawnProcess: ToolRegistrar = (server, service) => {
   server.registerTool(
-    "start_process",
+    "spawn_process",
     {
-      title: "Start process",
-      description: `Start a long-running command. Returns immediately with process ID for later reference.
+      title: "Spawn process",
+      description: `Spawn a background process. Returns immediately with process ID for later reference.
 
 Use cases:
 - Dev servers: "npm run dev", "python -m http.server"
 - Build watchers: "npm run watch", "tsc --watch"
 - Any background process you need to monitor
 
-The process persists across tool calls. Use get_logs to check output, stop_process to terminate.`,
+The process persists across tool calls. Use get_logs to check output, stop_process to terminate.
+For commands that complete, use run_process instead.`,
       inputSchema: {
         command: z.string().describe("Shell command to run (supports quotes: npm run 'my script')"),
         cwd: z.string().optional().describe("Working directory (absolute or relative to server)"),
@@ -42,7 +43,7 @@ The process persists across tool calls. Use get_logs to check output, stop_proce
         process: ProcessSummarySchema.optional(),
       },
     },
-    async (input: StartProcessInput): Promise<ToolResponse<StartProcessOutput>> => {
+    async (input: SpawnProcessInput): Promise<ToolResponse<SpawnProcessOutput>> => {
       const result = service.start({
         command: input.command,
         cwd: input.cwd,
@@ -70,7 +71,7 @@ The process persists across tool calls. Use get_logs to check output, stop_proce
       };
 
       return {
-        content: [{ type: "text", text: `Started: ${p.label ?? p.command} (${p.id})` }],
+        content: [{ type: "text", text: `Spawned: ${p.label ?? p.command} (${p.id})` }],
         structuredContent: { success: true, process: processSummary },
       };
     }

@@ -25,10 +25,17 @@ type PatternWatcher = {
   timeoutId?: NodeJS.Timeout;
 };
 
+type ExitWatcher = {
+  resolve: (exitCode: number | null) => void;
+  reject: (error: Error) => void;
+  timeoutId?: NodeJS.Timeout;
+};
+
 export class ProcessService {
   private readonly handles = new Map<string, RunningProcessHandle>();
   private readonly timeouts = new Map<string, NodeJS.Timeout>();
   private readonly patternWatchers = new Map<string, PatternWatcher[]>();
+  private readonly exitWatchers = new Map<string, ExitWatcher[]>();
 
   constructor(
     private readonly processes: ProcessRepository,
@@ -66,6 +73,7 @@ export class ProcessService {
           this.clearTimeout(info.id);
           this.handles.delete(info.id);
           this.rejectPatternWatchers(info.id, new Error(`Process exited with code ${code}`));
+          this.resolveExitWatchers(info.id, code);
           this.processes.updateExitCode(info.id, code);
           this.processes.updateStatus(
             info.id,
@@ -338,6 +346,90 @@ export class ProcessService {
     }
     if (watchers.length === 0) {
       this.patternWatchers.delete(id);
+    }
+  }
+
+  /**
+   * Wait for a process to exit.
+   */
+  waitForExit(id: string, options: { timeoutMs?: number } = {}): Promise<number | null> {
+    const { timeoutMs = 0 } = options; // No timeout by default
+
+    // Check if already exited
+    const proc = this.processes.get(id);
+    if (!proc) {
+      return Promise.reject(new Error(`Process not found: ${id}`));
+    }
+    if (proc.status === "exited" || proc.status === "failed" || proc.status === "stopped") {
+      return Promise.resolve(proc.exitCode ?? null);
+    }
+
+    return new Promise((resolve, reject) => {
+      const watcher: ExitWatcher = { resolve, reject };
+
+      if (timeoutMs > 0) {
+        watcher.timeoutId = setTimeout(() => {
+          this.removeExitWatcher(id, watcher);
+          reject(new Error(`Timeout waiting for process to exit`));
+        }, timeoutMs);
+      }
+
+      const watchers = this.exitWatchers.get(id) ?? [];
+      watchers.push(watcher);
+      this.exitWatchers.set(id, watchers);
+    });
+  }
+
+  private resolveExitWatchers(id: string, exitCode: number | null): void {
+    const watchers = this.exitWatchers.get(id);
+    if (!watchers) return;
+
+    for (const watcher of watchers) {
+      if (watcher.timeoutId) clearTimeout(watcher.timeoutId);
+      watcher.resolve(exitCode);
+    }
+    this.exitWatchers.delete(id);
+  }
+
+  private removeExitWatcher(id: string, watcher: ExitWatcher): void {
+    const watchers = this.exitWatchers.get(id);
+    if (!watchers) return;
+
+    const index = watchers.indexOf(watcher);
+    if (index !== -1) {
+      watchers.splice(index, 1);
+    }
+    if (watchers.length === 0) {
+      this.exitWatchers.delete(id);
+    }
+  }
+
+  /**
+   * Run a command and wait for it to complete.
+   * Returns the process info and all logs.
+   */
+  async run(params: StartProcessParams): Promise<Result<{ process: ProcessInfo; logs: string; exitCode: number | null }, string>> {
+    const startResult = this.start(params);
+    if (!startResult.ok) {
+      return Err(startResult.error);
+    }
+
+    const process = startResult.value;
+
+    try {
+      const exitCode = await this.waitForExit(process.id, { timeoutMs: params.timeoutMs });
+      const logsResult = this.logs.get(process.id, 10000);
+      const logs = logsResult?.logs ?? "";
+      const updatedProcess = this.processes.get(process.id) ?? process;
+
+      return Ok({ process: updatedProcess, logs, exitCode });
+    } catch (error) {
+      // On timeout, still return what we have
+      const logsResult = this.logs.get(process.id, 10000);
+      const logs = logsResult?.logs ?? "";
+      const updatedProcess = this.processes.get(process.id) ?? process;
+
+      return Ok({ process: updatedProcess, logs, exitCode: null });
     }
   }
 }

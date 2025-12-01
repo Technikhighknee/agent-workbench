@@ -1,28 +1,39 @@
 ---
 name: process-host
 description: Use for all spawned processes like dev servers, watchers, and builds. Replaces Bash.run_in_background and most process calls that stay active and need to be killed.
-allowed-tools: mcp__process-host__start_process, mcp__process-host__get_logs, mcp__process-host__stop_process, mcp__process-host__wait_for_pattern, mcp__process-host__list_processes, mcp__process-host__restart_process, mcp__process-host__get_process, mcp__process-host__purge_processes, mcp__process-host__stop_all_processes, mcp__process-host__send_signal, mcp__process-host__search_logs, mcp__process-host__get_stats, mcp__process-host__write_stdin
+allowed-tools: mcp__process-host__run_process, mcp__process-host__spawn_process, mcp__process-host__get_logs, mcp__process-host__stop_process, mcp__process-host__wait_for_pattern, mcp__process-host__list_processes, mcp__process-host__restart_process, mcp__process-host__get_process, mcp__process-host__purge_processes, mcp__process-host__stop_all_processes, mcp__process-host__send_signal, mcp__process-host__search_logs, mcp__process-host__get_stats, mcp__process-host__write_stdin
 ---
 
 # process-host
 
-Manages long-running processes with persistent tracking, log capture, and lifecycle control.
+Manages processes with persistent tracking, log capture, and lifecycle control.
 
 ## When to Use
 
-- Commands that don't terminate on their own after running
+**Use `run_process` instead of Bash for:**
+- Build commands (`npm run build`, `cargo build`, `make`)
+- Test runs (`npm test`, `pytest`, `go test`)
+- Any command that might take a while
+- When you want cleaner, compacted output
+
+**Use `spawn_process` for:**
 - Dev servers (`npm run dev`, `python -m http.server`)
 - Build watchers (`tsc --watch`, `npm run build:watch`)
 - Any background process you need to monitor
-- Interactive processes that need stdin input
 
 ## Tools
+
+### Running Commands
+
+| Tool | Description |
+|------|-------------|
+| `run_process` | Run command, wait for completion, return compacted output |
+| `spawn_process` | Start background process, return immediately |
 
 ### Lifecycle
 
 | Tool | Description |
 |------|-------------|
-| `start_process` | Start a command in a managed session |
 | `stop_process` | Terminate gracefully (SIGTERM) |
 | `restart_process` | Stop and restart with same config |
 | `stop_all_processes` | Stop all running processes |
@@ -48,26 +59,34 @@ Manages long-running processes with persistent tracking, log capture, and lifecy
 
 ## Decision Tree
 
-### Starting a Process
-- Long-running server → `start_process` + `wait_for_pattern`
-- Quick command → built-in `Bash`
-- Need stdin interaction → `start_process` + `write_stdin`
+### Which tool?
+- Command completes on its own → `run_process`
+- Command runs indefinitely → `spawn_process`
+- Need stdin interaction → `spawn_process` + `write_stdin`
 
-### Monitoring
-- Check if ready → `wait_for_pattern({ pattern: "listening|ready|started" })`
-- Find errors → `search_logs({ pattern: "error|exception" })`
-- See recent output → `get_logs({ last_lines: 50 })`
-
-### Cleanup
-- Stop one process → `stop_process`
-- Stop everything → `stop_all_processes`
-- Force kill stuck process → `send_signal({ signal: "SIGKILL" })`
+### vs Bash
+- No timeout needed → `run_process`
+- Want clean output (no ANSI) → `run_process`
+- Need to check logs later → `run_process` or `spawn_process`
+- Quick one-liner → Bash is fine
 
 ## Workflows
 
+### Build Project
+```
+run_process({ command: 'npm run build' })
+// Returns: [✓] npm:build + compacted output
+```
+
+### Run Tests
+```
+run_process({ command: 'npm test' })
+// Returns: [✓] npm:test or [✗ exit 1] npm:test + error output
+```
+
 ### Dev Server
 ```
-1. start_process({ command: 'npm run dev', label: 'dev-server' })
+1. spawn_process({ command: 'npm run dev', label: 'dev-server' })
 2. wait_for_pattern({ id, pattern: 'listening on port' })
 3. ... do work ...
 4. stop_process({ id })
@@ -75,25 +94,16 @@ Manages long-running processes with persistent tracking, log capture, and lifecy
 
 ### Interactive Process
 ```
-1. start_process({ command: 'node', label: 'repl' })
+1. spawn_process({ command: 'node', label: 'repl' })
 2. write_stdin({ id, data: 'console.log("hello")\n' })
 3. get_logs({ id })
 4. stop_process({ id })
 ```
 
-### Build and Watch
-```
-1. start_process({ command: 'npm run build:watch', label: 'build' })
-2. wait_for_pattern({ id, pattern: 'compiled|watching' })
-3. ... make changes, check get_logs periodically ...
-4. stop_process({ id })
-```
-
 ## Notes
 
-- Built-in Bash timeout is 2 minutes; process-host has no limit
-- Processes persist across tool calls
+- `run_process` has no timeout - waits indefinitely
+- Output is cleaned: ANSI stripped, progress removed, long output compacted
+- Processes persist in history for debugging
 - Use labels for easy identification: `{ label: 'api-server' }`
-- Replaces `Bash.run_in_background`
-- SQLite persistence survives restarts
 - Check `list_processes({ running_only: true })` to see what's active

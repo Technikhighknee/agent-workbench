@@ -400,6 +400,119 @@ export class GitService {
   }
 
   /**
+   * Get a summary of changes between two branches.
+   * Useful for understanding PR scope.
+   */
+  async branchDiff(
+    base: string = "main",
+    head: string = "HEAD"
+  ): Promise<Result<import("./model.js").BranchDiff>> {
+    // Get the merge base
+    const mergeBaseResult = await this.exec(["merge-base", base, head]);
+    if (!mergeBaseResult.ok) {
+      return err(`Failed to find merge base: ${mergeBaseResult.error}`);
+    }
+    const mergeBase = mergeBaseResult.value.trim();
+
+    // Get commits ahead (on head but not on base)
+    const aheadResult = await this.exec([
+      "rev-list",
+      "--count",
+      `${mergeBase}..${head}`,
+    ]);
+    const commitsAhead = aheadResult.ok ? parseInt(aheadResult.value.trim(), 10) : 0;
+
+    // Get commits behind (on base but not on head)
+    const behindResult = await this.exec([
+      "rev-list",
+      "--count",
+      `${mergeBase}..${base}`,
+    ]);
+    const commitsBehind = behindResult.ok ? parseInt(behindResult.value.trim(), 10) : 0;
+
+    // Get changed files with stats
+    const diffResult = await this.exec([
+      "diff",
+      "--numstat",
+      "--name-status",
+      `${mergeBase}...${head}`,
+    ]);
+
+    if (!diffResult.ok) {
+      return err(`Failed to get diff: ${diffResult.error}`);
+    }
+
+    // Parse the diff output
+    const files: import("./model.js").ChangedFile[] = [];
+    let totalAdditions = 0;
+    let totalDeletions = 0;
+
+    // Get detailed file changes
+    const detailedResult = await this.exec([
+      "diff",
+      "--numstat",
+      `${mergeBase}...${head}`,
+    ]);
+
+    if (detailedResult.ok) {
+      const lines = detailedResult.value.trim().split("\n").filter(Boolean);
+      for (const line of lines) {
+        const match = line.match(/^(\d+|-)\s+(\d+|-)\s+(.+)$/);
+        if (match) {
+          const additions = match[1] === "-" ? 0 : parseInt(match[1], 10);
+          const deletions = match[2] === "-" ? 0 : parseInt(match[2], 10);
+          const filePath = match[3];
+
+          totalAdditions += additions;
+          totalDeletions += deletions;
+
+          files.push({
+            path: filePath,
+            status: "M", // Will be updated below
+            additions,
+            deletions,
+          });
+        }
+      }
+    }
+
+    // Get status for each file
+    const statusResult = await this.exec([
+      "diff",
+      "--name-status",
+      `${mergeBase}...${head}`,
+    ]);
+
+    if (statusResult.ok) {
+      const statusMap = new Map<string, "A" | "M" | "D" | "R" | "C" | "T" | "U" | "X">();
+      const lines = statusResult.value.trim().split("\n").filter(Boolean);
+      for (const line of lines) {
+        const match = line.match(/^([AMDRTCUX])\t(.+)$/);
+        if (match) {
+          statusMap.set(match[2], match[1] as "A" | "M" | "D" | "R" | "C" | "T" | "U" | "X");
+        }
+      }
+      for (const file of files) {
+        const status = statusMap.get(file.path);
+        if (status) {
+          file.status = status;
+        }
+      }
+    }
+
+    return ok({
+      base,
+      head,
+      commitsAhead,
+      commitsBehind,
+      files,
+      totalAdditions,
+      totalDeletions,
+      mergeBase,
+    });
+  }
+
+  /**
    * Parse standard log format output.
    */
   private parseLogOutput(output: string, delimiter: string = "|"): Commit[] {

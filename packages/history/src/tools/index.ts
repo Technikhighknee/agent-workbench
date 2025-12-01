@@ -11,6 +11,7 @@ import { recentChanges, recentChangesSchema } from "./recentChanges.js";
 import { commitInfo, commitInfoSchema } from "./commitInfo.js";
 import { searchCommits, searchCommitsSchema } from "./searchCommits.js";
 import { diffFile, diffFileSchema } from "./diffFile.js";
+import { branchDiff, branchDiffSchema } from "./branchDiff.js";
 
 /**
  * Register all history tools with an MCP server.
@@ -80,6 +81,16 @@ export function registerTools(server: McpServer, projectRoot: string): void {
     diffFileSchema.shape,
     async (input) => {
       const result = await diffFile(service, diffFileSchema.parse(input));
+      return { content: [{ type: "text", text: result }] };
+    }
+  );
+
+  server.tool(
+    "branch_diff",
+    "Get summary of changes between branches - files changed, additions/deletions, commits ahead/behind",
+    branchDiffSchema.shape,
+    async (input) => {
+      const result = await branchDiff(service, branchDiffSchema.parse(input));
       return { content: [{ type: "text", text: result }] };
     }
   );

@@ -23,11 +23,13 @@
         "toolGroups": {
           "blame": { "tools": ["blame_file"] },
           "history": { "tools": ["file_history", "recent_changes", "diff_file"] },
-          "search": { "tools": ["search_commits", "commit_info"] }
+          "search": { "tools": ["search_commits", "commit_info"] },
+          "compare": { "tools": ["branch_diff"] }
         },
         "tips": [
           "blame_file shows intent behind each line",
-          "recent_changes for 'what broke?'"
+          "recent_changes for 'what broke?'",
+          "branch_diff for PR scope summary"
         ]
       }
     },

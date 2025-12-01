@@ -32,6 +32,7 @@ Git history operations for AI agents. Understand code evolution through blame, h
 - `recent_changes` - What changed recently
 - `commit_info` / `search_commits` - Commit details and search
 - `diff_file` - Compare file between commits
+- `branch_diff` - Summary of changes vs base branch (PR scope)
 
 ### [@agent-workbench/project](packages/project/)
 Project metadata operations. Quickly understand project structure, configs, and available commands.

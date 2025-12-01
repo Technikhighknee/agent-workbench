@@ -85,6 +85,28 @@ export interface RecentChanges {
 }
 
 /**
+ * Summary of changes between two branches or refs.
+ */
+export interface BranchDiff {
+  /** Base ref (e.g., "main") */
+  base: string;
+  /** Head ref (e.g., "feature-branch" or "HEAD") */
+  head: string;
+  /** Number of commits ahead of base */
+  commitsAhead: number;
+  /** Number of commits behind base */
+  commitsBehind: number;
+  /** Files changed */
+  files: ChangedFile[];
+  /** Total additions */
+  totalAdditions: number;
+  /** Total deletions */
+  totalDeletions: number;
+  /** Merge base commit */
+  mergeBase?: string;
+}
+
+/**
  * Result type for operations that can fail.
  */
 export type Result<T, E = string> =

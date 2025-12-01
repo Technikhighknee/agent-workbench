@@ -2,8 +2,12 @@
   "name": "agent-workbench",
   "version": "early-prototyping",
   "description": "Inspired by the concept of IDE – translated into the world of AI-Agents.",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
+    "build": "npm run build --workspaces",
+    "build:syntax": "npm run build -w @agent-workbench/syntax",
+    "build:process-host": "npm run build -w @agent-workbench/process-host",
+    "clean": "rm -rf packages/*/dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -11,9 +15,15 @@
     "url": "git+https://github.com/Technikhighknee/agent-workbench.git"
   },
   "workspaces": [
-    "packages/process-host/"
+    "packages/process-host",
+    "packages/syntax"
   ],
-  "keywords": [],
+  "keywords": [
+    "ai-agent",
+    "mcp",
+    "claude",
+    "ide"
+  ],
   "author": "Jason Posch <Technikhighknee>",
   "license": "UNLICENSED",
   "bugs": {

@@ -16,13 +16,15 @@
     "allowSyntheticDefaultImports": true,
     "allowJs": false,
     "noEmitOnError": true,
+    "declaration": true,
+    "declarationMap": true,
     "types": ["node"]
   },
   "include": [
     "src/**/*.ts"
   ],
   "exclude": [
-    "node_modlues",
+    "node_modules",
     "**/*test.ts",
     "dist"
   ]

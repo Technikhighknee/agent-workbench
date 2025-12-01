@@ -175,7 +175,14 @@ export class TreeSitterParser implements ParserPort {
     const span = this.nodeToSpan(node);
     const bodySpan = this.getBodySpan(node, language);
     const children = this.extractChildSymbols(node, source, language);
-    const documentation = this.extractDocumentation(precedingComment, language);
+
+    // Extract documentation - for Python, check docstrings inside the body
+    let documentation: string | undefined;
+    if (language === "python") {
+      documentation = this.extractPythonDocstring(node);
+    } else {
+      documentation = this.extractDocumentation(precedingComment, language);
+    }
 
     return {
       name,
@@ -489,6 +496,35 @@ export class TreeSitterParser implements ParserPort {
     }
 
     return text;
+  }
+
+  /**
+   * Extract Python docstring from inside a function/class body.
+   * Docstrings are the first statement as a string literal.
+   */
+  private extractPythonDocstring(node: Parser.SyntaxNode): string | undefined {
+    // Find the block node
+    const block = node.children.find((c) => c.type === "block");
+    if (!block) return undefined;
+
+    // The first statement in the block might be the docstring
+    const firstStatement = block.children.find((c) => c.type === "expression_statement");
+    if (!firstStatement) return undefined;
+
+    // Check if it's a string (docstring)
+    const stringNode = firstStatement.children.find((c) => c.type === "string");
+    if (!stringNode) return undefined;
+
+    // Extract the string content, removing quotes
+    let text = stringNode.text;
+    // Remove triple quotes (""" or ''')
+    if (text.startsWith('"""') || text.startsWith("'''")) {
+      text = text.slice(3, -3);
+    } else if (text.startsWith('"') || text.startsWith("'")) {
+      text = text.slice(1, -1);
+    }
+
+    return text.trim();
   }
 
   /**

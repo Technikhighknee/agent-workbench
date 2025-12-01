@@ -267,9 +267,9 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
 
     for (const line of lines) {
       // Match patterns like "✓ test name" or "✗ test name" or "PASS/FAIL"
-      const passMatch = line.match(/[✓✔]\s+(.+?)(?:\s+\(\d+\s*m?s\))?$/);
-      const failMatch = line.match(/[✗✘×]\s+(.+?)(?:\s+\(\d+\s*m?s\))?$/);
-      const skipMatch = line.match(/[○-]\s+(.+?)(?:\s+\(\d+\s*m?s\))?$/);
+      const passMatch = line.match(/[✓✔]\\s+(.+?)(?:\\s+\\(\\d+\\s*m?s\\))?$/);
+      const failMatch = line.match(/[✗✘×]\\s+(.+?)(?:\\s+\\(\\d+\\s*m?s\\))?$/);
+      const skipMatch = line.match(/[○-]\\s+(.+?)(?:\\s+\\(\\d+\\s*m?s\\))?$/);
 
       if (passMatch) {
         tests.push(this.createTestResult(passMatch[1], "passed"));
@@ -284,7 +284,7 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
     }
 
     // Try to extract summary from common patterns
-    const summaryMatch = output.match(/(\d+)\s+pass(?:ed|ing)?.*?(\d+)\s+fail(?:ed|ing)?/i);
+    const summaryMatch = output.match(/(\\d+)\\s+pass(?:ed|ing)?.*?(\\d+)\\s+fail(?:ed|ing)?/i);
     if (summaryMatch) {
       passed = parseInt(summaryMatch[1], 10);
       failed = parseInt(summaryMatch[2], 10);
@@ -295,7 +295,9 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
       startedAt: now,
       completedAt: now,
       duration: 0,
-      success: exitCode === 0,
+      // Success is based on actual test failures, not exit code
+      // (exit code may be non-zero for skipped tests, warnings, etc.)
+      success: failed === 0,
       framework: this.detectedFramework,
       suites: [],
       tests,

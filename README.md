@@ -9,6 +9,7 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 
 - `list_symbols` - Get file structure
 - `read_symbol` / `edit_symbol` - Read/write by symbol name
+- `edit_lines` - Replace lines by number (for non-symbol edits)
 - `get_imports` / `get_exports` - Analyze module boundaries
 - `search_symbols` / `find_references` - Cross-file search
 - `get_callers` / `get_callees` - Call hierarchy
@@ -21,8 +22,13 @@ Process management with persistent tracking, log capture, and lifecycle control.
 - `run_process` - Run command, wait for completion
 - `spawn_process` - Start background process
 - `get_logs` / `search_logs` - Monitor output
+- `get_process` / `list_processes` - Query process state
 - `stop_process` / `restart_process` - Lifecycle control
+- `stop_all_processes` - Stop everything at once
 - `wait_for_pattern` - Block until output matches
+- `write_stdin` - Send input to running process
+- `send_signal` - Send signals (SIGHUP, SIGINT, etc.)
+- `purge_processes` / `get_stats` - Cleanup and statistics
 
 ### [@agent-workbench/history](packages/history/)
 Git history operations for AI agents. Understand code evolution through blame, history, and commit search.
@@ -35,12 +41,27 @@ Git history operations for AI agents. Understand code evolution through blame, h
 - `branch_diff` - Summary of changes vs base branch (PR scope)
 
 ### [@agent-workbench/project](packages/project/)
-Project metadata operations. Quickly understand project structure, configs, and available commands.
+Project metadata and orientation. Quickly understand project structure, configs, and available commands.
 
+- `get_session_guide` - **Start here** - MCP tool usage guidance
+- `get_quickstart` - How to install, build, test, and run
+- `get_tech_stack` - Detect frameworks and libraries
+- `get_structure` - Directory layout with descriptions
 - `get_project_info` - Project name, type, version, scripts overview
 - `get_scripts` - Available commands to run
 - `get_dependencies` - Production and dev dependencies
 - `find_configs` / `read_config` - Configuration file discovery
+
+### [@agent-workbench/graph](packages/graph/)
+Semantic code graph for deep code understanding. Trace call chains, find paths, understand relationships.
+
+- `graph_initialize` - Index the codebase
+- `graph_get_symbol` - Get symbol with source code
+- `graph_get_callers` / `graph_get_callees` - Call relationships
+- `graph_trace` - Follow call chains forward/backward
+- `graph_find_paths` - All paths between two symbols
+- `graph_find_symbols` - Search by pattern or tags
+- `graph_query` - Compound queries with traversal
 
 ### [@agent-workbench/types](packages/types/)
 TypeScript language service integration. Get type errors, hover info, and go-to-definition.
@@ -61,6 +82,21 @@ Run tests and get structured results. Framework-agnostic with source-mapped fail
 - `list_test_files` - Discover test files by pattern
 - `rerun_failed` - Re-execute only failing tests
 
+## For AI Agents
+
+**Start with** `mcp__project__get_session_guide` to learn when to use each tool.
+
+Key principle: **Use these MCP tools instead of Bash** for:
+- Git operations → `mcp__history__*`
+- TypeScript checking → `mcp__types__*`
+- Running tests → `mcp__test-runner__*`
+- Long builds → `mcp__process-host__*`
+- Code read/edit → `mcp__syntax__*`
+- Project info → `mcp__project__*`
+- Call graph analysis → `mcp__graph__*`
+
+Each package has a skill file in `.claude/skills/` with detailed usage patterns.
+
 ## Quick Start
 
 ```bash
@@ -68,4 +104,4 @@ npm install
 npm run build
 ```
 
-Each package runs as an MCP server. See individual package READMEs for configuration.
+Each package runs as an MCP server. Configure in Claude Code's `mcp_servers` setting.

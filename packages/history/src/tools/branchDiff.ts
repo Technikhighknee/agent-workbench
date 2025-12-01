@@ -17,7 +17,7 @@ export const registerBranchDiff: ToolRegistrar = (server, service) => {
     {
       title: "Branch diff",
       description:
-        "Get summary of changes between branches - files changed, additions/deletions, commits ahead/behind",
+        "Get summary of changes between branches - files changed, additions/deletions, commits ahead/behind. INSTEAD OF: `git diff --stat` in Bash.",
       inputSchema: {
         base: z
           .string()

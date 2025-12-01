@@ -22,6 +22,8 @@ export const registerEditSymbol: ToolRegistrar = (server, service) => {
       title: "Edit symbol",
       description: `Replace a symbol's entire body by name path.
 
+INSTEAD OF: Edit tool for functions/classes (which requires exact string matching that can fail).
+
 More reliable than text-based editing - no need for exact string matching.
 The symbol is identified by its name path, then completely replaced.
 

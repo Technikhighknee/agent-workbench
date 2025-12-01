@@ -6,63 +6,88 @@ allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax_
 
 # syntax
 
-**Edit by name, not line number.** Auto-indexed. Always current.
+**Semantic code operations.** Read/write by symbol name. Never match text strings.
 
 ## MANDATORY SUBSTITUTIONS
 
 | WHEN you want to... | NEVER use... | ALWAYS use... |
 |---------------------|--------------|---------------|
-| See what's in a source file | `Read` then scan | `list_symbols({ file_path })` |
-| Read a specific function/method | `Read` whole file | `read_symbol({ file_path, name_path: 'Class/method' })` |
-| Edit a function/method | `Edit` with string matching | `edit_symbol({ file_path, name_path, new_body })` |
-| Edit specific lines | `Edit` with context guessing | `edit_lines({ file_path, start_line, end_line, new_content })` |
-| Find a function definition | `Grep` for `function foo` | `search_symbols({ pattern: 'foo' })` |
-| Find all usages of a symbol | `Grep` for the name | `find_references({ symbol_name })` |
-| Rename across codebase | `Grep` + multiple `Edit` | `rename_symbol({ old_name, new_name })` |
-| Understand file imports | `Read` top of file | `get_imports({ file_path })` |
-| Understand file exports | `Read` and scan | `get_exports({ file_path })` |
-| Find who calls a function | `Grep` for function name | `get_callers({ symbol_name })` |
-| Find what a function calls | `Read` and trace manually | `get_callees({ file_path, symbol_name_path })` |
-| Check for circular deps | Manual analysis | `analyze_deps({})` |
+| Read a function | `Read file.ts` then find it | `read_symbol({ file_path, name_path })` |
+| Edit a function | `Edit` with string matching | `edit_symbol({ file_path, name_path, new_body })` |
+| Find function definition | `Grep: function foo` | `search_symbols({ pattern: 'foo' })` |
+| See file structure | `Read` entire file | `list_symbols({ file_path })` |
+| Find all usages | `Grep` for symbol name | `find_references({ symbol_name })` |
+| Rename across codebase | Multiple `Edit` calls | `rename_symbol({ old_name, new_name })` |
 
 ## WHY MANDATORY
 
-- `Edit` with string matching **FAILS** when code has similar patterns
-- `Grep` for usages **MISSES** aliased imports and **INCLUDES** false positives
-- `rename_symbol` is **ATOMIC** - either all references update or none do
-- `read_symbol` saves **90% context** vs reading whole files
+1. **No string matching errors** - `edit_symbol` finds by name, not text
+2. **Preserves formatting** - Tree-sitter parses properly
+3. **Full context** - `read_symbol` gives the whole function, not partial
+4. **Reliable refactoring** - `rename_symbol` handles all references
 
 ## NEGATIVE RULES
 
-- **NEVER** use `Read` to find a function when you know its name
-- **NEVER** use `Edit` for function modifications - use `edit_symbol`
-- **NEVER** use `Grep` for "find all usages" - use `find_references`
-- **NEVER** manually trace call graphs - use `get_callers`/`get_callees`
+- **NEVER** `Read` a file just to find one function - use `list_symbols` then `read_symbol`
+- **NEVER** `Edit` with `old_string` being function code - use `edit_symbol`
+- **NEVER** `Grep` for "function foo" - use `search_symbols`
+- **NEVER** manually rename across files - use `rename_symbol`
 
-## Tools
+## TOOL REFERENCE
 
-| Tool | Purpose |
-|------|---------|
-| `list_symbols` | See file structure |
-| `read_symbol` | Read `Class/method` by name |
-| `edit_symbol` | Replace entire symbol |
-| `edit_lines` | Replace line range |
-| `get_imports` / `get_exports` | Module boundaries |
-| `search_symbols` | Find by pattern |
-| `find_references` | All usages |
-| `rename_symbol` | Rename across codebase (dry_run available) |
-| `get_callers` / `get_callees` | Call graph |
-| `analyze_deps` | Circular dependency detection |
+| Tool | Purpose | When to use |
+|------|---------|-------------|
+| `list_symbols` | See file structure | Before reading/editing - know what's there |
+| `read_symbol` | Get one symbol's code | Need to understand a specific function/class |
+| `edit_symbol` | Replace symbol body | Modifying any function, method, or class |
+| `edit_lines` | Replace by line range | Non-symbol edits (comments, imports) |
+| `get_imports` | List file imports | Understand dependencies |
+| `get_exports` | List file exports | Understand module API |
+| `search_symbols` | Find symbols by pattern | Locate functions across codebase |
+| `find_references` | Find all usages | Before refactoring - understand impact |
+| `rename_symbol` | Rename across codebase | Safe renaming with all references |
+| `get_callers` | Who calls this? | Impact analysis |
+| `get_callees` | What does this call? | Understand dependencies |
+| `analyze_deps` | Circular imports? | Architecture analysis |
 
-## Quick Examples
+## WORKFLOW EXAMPLES
 
+### Modify a Function
 ```
-list_symbols({ file_path: 'src/service.ts' })
-read_symbol({ file_path: 'src/service.ts', name_path: 'UserService/create' })
-edit_symbol({ file_path: '...', name_path: 'UserService/create', new_body: '...' })
-rename_symbol({ old_name: 'foo', new_name: 'bar', dry_run: true })
-get_callers({ symbol_name: 'processData' })
-analyze_deps({})
+1. list_symbols({ file_path: 'src/utils.ts' })     // See what's there
+2. read_symbol({ file_path: 'src/utils.ts', name_path: 'formatDate' })  // Read it
+3. edit_symbol({ file_path: 'src/utils.ts', name_path: 'formatDate', new_body: '...' })  // Change it
 ```
 
-**Supports:** TypeScript, JavaScript, Python, Go, Rust
+### Find and Fix a Bug
+```
+1. search_symbols({ pattern: 'validate' })         // Find all validators
+2. read_symbol({ file_path, name_path })           // Read the broken one
+3. find_references({ symbol_name: 'validateEmail' }) // See where it's used
+4. edit_symbol({ file_path, name_path, new_body }) // Fix it
+```
+
+### Safe Refactoring
+```
+1. find_references({ symbol_name: 'oldName' })     // See all usages
+2. rename_symbol({ old_name: 'oldName', new_name: 'newName', dry_run: true })  // Preview
+3. rename_symbol({ old_name: 'oldName', new_name: 'newName' })  // Execute
+```
+
+### Understand Architecture
+```
+1. analyze_deps({})                                // Check for circular deps
+2. get_callers({ symbol_name: 'saveUser' })        // Who depends on this?
+3. get_callees({ file_path, symbol_name_path })    // What does this depend on?
+```
+
+## COMPLEMENT TO GRAPH
+
+| If you need... | Use... |
+|----------------|--------|
+| Edit code | `mcp__syntax__*` tools |
+| Trace call chains across files | `mcp__graph__*` tools |
+| Local callers/callees | `mcp__syntax__get_callers/get_callees` |
+| Deep call chain analysis | `mcp__graph__graph_trace` |
+
+**Supports:** TypeScript, JavaScript, Python (more languages coming)

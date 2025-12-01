@@ -18,6 +18,8 @@ export function registerRunTests(server: McpServer, service: TestRunnerServiceIm
       title: "Run tests",
       description: `Run tests in the project and get structured results.
 
+INSTEAD OF: \`npm test\`, \`vitest\`, \`jest\` in Bash (which produces raw output and can timeout).
+
 Returns detailed test results including:
 - Pass/fail status for each test
 - Failure messages with expected/actual values
@@ -100,6 +102,14 @@ Use cases:
           output += `\n`;
         }
       }
+
+      // Contextual tips based on results
+      output += `---\n`;
+      if (summary.failed > 0) {
+        output += `**Tip:** Use \`get_test_failures\` for detailed failure info with source locations.\n`;
+        output += `**Tip:** Use \`rerun_failed\` to quickly retry just the failing tests.\n`;
+      }
+      output += `**Tip:** Use \`mcp__types__get_diagnostics\` to check for type errors.\n`;
 
       return {
         content: [{ type: "text" as const, text: output }],

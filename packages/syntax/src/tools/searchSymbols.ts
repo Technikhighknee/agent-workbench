@@ -26,8 +26,9 @@ export function registerSearchSymbols(server: McpServer, index: ProjectIndex): v
       title: "Search symbols",
       description: `Search for symbols by name pattern across all indexed files.
 
-Requires index_project to be called first. Searches symbol names and name paths
-using a case-insensitive regex pattern.
+INSTEAD OF: Grep for function names (which finds false positives in strings/comments).
+
+Searches symbol names and name paths using a case-insensitive regex pattern.
 
 Use cases:
 - Find all functions matching a pattern (e.g., "handle.*Request")

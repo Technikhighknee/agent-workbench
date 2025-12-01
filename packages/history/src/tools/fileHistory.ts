@@ -15,7 +15,7 @@ export const registerFileHistory: ToolRegistrar = (server, service) => {
     "file_history",
     {
       title: "File history",
-      description: "Get commits that touched a file - understand how code evolved",
+      description: "Get commits that touched a file - understand how code evolved. INSTEAD OF: `git log --follow` in Bash.",
       inputSchema: {
         file_path: z.string().describe("Path to the file"),
         limit: z

@@ -14,7 +14,7 @@ export const registerCommitInfo: ToolRegistrar = (server, service) => {
     "commit_info",
     {
       title: "Commit info",
-      description: "Get details of a specific commit - message, author, files changed",
+      description: "Get details of a specific commit - message, author, files changed. INSTEAD OF: `git show` in Bash.",
       inputSchema: {
         ref: z
           .string()

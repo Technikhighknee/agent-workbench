@@ -10,7 +10,7 @@ export const registerGetProjectInfo: ToolRegistrar = (server, service) => {
     {
       title: "Get project info",
       description:
-        "Get basic project information - name, type, version, available scripts",
+        "Get basic project information - name, type, version, available scripts. INSTEAD OF: Reading package.json directly.",
       inputSchema: {},
     },
     async () => {
@@ -72,6 +72,10 @@ export const registerGetProjectInfo: ToolRegistrar = (server, service) => {
         }
         output.push("");
       }
+
+      // Bootstrap hint for new sessions
+      output.push("---");
+      output.push("**Tip:** Call `get_session_guide` for comprehensive MCP tool usage guidance.");
 
       return { content: [{ type: "text", text: output.join("\n") }] };
     }

@@ -23,6 +23,8 @@ export const registerListSymbols: ToolRegistrar = (server, service) => {
       title: "List symbols",
       description: `List all symbols (functions, classes, etc.) in a source file.
 
+INSTEAD OF: Reading entire files to understand structure.
+
 Returns a hierarchical view of code structure - classes contain methods, modules contain functions, etc.
 
 Use cases:

@@ -21,9 +21,11 @@ interface RunProcessInput {
 interface RunProcessOutput extends Record<string, unknown> {
   success: boolean;
   error?: string;
+  id?: string;
   process?: ProcessDetails;
   logs?: string;
   exitCode?: number | null;
+  stillRunning?: boolean;
 }
 
 export const registerRunProcess: ToolRegistrar = (server, service) => {
@@ -33,13 +35,15 @@ export const registerRunProcess: ToolRegistrar = (server, service) => {
       title: "Run process",
       description: `Run a command and wait for completion. Output is cleaned and compacted.
 
+INSTEAD OF: Bash tool for builds/tests (which has 2-minute timeout and raw output).
+
 Use cases:
 - Build commands: "npm run build", "cargo build"
 - Tests: "npm test", "pytest"
 - Any command that finishes on its own
 
 Benefits over Bash:
-- No timeout (waits indefinitely)
+- Default 30s wait, then returns control (process continues in background)
 - Strips ANSI codes and progress bars
 - Compacts output (keeps errors, omits middle)
 - Persists in history for debugging`,
@@ -48,14 +52,16 @@ Benefits over Bash:
         cwd: z.string().optional().describe("Working directory"),
         env: z.record(z.string(), z.string()).optional().describe("Environment variables"),
         label: z.string().optional().describe("Human-readable label"),
-        timeout_ms: z.number().optional().describe("Max wait time in milliseconds (default: 10 minutes)"),
+        timeout_ms: z.number().optional().describe("Max wait time in milliseconds (default: 30 seconds)"),
       },
       outputSchema: {
         success: z.boolean(),
         error: z.string().optional(),
+        id: z.string().optional().describe("Process ID - use with stop_process/get_logs if stillRunning"),
         process: ProcessDetailsSchema.optional(),
         logs: z.string().optional(),
         exitCode: z.number().nullable().optional(),
+        stillRunning: z.boolean().optional().describe("True if process is still running after timeout"),
       },
     },
     async (input: RunProcessInput): Promise<ToolResponse<RunProcessOutput>> => {
@@ -74,7 +80,7 @@ Benefits over Bash:
         };
       }
 
-      const { process: p, logs, exitCode } = result.value;
+      const { process: p, logs, exitCode, stillRunning } = result.value;
       const processDetails: ProcessDetails = {
         id: p.id,
         command: p.command,
@@ -90,30 +96,65 @@ Benefits over Bash:
         endedAt: p.endedAt ?? null,
       };
 
-      // Calculate duration
-      const durationMs = p.endedAt && p.startedAt
-        ? new Date(p.endedAt).getTime() - new Date(p.startedAt).getTime()
-        : null;
-      const durationStr = durationMs !== null
-        ? durationMs < 1000 ? `${durationMs}ms` : `${(durationMs / 1000).toFixed(1)}s`
-        : "";
-
-      const statusText = exitCode === 0 ? "✓" : exitCode === null ? "timeout" : `✗ exit ${exitCode}`;
       const cleanLogs = compactOutput(logs);
+      const lines: string[] = [];
 
-      // Concise output: status + duration + logs
-      const header = durationStr
-        ? `[${statusText}] ${p.label ?? p.command} (${durationStr})`
-        : `[${statusText}] ${p.label ?? p.command}`;
-      const output = cleanLogs.trim() ? `${header}\n${cleanLogs}` : header;
+      if (stillRunning) {
+        // Process still running - give agent escape options
+        lines.push(`⏳ Process still running after ${(input.timeout_ms ?? 30000) / 1000}s`);
+        lines.push(`ID: ${p.id}`);
+        if (cleanLogs.trim()) {
+          lines.push(`\nOutput so far:\n${cleanLogs}`);
+        }
+        lines.push(`\n---`);
+        lines.push(`**Process still running.** You have control:`);
+        lines.push(`- \`get_logs({ id: "${p.id}" })\` - check progress`);
+        lines.push(`- \`stop_process({ id: "${p.id}" })\` - cancel (like Ctrl+C)`);
+        lines.push(`- \`wait_for_pattern({ id: "${p.id}", pattern: "..." })\` - wait for specific output`);
+      } else {
+        // Process completed
+        const durationMs = p.endedAt && p.startedAt
+          ? new Date(p.endedAt).getTime() - new Date(p.startedAt).getTime()
+          : null;
+        const durationStr = durationMs !== null
+          ? durationMs < 1000 ? `${durationMs}ms` : `${(durationMs / 1000).toFixed(1)}s`
+          : "";
+
+        const statusText = exitCode === 0 ? "✓" : `✗ exit ${exitCode}`;
+        const header = durationStr
+          ? `[${statusText}] ${p.label ?? p.command} (${durationStr})`
+          : `[${statusText}] ${p.label ?? p.command}`;
+        
+        lines.push(header);
+        if (cleanLogs.trim()) {
+          lines.push(cleanLogs);
+        }
+      }
+
+      // Check for orphan processes and warn
+      const running = service.listRunning();
+      const otherRunning = running.filter(proc => proc.id !== p.id);
+      if (otherRunning.length > 0) {
+        lines.push(`\n---`);
+        lines.push(`⚠️ ${otherRunning.length} other process(es) still running:`);
+        for (const proc of otherRunning.slice(0, 3)) {
+          lines.push(`  - ${proc.label ?? proc.command} (id: ${proc.id})`);
+        }
+        if (otherRunning.length > 3) {
+          lines.push(`  - ... and ${otherRunning.length - 3} more`);
+        }
+        lines.push(`Use \`list_processes({ running_only: true })\` to see all.`);
+      }
 
       return {
-        content: [{ type: "text", text: output }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: {
-          success: exitCode === 0,
+          success: exitCode === 0 && !stillRunning,
+          id: p.id,
           process: processDetails,
           logs: cleanLogs,
           exitCode,
+          stillRunning,
         },
       };
     }

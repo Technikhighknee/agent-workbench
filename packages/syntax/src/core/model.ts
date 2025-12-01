@@ -46,6 +46,8 @@ export interface Symbol {
   bodySpan?: Span;
   /** Child symbols (e.g., methods of a class) */
   children: Symbol[];
+  /** Documentation comment (JSDoc, docstring, etc.) */
+  documentation?: string;
   /** Language-specific metadata */
   metadata?: Record<string, unknown>;
 }

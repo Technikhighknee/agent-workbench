@@ -105,14 +105,27 @@ export class TreeSitterParser implements ParserPort {
 
   private extractSymbols(node: Parser.SyntaxNode, source: string, language: string): Symbol[] {
     const symbols: Symbol[] = [];
+    let precedingComment: Parser.SyntaxNode | undefined;
 
     for (const child of node.children) {
+      // Track comment nodes to associate with the next symbol
+      if (child.type === "comment") {
+        // Only keep doc comments (JSDoc style /** or Python docstrings)
+        if (this.isDocComment(child.text, language)) {
+          precedingComment = child;
+        }
+        continue;
+      }
+
       // Handle export statements - look inside for the actual declaration
       const targetNode = this.unwrapExport(child, language);
-      const symbol = this.nodeToSymbol(targetNode, source, language);
+      const symbol = this.nodeToSymbol(targetNode, source, language, precedingComment);
       if (symbol) {
         symbols.push(symbol);
       }
+
+      // Reset after processing a non-comment node
+      precedingComment = undefined;
     }
 
     return symbols;
@@ -147,7 +160,12 @@ export class TreeSitterParser implements ParserPort {
     return node;
   }
 
-  private nodeToSymbol(node: Parser.SyntaxNode, source: string, language: string): Symbol | null {
+  private nodeToSymbol(
+    node: Parser.SyntaxNode,
+    source: string,
+    language: string,
+    precedingComment?: Parser.SyntaxNode
+  ): Symbol | null {
     const kind = this.getSymbolKind(node.type, language);
     if (!kind) return null;
 
@@ -157,6 +175,7 @@ export class TreeSitterParser implements ParserPort {
     const span = this.nodeToSpan(node);
     const bodySpan = this.getBodySpan(node, language);
     const children = this.extractChildSymbols(node, source, language);
+    const documentation = this.extractDocumentation(precedingComment, language);
 
     return {
       name,
@@ -164,21 +183,33 @@ export class TreeSitterParser implements ParserPort {
       span,
       bodySpan,
       children,
+      ...(documentation && { documentation }),
     };
   }
 
   private extractChildSymbols(node: Parser.SyntaxNode, source: string, language: string): Symbol[] {
     const symbols: Symbol[] = [];
+    let precedingComment: Parser.SyntaxNode | undefined;
 
     // Find the body node for classes/functions
     const bodyNode = this.findBodyNode(node, language);
     const searchNode = bodyNode ?? node;
 
     for (const child of searchNode.children) {
-      const symbol = this.nodeToSymbol(child, source, language);
+      // Track comment nodes
+      if (child.type === "comment") {
+        if (this.isDocComment(child.text, language)) {
+          precedingComment = child;
+        }
+        continue;
+      }
+
+      const symbol = this.nodeToSymbol(child, source, language, precedingComment);
       if (symbol) {
         symbols.push(symbol);
       }
+
+      precedingComment = undefined;
     }
 
     return symbols;
@@ -369,6 +400,84 @@ export class TreeSitterParser implements ParserPort {
     const bodyNode = this.findBodyNode(node, language);
     if (!bodyNode) return undefined;
     return this.nodeToSpan(bodyNode);
+  }
+
+  /**
+   * Check if a comment is a documentation comment.
+   */
+  private isDocComment(text: string, language: string): boolean {
+    if (language === "typescript" || language === "javascript") {
+      // JSDoc style: /** ... */
+      return text.startsWith("/**") && !text.startsWith("/***");
+    }
+    if (language === "python") {
+      // Python docstrings are triple-quoted strings, handled differently
+      // For now, look for # style doc comments or triple quotes
+      return text.startsWith('"""') || text.startsWith("'''");
+    }
+    if (language === "rust") {
+      // Rust doc comments: /// or //!
+      return text.startsWith("///") || text.startsWith("//!");
+    }
+    if (language === "go") {
+      // Go doc comments start with // and precede declarations
+      return text.startsWith("//");
+    }
+    return false;
+  }
+
+  /**
+   * Extract documentation from a comment node.
+   */
+  private extractDocumentation(
+    commentNode: Parser.SyntaxNode | undefined,
+    language: string
+  ): string | undefined {
+    if (!commentNode) return undefined;
+
+    const text = commentNode.text;
+
+    if (language === "typescript" || language === "javascript") {
+      // Parse JSDoc: remove /** and */, clean up * prefixes
+      return this.parseJSDoc(text);
+    }
+    if (language === "python") {
+      // Remove triple quotes
+      return text.replace(/^['\"]{3}|['\"]{3}$/g, "").trim();
+    }
+    if (language === "rust") {
+      // Remove /// or //! prefix from each line
+      return text
+        .split("\n")
+        .map((line) => line.replace(/^\s*\/\/[\/!]\s?/, ""))
+        .join("\n")
+        .trim();
+    }
+    if (language === "go") {
+      // Remove // prefix from each line
+      return text
+        .split("\n")
+        .map((line) => line.replace(/^\s*\/\/\s?/, ""))
+        .join("\n")
+        .trim();
+    }
+
+    return text;
+  }
+
+  /**
+   * Parse JSDoc comment and return clean documentation.
+   */
+  private parseJSDoc(text: string): string {
+    // Remove /** and */
+    let doc = text.replace(/^\/\*\*\s*/, "").replace(/\s*\*\/$/, "");
+
+    // Split into lines and remove leading * from each line
+    const lines = doc.split("\n").map((line) => {
+      return line.replace(/^\s*\*\s?/, "");
+    });
+
+    return lines.join("\n").trim();
   }
 
   private extractErrors(node: Parser.SyntaxNode): ParseError[] {

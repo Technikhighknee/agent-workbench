@@ -13,9 +13,10 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist",
-    "test": "node --import tsx --test src/**/*.test.ts"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

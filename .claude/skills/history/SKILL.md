@@ -1,54 +1,31 @@
-# History Skill
+---
+name: history
+description: Understand WHY code exists. Git blame, history, and commit search - the context that makes changes safer.
+allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__history__recent_changes, mcp__history__commit_info, mcp__history__search_commits, mcp__history__diff_file
+---
 
-Git history operations for understanding code evolution.
+# history
 
-## When to Use
-
-Use this skill when you need to:
-- Understand why code was written a certain way (`blame_file`)
-- See what changed recently (`recent_changes`)
-- Track how a file evolved (`file_history`)
-- Find when a feature or fix was added (`search_commits`)
-- Compare versions of code (`diff_file`)
+**Stop guessing why code was written.** The commit message probably explains it.
 
 ## Tools
 
 | Tool | Purpose |
 |------|---------|
-| `blame_file` | Get git blame - who wrote each line and their commit message |
-| `file_history` | Get commits that touched a file |
-| `recent_changes` | Get recently changed files across the repo |
-| `commit_info` | Get details of a specific commit |
-| `search_commits` | Search commits by message content |
-| `diff_file` | Get diff of a file between two commits |
+| `blame_file` | Who wrote each line + why |
+| `file_history` | All commits that touched a file |
+| `recent_changes` | What changed in last N commits |
+| `commit_info` | Full details of a commit |
+| `search_commits` | Find commits by message |
+| `diff_file` | Compare versions |
 
-## Examples
+## Quick Examples
 
-### Understanding Why Code Exists
 ```
-blame_file { "file_path": "src/auth.ts" }
-```
-
-### Finding What Broke
-```
-recent_changes { "count": 5 }
+blame_file({ file_path: 'src/auth.ts' })
+recent_changes({ count: 5 })
+search_commits({ query: 'authentication' })
+diff_file({ file_path: 'src/auth.ts', from_ref: 'HEAD~5' })
 ```
 
-### Tracing File History
-```
-file_history { "file_path": "src/api.ts", "limit": 10 }
-```
-
-### Finding Related Commits
-```
-search_commits { "query": "authentication", "limit": 10 }
-```
-
-## allowed-tools
-
-- mcp__history__blame_file
-- mcp__history__file_history
-- mcp__history__recent_changes
-- mcp__history__commit_info
-- mcp__history__search_commits
-- mcp__history__diff_file
+**30 seconds reading blame saves hours of debugging.**

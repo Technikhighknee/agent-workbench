@@ -2,21 +2,144 @@
   "mcpServers": {
     "process-host": {
       "command": "npx",
-      "args": ["-y", "tsx", "packages/process-host/src/server.ts"]
+      "args": ["-y", "tsx", "packages/process-host/src/server.ts"],
+      "agentPreferences": {
+        "description": "Process management with persistent tracking, log capture, and lifecycle control. Run commands, spawn background processes, monitor output.",
+        "toolGroups": {
+          "run": {
+            "description": "Run commands and wait for completion",
+            "tools": ["run_process"]
+          },
+          "background": {
+            "description": "Spawn and manage background processes",
+            "tools": ["spawn_process", "get_logs", "search_logs", "stop_process", "restart_process"]
+          },
+          "sync": {
+            "description": "Wait for specific conditions",
+            "tools": ["wait_for_pattern"]
+          }
+        },
+        "workflows": {
+          "runCommand": {
+            "description": "Run a command and get output",
+            "steps": [
+              "Use run_process for commands that complete (builds, tests)",
+              "Output is automatically cleaned and compacted"
+            ]
+          },
+          "startDevServer": {
+            "description": "Start and monitor a development server",
+            "steps": [
+              "Use spawn_process to start the server",
+              "Use wait_for_pattern to wait for 'listening' or 'ready'",
+              "Use get_logs to check output periodically"
+            ]
+          }
+        },
+        "tips": [
+          "Use run_process for commands that finish (builds, tests)",
+          "Use spawn_process for long-running processes (dev servers, watchers)",
+          "Use wait_for_pattern to know when a server is ready"
+        ]
+      }
+    },
+    "history": {
+      "command": "npx",
+      "args": ["-y", "tsx", "packages/history/src/server.ts"],
+      "agentPreferences": {
+        "description": "Git history operations for understanding code evolution. Blame, history, commits, and diffs.",
+        "toolGroups": {
+          "blame": {
+            "description": "Understand who wrote code and why",
+            "tools": ["blame_file"]
+          },
+          "history": {
+            "description": "Track changes over time",
+            "tools": ["file_history", "recent_changes", "commit_info"]
+          },
+          "search": {
+            "description": "Find commits and compare versions",
+            "tools": ["search_commits", "diff_file"]
+          }
+        },
+        "workflows": {
+          "understandCode": {
+            "description": "Understand why code was written a certain way",
+            "steps": [
+              "Use blame_file to see who wrote each line",
+              "Check commit messages for context",
+              "Use file_history to see evolution"
+            ]
+          },
+          "debugRegression": {
+            "description": "Find when something broke",
+            "steps": [
+              "Use recent_changes to see what changed",
+              "Use diff_file to compare versions",
+              "Use search_commits to find related changes"
+            ]
+          }
+        },
+        "tips": [
+          "Use blame_file to understand intent behind code",
+          "Use recent_changes when debugging 'what broke?'",
+          "Use search_commits to find when features were added"
+        ]
+      }
+    },
+    "project": {
+      "command": "npx",
+      "args": ["-y", "tsx", "packages/project/src/server.ts"],
+      "agentPreferences": {
+        "description": "Project metadata operations. Quickly understand project structure, configs, scripts, and dependencies. Auto-detects project root from subdirectories.",
+        "toolGroups": {
+          "info": {
+            "description": "Get project overview",
+            "tools": ["get_project_info", "get_scripts", "get_dependencies"]
+          },
+          "config": {
+            "description": "Find and read configuration files",
+            "tools": ["find_configs", "read_config"]
+          }
+        },
+        "workflows": {
+          "orientToProject": {
+            "description": "Quickly understand a new project",
+            "steps": [
+              "Use get_project_info for overview (type, version, workspaces)",
+              "Use get_scripts to see available commands",
+              "Use find_configs to locate configuration"
+            ]
+          }
+        },
+        "tips": [
+          "Start with get_project_info when entering a new codebase",
+          "Works from any subdirectory - auto-detects project root",
+          "Shows workspace packages in monorepos"
+        ]
+      }
     },
     "syntax": {
       "command": "npx",
       "args": ["-y", "tsx", "packages/syntax/src/server.ts"],
       "agentPreferences": {
-        "description": "Symbol-aware code operations for AI agents. Read and edit code by function/class name instead of line numbers. Supports TypeScript, JavaScript, Python, Go, and Rust.",
+        "description": "Symbol-aware code operations for AI agents. Read and edit code by function/class name instead of line numbers. Auto-indexes on startup and watches for changes. Supports TypeScript, JavaScript, Python, Go, and Rust.",
         "toolGroups": {
           "file": {
-            "description": "Single-file operations (no index required)",
-            "tools": ["list_symbols", "read_symbol", "edit_symbol", "edit_lines"]
+            "description": "Single-file operations",
+            "tools": ["list_symbols", "read_symbol", "edit_symbol", "edit_lines", "get_imports", "get_exports"]
           },
-          "project": {
-            "description": "Multi-file operations (requires index_project first)",
-            "tools": ["index_project", "search_symbols", "find_references", "rename_symbol"]
+          "search": {
+            "description": "Search across indexed files",
+            "tools": ["search_symbols", "find_references", "rename_symbol"]
+          },
+          "callGraph": {
+            "description": "Understand call relationships",
+            "tools": ["get_callers", "get_callees"]
+          },
+          "analysis": {
+            "description": "Project-wide analysis",
+            "tools": ["analyze_deps"]
           }
         },
         "workflows": {
@@ -25,7 +148,7 @@
             "steps": [
               "Use list_symbols to get overview of a file",
               "Use read_symbol to read specific functions/classes",
-              "Use search_symbols (after indexing) to find symbols across files"
+              "Use search_symbols to find symbols across files"
             ]
           },
           "editSymbol": {
@@ -36,30 +159,36 @@
               "Use edit_symbol to replace the entire body"
             ]
           },
+          "understandDependencies": {
+            "description": "Understand module dependencies",
+            "steps": [
+              "Use get_imports to see what a file imports",
+              "Use get_exports to see what a file exports",
+              "Use analyze_deps to detect circular dependencies"
+            ]
+          },
+          "traceCallGraph": {
+            "description": "Trace function calls",
+            "steps": [
+              "Use get_callers to find who calls a function",
+              "Use get_callees to see what a function calls"
+            ]
+          },
           "refactorAcrossFiles": {
             "description": "Rename or refactor symbols across the codebase",
             "steps": [
-              "Call index_project to index the codebase first",
               "Use find_references to see all usages",
               "Use rename_symbol with dry_run=true to preview changes",
               "Use rename_symbol to apply the rename"
             ]
-          },
-          "findUsages": {
-            "description": "Find all usages of a symbol",
-            "steps": [
-              "Call index_project if not already indexed",
-              "Use find_references with the symbol name",
-              "Review definitions vs usages in the output"
-            ]
           }
         },
         "tips": [
-          "Always call index_project before using search_symbols, find_references, or rename_symbol",
-          "Use list_symbols with depth=0 for just top-level symbols, depth=1 to include class methods",
-          "Use read_symbol's context parameter to see surrounding code",
-          "Use rename_symbol's dry_run=true to preview changes before applying",
-          "After editing files, call index_project again to refresh the index"
+          "Auto-indexes on startup - no manual index_project needed",
+          "Use list_symbols with depth=0 for just top-level symbols",
+          "Use get_callers/get_callees to understand impact before refactoring",
+          "Use analyze_deps to find circular dependencies",
+          "Use rename_symbol's dry_run=true to preview changes"
         ]
       }
     }

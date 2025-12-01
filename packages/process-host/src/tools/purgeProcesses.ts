@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 
 interface PurgeProcessesInput {
   keep_running?: boolean;
@@ -45,8 +46,12 @@ By default, keeps running processes. Use older_than_hours to only remove old ent
         ? "No processes to purge"
         : `Purged ${purged} process${purged === 1 ? "" : "es"}`;
 
+      const lines = [message];
+      const runningHint = formatRunningProcessesHint(service.listRunning());
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: message }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { purged },
       };
     }

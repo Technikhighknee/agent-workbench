@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, StreamValue } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 import { StreamSchema, LogsOutputSchema } from "./schemas.js";
 
 interface GetLogsInput {
@@ -50,8 +51,12 @@ Pro tips:
         ? `[${process.status}${process.exitCode !== null ? `:${process.exitCode}` : ""}]`
         : "[unknown]";
 
+      const lines = [`${statusLine}\n${output.logs || "(no output)"}`];
+      const runningHint = formatRunningProcessesHint(service.listRunning(), input.id);
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: `${statusLine}\n${output.logs || "(no output)"}` }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: output,
       };
     }

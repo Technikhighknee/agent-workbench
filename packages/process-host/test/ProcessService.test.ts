@@ -269,4 +269,82 @@ describe("ProcessService", () => {
       expect(service.listRunning().length).toBe(0);
     });
   });
+
+  describe("run() timeout behavior", () => {
+    it("returns control after timeout while process continues running", async () => {
+      // Use a very short timeout to test the behavior
+      const result = await service.run({
+        command: "sleep 5",
+        timeoutMs: 100, // 100ms timeout
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      // Should indicate process is still running
+      expect(result.value.stillRunning).toBe(true);
+      expect(result.value.exitCode).toBeNull();
+      expect(result.value.process.status).toBe("running");
+
+      // Process should still be trackable
+      const running = service.listRunning();
+      expect(running.some(p => p.id === result.value.process.id)).toBe(true);
+    });
+
+    it("respects custom timeout parameter", async () => {
+      const start = Date.now();
+      const result = await service.run({
+        command: "sleep 10",
+        timeoutMs: 200,
+      });
+      const elapsed = Date.now() - start;
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      // Should return within reasonable time of the timeout (plus some margin)
+      expect(elapsed).toBeLessThan(1000);
+      expect(result.value.stillRunning).toBe(true);
+    });
+
+    it("does not return stillRunning for fast commands", async () => {
+      const result = await service.run({
+        command: "echo fast",
+        timeoutMs: 5000,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.value.stillRunning).toBe(false);
+      expect(result.value.exitCode).toBe(0);
+    });
+  });
+
+  describe("waitForExit", () => {
+    it("resolves immediately if process already exited", async () => {
+      const result = await service.run({ command: "echo done" });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const exitCode = await service.waitForExit(result.value.process.id);
+      expect(exitCode).toBe(0);
+    });
+
+    it("rejects with error for non-existent process", async () => {
+      await expect(service.waitForExit("non-existent")).rejects.toThrow(
+        "Process not found"
+      );
+    });
+
+    it("times out if process does not exit in time", async () => {
+      const startResult = service.start({ command: "sleep 10" });
+      expect(startResult.ok).toBe(true);
+      if (!startResult.ok) return;
+
+      await expect(
+        service.waitForExit(startResult.value.id, { timeoutMs: 100 })
+      ).rejects.toThrow("Timeout");
+    });
+  });
 });

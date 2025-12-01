@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 
 interface GetStatsOutput extends Record<string, unknown> {
   total: number;
@@ -42,8 +43,14 @@ Returns counts by status:
         `Stopped: ${stats.stopped}`,
       ].join(" | ");
 
+      const lines = [message];
+      if (stats.running > 0) {
+        const runningHint = formatRunningProcessesHint(service.listRunning());
+        if (runningHint) lines.push(runningHint);
+      }
+
       return {
-        content: [{ type: "text", text: message }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: stats,
       };
     }

@@ -76,3 +76,31 @@ export type ProcessStatusValue =
 export type SignalValue = "SIGTERM" | "SIGKILL" | "SIGINT" | "SIGHUP";
 
 export type StreamValue = "stdout" | "stderr";
+
+/**
+ * Format a hint about running processes to remind the agent to clean up.
+ * @param running - Array of running processes
+ * @param excludeId - Optional process ID to exclude from the count (e.g., the current process)
+ */
+export function formatRunningProcessesHint(
+  running: Array<{ id: string; label?: string; command: string }>,
+  excludeId?: string
+): string | null {
+  const filtered = excludeId
+    ? running.filter((p) => p.id !== excludeId)
+    : running;
+
+  if (filtered.length === 0) return null;
+
+  const lines: string[] = [];
+  lines.push(`\n---`);
+  lines.push(`⚠️ ${filtered.length} process(es) still running:`);
+  for (const proc of filtered.slice(0, 3)) {
+    lines.push(`  - ${proc.label ?? proc.command} (id: ${proc.id})`);
+  }
+  if (filtered.length > 3) {
+    lines.push(`  - ... and ${filtered.length - 3} more`);
+  }
+  lines.push(`Use \`stop_process\` or \`stop_all_processes\` to clean up.`);
+  return lines.join("\n");
+}

@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 
 interface WaitForPatternInput {
   id: string;
@@ -43,14 +44,22 @@ Returns immediately if pattern already exists in logs. Times out after timeout_m
           timeoutMs: input.timeout_ms ?? 30000,
         });
 
+        const lines = [`Matched: ${match}`];
+        const runningHint = formatRunningProcessesHint(service.listRunning(), input.id);
+        if (runningHint) lines.push(runningHint);
+
         return {
-          content: [{ type: "text", text: `Matched: ${match}` }],
+          content: [{ type: "text", text: lines.join("\n") }],
           structuredContent: { matched: true, match },
         };
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
+        const lines = [`Error: ${error}`];
+        const runningHint = formatRunningProcessesHint(service.listRunning(), input.id);
+        if (runningHint) lines.push(runningHint);
+
         return {
-          content: [{ type: "text", text: `Error: ${error}` }],
+          content: [{ type: "text", text: lines.join("\n") }],
           structuredContent: { matched: false, error },
         };
       }

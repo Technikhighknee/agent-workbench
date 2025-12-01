@@ -38,7 +38,13 @@ export const registerGitAdd: ToolRegistrar = (server, service) => {
         };
       }
 
-      const output = [`Staged ${count} file(s):`, ...added.map((f) => `  ${f}`)];
+      const output = [
+        `Staged ${count} file(s):`,
+        ...added.map((f) => `  ${f}`),
+        "",
+        "---",
+        "**Ready to commit.** Use `git_commit` to create a commit.",
+      ];
 
       return {
         content: [{ type: "text", text: output.join("\n") }],

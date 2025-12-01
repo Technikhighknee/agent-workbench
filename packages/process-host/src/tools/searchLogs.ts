@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 
 interface SearchLogsInput {
   id: string;
@@ -52,8 +53,12 @@ Returns matching lines from the log output.`,
         ? `No matches for "${input.pattern}"`
         : `Found ${matches.length} match${matches.length === 1 ? "" : "es"}:\n${matches.slice(0, 20).join("\n")}${matches.length > 20 ? `\n... and ${matches.length - 20} more` : ""}`;
 
+      const lines = [message];
+      const runningHint = formatRunningProcessesHint(service.listRunning(), input.id);
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: message }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { matches, count: matches.length },
       };
     }

@@ -98,6 +98,29 @@ export const registerGitStatus: ToolRegistrar = (server, service) => {
         output.push("Working tree clean");
       }
 
+      // Contextual hints based on state
+      const hints: string[] = [];
+      if (status.staged.length > 0) {
+        hints.push("**Ready to commit.** Use `git_commit` to create a commit.");
+      }
+      if (status.unstaged.length > 0 || status.untracked.length > 0) {
+        hints.push("**Files to stage.** Use `git_add` to stage changes.");
+      }
+      if (status.conflicted.length > 0) {
+        hints.push("**⚠️ Resolve conflicts** before committing.");
+      }
+      if (status.ahead > 0) {
+        hints.push(`**${status.ahead} commit(s) to push.** Don't forget to push when ready.`);
+      }
+      if (status.behind > 0) {
+        hints.push(`**${status.behind} commit(s) behind.** Consider pulling before making changes.`);
+      }
+
+      if (hints.length > 0) {
+        output.push("---");
+        output.push(...hints);
+      }
+
       return {
         content: [{ type: "text", text: output.join("\n") }],
         structuredContent: {

@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, StopResult, SignalValue } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 import { SignalSchema, StopResultSchema } from "./schemas.js";
 
 interface StopProcessInput {
@@ -52,8 +53,12 @@ Signals:
         endedAt: p.endedAt ?? null,
       };
 
+      const lines = [`Stopped: ${p.id}`];
+      const runningHint = formatRunningProcessesHint(service.listRunning());
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: `Stopped: ${p.id}` }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { success: true, process: stopResult },
       };
     }

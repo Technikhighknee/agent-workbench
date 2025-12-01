@@ -430,7 +430,10 @@ purge(options: { keepRunning?: boolean; olderThanMs?: number } = {}): number {
     const DEFAULT_INITIAL_WAIT_MS = 30 * 1000; // 30 seconds initial wait
     const initialWaitMs = params.timeoutMs ?? DEFAULT_INITIAL_WAIT_MS;
 
-    const startResult = this.start(params);
+    // Don't pass timeoutMs to start() - we don't want to kill the process on timeout.
+    // We only use the timeout for waitForExit() to know when to return control.
+    const { timeoutMs: _, ...startParams } = params;
+    const startResult = this.start(startParams);
     if (!startResult.ok) {
       return Err(startResult.error);
     }

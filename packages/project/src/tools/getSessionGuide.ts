@@ -62,6 +62,13 @@ Call this at session start to understand which tools to use.
 - \`get_scripts\` - available npm scripts
 - \`find_configs\` - find config files
 
+### New Codebase Orientation
+When starting in a new codebase:
+✅ USE: \`mcp__project__*\` orientation tools
+- \`get_quickstart\` - install, build, test, run commands
+- \`get_tech_stack\` - detect frameworks & libraries
+- \`get_structure\` - directory layout with descriptions
+
 ### Code Understanding (Semantic)
 For deep code understanding:
 ✅ USE: \`mcp__graph__*\` tools
@@ -74,17 +81,30 @@ For deep code understanding:
 
 | I want to... | Use |
 |-------------|-----|
-| Check for type errors | \`mcp__types__get_diagnostics\` |
-| Run tests | \`mcp__test-runner__run_tests\` |
-| Build project | \`mcp__process-host__run_process\` |
-| See git history | \`mcp__history__file_history\` |
+| **New codebase?** | |
+| How to build/test | \`mcp__project__get_quickstart\` |
+| What tech is used | \`mcp__project__get_tech_stack\` |
+| Directory layout | \`mcp__project__get_structure\` |
+| **Code operations** | |
 | Read a function | \`mcp__syntax__read_symbol\` |
 | Edit a function | \`mcp__syntax__edit_symbol\` |
-| Find who calls X | \`mcp__graph__graph_get_callers\` |
-| Trace call chains | \`mcp__graph__graph_trace\` |
-| Find path A→B | \`mcp__graph__graph_find_paths\` |
+| Find symbol | \`mcp__syntax__search_symbols\` |
+| **Type checking** | |
+| Check for errors | \`mcp__types__get_diagnostics\` |
+| Type at position | \`mcp__types__get_type_at_position\` |
+| **Testing** | |
+| Run tests | \`mcp__test-runner__run_tests\` |
+| See failures | \`mcp__test-runner__get_test_failures\` |
+| **Git** | |
+| See git history | \`mcp__history__file_history\` |
+| Who wrote this | \`mcp__history__blame_file\` |
+| **Builds/Servers** | |
+| Build project | \`mcp__process-host__run_process\` |
 | Start dev server | \`mcp__process-host__spawn_process\` |
-| Check npm scripts | \`mcp__project__get_scripts\` |
+| **Deep analysis** | |
+| Who calls X | \`mcp__graph__graph_get_callers\` |
+| Trace call chains | \`mcp__graph__graph_trace\` |
+| Path A→B | \`mcp__graph__graph_find_paths\` |
 `;
 
 export function registerGetSessionGuide(server: McpServer): void {

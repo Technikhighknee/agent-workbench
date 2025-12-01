@@ -5,7 +5,8 @@ import { SymbolCache } from "../ports/Cache.js";
 import { ProjectScanner } from "../ports/ProjectScanner.js";
 import { FileWatcher } from "../ports/FileWatcher.js";
 import { SymbolTree, flattenSymbols } from "../symbolTree.js";
-import { Symbol, SymbolInfo, SymbolKind, LANGUAGES, SymbolReference, CallSite } from "../model.js";
+import { Symbol, SymbolInfo, SymbolKind, LANGUAGES, SymbolReference, CallSite, DependencyAnalysis, CircularDependency, ImportInfo } from "../model.js";
+import path from "path";
 
 export interface IndexedSymbol {
   name: string;
@@ -576,5 +577,167 @@ export class ProjectIndex {
     this.cache.set(filePath, mtime, parseResult.value.tree);
 
     return parseResult;
+  }
+
+  /**
+   * Analyze dependencies across all indexed files.
+   * Detects circular dependencies and provides dependency statistics.
+   */
+  async analyzeDependencies(): Promise<Result<DependencyAnalysis, string>> {
+    if (this.isEmpty()) {
+      return Err("No project indexed. Call index first.");
+    }
+
+    // Build dependency graph
+    const graph = new Map<string, { deps: Set<string>; imports: ImportInfo[] }>();
+    const dependents = new Map<string, Set<string>>();
+    let totalImports = 0;
+
+    // Initialize all indexed files
+    for (const [relativePath] of this.indexedFiles) {
+      graph.set(relativePath, { deps: new Set(), imports: [] });
+      dependents.set(relativePath, new Set());
+    }
+
+    // Extract imports from each file
+    for (const [relativePath] of this.indexedFiles) {
+      const fullPath = this.resolvePath(relativePath);
+      const sourceResult = this.fs.read(fullPath);
+      if (!sourceResult.ok) continue;
+
+      const importsResult = await this.parser.extractImports(sourceResult.value, fullPath);
+      if (!importsResult.ok) continue;
+
+      const imports = importsResult.value;
+      totalImports += imports.length;
+
+      const entry = graph.get(relativePath)!;
+      entry.imports = imports;
+
+      for (const imp of imports) {
+        // Resolve the import to a file path
+        const resolved = this.resolveImportPath(relativePath, imp.source);
+        if (resolved && graph.has(resolved)) {
+          entry.deps.add(resolved);
+          dependents.get(resolved)?.add(relativePath);
+        }
+      }
+    }
+
+    // Find circular dependencies using DFS
+    const circularDependencies: CircularDependency[] = [];
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+    const path: string[] = [];
+
+    const detectCycle = (file: string): void => {
+      visited.add(file);
+      recursionStack.add(file);
+      path.push(file);
+
+      const entry = graph.get(file);
+      if (entry) {
+        for (const dep of entry.deps) {
+          if (!visited.has(dep)) {
+            detectCycle(dep);
+          } else if (recursionStack.has(dep)) {
+            // Found a cycle
+            const cycleStart = path.indexOf(dep);
+            const cycle = path.slice(cycleStart);
+            cycle.push(dep); // Close the cycle
+
+            // Find the import that closes the cycle
+            const fromFile = path[path.length - 1];
+            const fromEntry = graph.get(fromFile);
+            const closingImport = fromEntry?.imports.find((i) =>
+              this.resolveImportPath(fromFile, i.source) === dep
+            );
+
+            circularDependencies.push({
+              cycle,
+              closingImport: {
+                from: fromFile,
+                to: dep,
+                line: closingImport?.line ?? 0,
+              },
+            });
+          }
+        }
+      }
+
+      path.pop();
+      recursionStack.delete(file);
+    };
+
+    for (const [file] of graph) {
+      if (!visited.has(file)) {
+        detectCycle(file);
+      }
+    }
+
+    // Calculate statistics
+    const depCounts: { file: string; count: number }[] = [];
+    const importedCounts: { file: string; count: number }[] = [];
+
+    for (const [file, entry] of graph) {
+      depCounts.push({ file, count: entry.deps.size });
+    }
+
+    for (const [file, deps] of dependents) {
+      importedCounts.push({ file, count: deps.size });
+    }
+
+    // Sort and take top 10
+    depCounts.sort((a, b) => b.count - a.count);
+    importedCounts.sort((a, b) => b.count - a.count);
+
+    return Ok({
+      totalFiles: this.indexedFiles.size,
+      totalImports,
+      highestDependencyCount: depCounts.slice(0, 10),
+      mostImported: importedCounts.slice(0, 10),
+      circularDependencies,
+      hasCircularDependencies: circularDependencies.length > 0,
+    });
+  }
+
+  /**
+   * Resolve an import specifier to a file path relative to project root.
+   */
+  private resolveImportPath(fromFile: string, importSource: string): string | null {
+    // Only resolve relative imports
+    if (!importSource.startsWith(".")) {
+      return null; // External package
+    }
+
+    const fromDir = path.dirname(fromFile);
+    let resolved = path.normalize(path.join(fromDir, importSource));
+
+    // Try common extensions if no extension present
+    if (!path.extname(resolved)) {
+      const extensions = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
+      for (const ext of extensions) {
+        if (this.indexedFiles.has(resolved + ext)) {
+          return resolved + ext;
+        }
+      }
+      // Try index files
+      for (const ext of extensions) {
+        const indexPath = path.join(resolved, "index" + ext);
+        if (this.indexedFiles.has(indexPath)) {
+          return indexPath;
+        }
+      }
+    }
+
+    // Remove .js extension and try .ts (common in ESM projects)
+    if (resolved.endsWith(".js")) {
+      const tsPath = resolved.slice(0, -3) + ".ts";
+      if (this.indexedFiles.has(tsPath)) {
+        return tsPath;
+      }
+    }
+
+    return this.indexedFiles.has(resolved) ? resolved : null;
   }
 }

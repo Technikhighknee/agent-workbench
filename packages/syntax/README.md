@@ -25,6 +25,7 @@ Back to [main README.md](../../)
 | `rename_symbol` | Rename a symbol across all files (supports dry_run) |
 | `get_callers` | Find all functions that call a given function |
 | `get_callees` | Find all functions called by a given function |
+| `analyze_deps` | Analyze dependencies and detect circular imports |
 
 ## Features
 
@@ -34,6 +35,7 @@ Back to [main README.md](../../)
 - **Multi-language support** - TypeScript, JavaScript, Python, Go, Rust
 - **Call hierarchy** - Understand code flow with get_callers/get_callees
 - **Import/Export analysis** - Extract and analyze import/export statements
+- **Dependency analysis** - Detect circular dependencies and analyze coupling
 - **Caching** - Parsed symbol trees cached with mtime invalidation
 - **Tree-sitter parsing** - Fast, accurate syntax analysis
 
@@ -108,6 +110,14 @@ get_callers({ symbol_name: "processData" });
 
 // What does this function call?
 get_callees({ file_path: "src/service.ts", symbol_name_path: "Service/run" });
+```
+
+### analyze_deps
+
+```typescript
+// Analyze project dependencies
+analyze_deps({});
+// Returns: circular dependencies, most imported files, files with most imports
 ```
 
 ## Supported Languages

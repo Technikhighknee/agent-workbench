@@ -105,3 +105,21 @@ export const ExportInfoSchema = z.object({
   line: z.number(),
   raw: z.string(),
 });
+
+export const CircularDependencySchema = z.object({
+  cycle: z.array(z.string()),
+  closingImport: z.object({
+    from: z.string(),
+    to: z.string(),
+    line: z.number(),
+  }),
+});
+
+export const DependencyAnalysisSchema = z.object({
+  totalFiles: z.number(),
+  totalImports: z.number(),
+  highestDependencyCount: z.array(z.object({ file: z.string(), count: z.number() })),
+  mostImported: z.array(z.object({ file: z.string(), count: z.number() })),
+  circularDependencies: z.array(CircularDependencySchema),
+  hasCircularDependencies: z.boolean(),
+});

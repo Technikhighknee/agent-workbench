@@ -278,3 +278,47 @@ export interface ExportInfo {
   /** Full export statement text */
   raw: string;
 }
+
+/**
+ * A node in the dependency graph.
+ */
+export interface DependencyNode {
+  /** File path (relative to project root) */
+  filePath: string;
+  /** Direct dependencies (files this file imports) */
+  dependencies: string[];
+  /** Dependents (files that import this file) */
+  dependents: string[];
+}
+
+/**
+ * A circular dependency cycle.
+ */
+export interface CircularDependency {
+  /** Files in the cycle, in order */
+  cycle: string[];
+  /** The import that completes the cycle */
+  closingImport: {
+    from: string;
+    to: string;
+    line: number;
+  };
+}
+
+/**
+ * Result of dependency analysis.
+ */
+export interface DependencyAnalysis {
+  /** Total number of files analyzed */
+  totalFiles: number;
+  /** Total number of import statements */
+  totalImports: number;
+  /** Files with the most dependencies */
+  highestDependencyCount: { file: string; count: number }[];
+  /** Files with the most dependents */
+  mostImported: { file: string; count: number }[];
+  /** Circular dependencies found */
+  circularDependencies: CircularDependency[];
+  /** Whether the project has any circular dependencies */
+  hasCircularDependencies: boolean;
+}

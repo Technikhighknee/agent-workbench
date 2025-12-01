@@ -1,0 +1,57 @@
+{
+  "name": "@agent-workbench/syntax",
+  "version": "0.3.0",
+  "description": "MCP server for symbol-aware code operations. Read and edit code by function/class name, not line numbers.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "syntax": "./dist/server.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "syntax",
+    "code-navigation",
+    "model-context-protocol"
+  ],
+  "author": "Jason Posch <Technikhighknee>",
+  "license": "UNLICENSE",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "tree-sitter": "^0.21.1",
+    "tree-sitter-typescript": "^0.21.2",
+    "tree-sitter-javascript": "^0.21.4",
+    "tree-sitter-python": "^0.21.0",
+    "tree-sitter-go": "^0.21.2",
+    "tree-sitter-rust": "^0.21.0",
+    "zod": "^4.1.13"
+  }
+}

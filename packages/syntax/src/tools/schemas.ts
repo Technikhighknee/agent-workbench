@@ -58,3 +58,27 @@ export const EditResultSchema = z.object({
   oldLineCount: z.number(),
   newLineCount: z.number(),
 });
+
+export const ImportTypeSchema = z.enum([
+  "default",
+  "named",
+  "namespace",
+  "side_effect",
+  "type",
+  "require",
+]);
+
+export const ImportBindingSchema = z.object({
+  name: z.string(),
+  originalName: z.string().optional(),
+  isType: z.boolean().optional(),
+});
+
+export const ImportInfoSchema = z.object({
+  source: z.string(),
+  type: ImportTypeSchema,
+  bindings: z.array(ImportBindingSchema),
+  line: z.number(),
+  isDynamic: z.boolean().optional(),
+  raw: z.string(),
+});

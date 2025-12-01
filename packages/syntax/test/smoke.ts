@@ -104,6 +104,70 @@ export function helper(x: number): number {
     console.log(`   ✓ ${file} → ${lang.id}`);
   }
 
+  // Test 4: Import extraction
+  console.log("\n4. Testing import extraction...");
+  const importSource = `
+import Parser from "tree-sitter";
+import { Foo, Bar as Baz } from "./utils.js";
+import * as path from "path";
+import type { Result } from "./result.js";
+import "side-effects";
+`;
+
+  const importResult = await parser.extractImports(importSource, "test.ts");
+  if (!importResult.ok) {
+    console.error("❌ Import extraction failed:", importResult.error);
+    process.exit(1);
+  }
+
+  const imports = importResult.value;
+  console.log(`   Found ${imports.length} imports`);
+
+  // Check default import
+  const defaultImport = imports.find((i) => i.source === "tree-sitter");
+  if (!defaultImport || defaultImport.type !== "default") {
+    console.error("❌ Default import not found or wrong type");
+    process.exit(1);
+  }
+  console.log("   ✓ Default import: tree-sitter");
+
+  // Check named imports
+  const namedImport = imports.find((i) => i.source === "./utils.js");
+  if (!namedImport || namedImport.bindings.length !== 2) {
+    console.error("❌ Named imports not found:", namedImport);
+    process.exit(1);
+  }
+  const bazBinding = namedImport.bindings.find((b) => b.name === "Baz");
+  if (!bazBinding || bazBinding.originalName !== "Bar") {
+    console.error("❌ Aliased import not captured:", bazBinding);
+    process.exit(1);
+  }
+  console.log("   ✓ Named imports with alias: Foo, Bar as Baz");
+
+  // Check namespace import
+  const nsImport = imports.find((i) => i.source === "path");
+  if (!nsImport || nsImport.type !== "namespace") {
+    console.error("❌ Namespace import not found:", nsImport);
+    process.exit(1);
+  }
+  console.log("   ✓ Namespace import: * as path");
+
+  // Check type import
+  const typeImport = imports.find((i) => i.source === "./result.js");
+  if (!typeImport || typeImport.type !== "type") {
+    console.error("❌ Type import not found:", typeImport);
+    process.exit(1);
+  }
+  console.log("   ✓ Type import: Result");
+
+  // Check side-effect import
+  const sideEffectImport = imports.find((i) => i.source === "side-effects");
+  if (!sideEffectImport || sideEffectImport.type !== "side_effect") {
+    console.error("❌ Side-effect import not found:", sideEffectImport);
+    process.exit(1);
+  }
+  console.log("   ✓ Side-effect import: side-effects");
+
   console.log("\n✅ All smoke tests passed!\n");
 }
 

@@ -13,6 +13,7 @@ Back to [main README.md](../../)
 | `read_symbol` | Read a specific symbol's code by name path (e.g., `MyClass/myMethod`) |
 | `edit_symbol` | Replace a symbol's entire body by name path |
 | `edit_lines` | Replace a range of lines by line number |
+| `get_imports` | Get all import statements from a source file |
 
 ### Project Operations
 
@@ -31,6 +32,7 @@ Back to [main README.md](../../)
 - **Hierarchical navigation** - `MyClass/myMethod` paths for nested symbols
 - **Multi-language support** - TypeScript, JavaScript, Python, Go, Rust
 - **Call hierarchy** - Understand code flow with get_callers/get_callees
+- **Import analysis** - Extract and analyze import statements across languages
 - **Caching** - Parsed symbol trees cached with mtime invalidation
 - **Tree-sitter parsing** - Fast, accurate syntax analysis
 
@@ -83,6 +85,14 @@ search_symbols({ pattern: "handle.*Request" });
 
 // Find only functions
 search_symbols({ pattern: "process.*", kinds: ["function"] });
+```
+
+### get_imports
+
+```typescript
+// Get all imports from a file
+get_imports({ file_path: "src/app.ts" });
+// Returns: source, type (default/named/namespace/type/side_effect), bindings, line
 ```
 
 ### Call Hierarchy

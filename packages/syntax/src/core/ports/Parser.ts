@@ -1,6 +1,6 @@
 import { Result } from "../result.js";
 import { SymbolTree } from "../symbolTree.js";
-import { Language, Span } from "../model.js";
+import { Language, Span, ImportInfo, CallInfo } from "../model.js";
 
 export interface ParseError {
   message: string;
@@ -24,6 +24,24 @@ export interface Parser {
    * @returns Parsed symbol tree or error
    */
   parse(source: string, filePath: string): Promise<Result<ParseResult, Error>>;
+
+  /**
+   * Extract import statements from source code.
+   *
+   * @param source - The source code to analyze
+   * @param filePath - Path to the file (used for language detection)
+   * @returns List of import information
+   */
+  extractImports(source: string, filePath: string): Promise<Result<ImportInfo[], Error>>;
+
+  /**
+   * Extract function/method calls from source code.
+   *
+   * @param source - The source code to analyze
+   * @param filePath - Path to the file (used for language detection)
+   * @returns List of call information
+   */
+  extractCalls(source: string, filePath: string): Promise<Result<CallInfo[], Error>>;
 
   /**
    * Get list of supported language IDs.

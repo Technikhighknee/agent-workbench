@@ -197,3 +197,44 @@ export interface CallSite {
   /** Context line */
   context: string;
 }
+
+/**
+ * Type of import statement.
+ */
+export type ImportType =
+  | "default"      // import Foo from "module"
+  | "named"        // import { foo, bar } from "module"
+  | "namespace"    // import * as foo from "module"
+  | "side_effect"  // import "module"
+  | "type"         // import type { Foo } from "module"
+  | "require";     // const foo = require("module")
+
+/**
+ * A single imported binding.
+ */
+export interface ImportBinding {
+  /** Local name (what you use in code) */
+  name: string;
+  /** Original name (if aliased, e.g., "foo" in "foo as bar") */
+  originalName?: string;
+  /** Whether this is a type-only import */
+  isType?: boolean;
+}
+
+/**
+ * Information about an import statement.
+ */
+export interface ImportInfo {
+  /** Source module (e.g., "./utils", "lodash", "@org/pkg") */
+  source: string;
+  /** Type of import */
+  type: ImportType;
+  /** Imported bindings (names) */
+  bindings: ImportBinding[];
+  /** Line number */
+  line: number;
+  /** Whether import is dynamic (import()) */
+  isDynamic?: boolean;
+  /** Full import statement text */
+  raw: string;
+}

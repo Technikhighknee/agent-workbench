@@ -5,18 +5,32 @@ Back to [main README.md](../../)
 
 ## Tools
 
+### File Operations
+
 | Tool | Description |
 |------|-------------|
-| `list_symbols` | List all symbols (functions, classes, etc.) in a source file. Returns hierarchical structure with line numbers. |
-| `read_symbol` | Read a specific symbol's code by name path (e.g., `MyClass/myMethod`). Targeted reading saves context. |
-| `edit_symbol` | Replace a symbol's entire body by name path. More reliable than text-based matching. |
-| `edit_lines` | Replace a range of lines by line number. No need for exact text matching. |
+| `list_symbols` | List all symbols (functions, classes, etc.) in a source file |
+| `read_symbol` | Read a specific symbol's code by name path (e.g., `MyClass/myMethod`) |
+| `edit_symbol` | Replace a symbol's entire body by name path |
+| `edit_lines` | Replace a range of lines by line number |
+
+### Project Operations
+
+| Tool | Description |
+|------|-------------|
+| `search_symbols` | Find symbols by pattern across all indexed files |
+| `find_references` | Find all usages of a symbol throughout the codebase |
+| `rename_symbol` | Rename a symbol across all files (supports dry_run) |
+| `get_callers` | Find all functions that call a given function |
+| `get_callees` | Find all functions called by a given function |
 
 ## Features
 
+- **Auto-indexing** - Project indexed on startup, watches for file changes
 - **Symbol-aware operations** - Work with functions and classes by name, not text
 - **Hierarchical navigation** - `MyClass/myMethod` paths for nested symbols
 - **Multi-language support** - TypeScript, JavaScript, Python, Go, Rust
+- **Call hierarchy** - Understand code flow with get_callers/get_callees
 - **Caching** - Parsed symbol trees cached with mtime invalidation
 - **Tree-sitter parsing** - Fast, accurate syntax analysis
 
@@ -26,46 +40,33 @@ Back to [main README.md](../../)
 
 ```typescript
 // List all symbols in a file
-await syntax.list_symbols({ file_path: "src/app.ts" });
+list_symbols({ file_path: "src/app.ts" });
 
 // Top-level only
-await syntax.list_symbols({ file_path: "src/app.ts", depth: 0 });
+list_symbols({ file_path: "src/app.ts", depth: 0 });
 
 // Only functions and classes
-await syntax.list_symbols({
-  file_path: "src/app.ts",
-  kinds: ["function", "class"]
-});
+list_symbols({ file_path: "src/app.ts", kinds: ["function", "class"] });
 ```
 
 ### read_symbol
 
 ```typescript
 // Read a top-level function
-await syntax.read_symbol({
-  file_path: "src/utils.ts",
-  name_path: "calculateTotal"
-});
+read_symbol({ file_path: "src/utils.ts", name_path: "calculateTotal" });
 
 // Read a class method
-await syntax.read_symbol({
-  file_path: "src/user.ts",
-  name_path: "User/save"
-});
+read_symbol({ file_path: "src/user.ts", name_path: "User/save" });
 
 // Include context lines
-await syntax.read_symbol({
-  file_path: "src/utils.ts",
-  name_path: "helper",
-  context: 3
-});
+read_symbol({ file_path: "src/utils.ts", name_path: "helper", context: 3 });
 ```
 
 ### edit_symbol
 
 ```typescript
 // Replace a function
-await syntax.edit_symbol({
+edit_symbol({
   file_path: "src/utils.ts",
   name_path: "calculateTotal",
   new_body: `function calculateTotal(items: Item[]): number {
@@ -74,16 +75,24 @@ await syntax.edit_symbol({
 });
 ```
 
-### edit_lines
+### search_symbols
 
 ```typescript
-// Replace lines 10-15
-await syntax.edit_lines({
-  file_path: "src/config.ts",
-  start_line: 10,
-  end_line: 15,
-  new_content: "const config = { debug: true };"
-});
+// Find all handlers
+search_symbols({ pattern: "handle.*Request" });
+
+// Find only functions
+search_symbols({ pattern: "process.*", kinds: ["function"] });
+```
+
+### Call Hierarchy
+
+```typescript
+// Who calls this function?
+get_callers({ symbol_name: "processData" });
+
+// What does this function call?
+get_callees({ file_path: "src/service.ts", symbol_name_path: "Service/run" });
 ```
 
 ## Supported Languages
@@ -105,35 +114,19 @@ packages/syntax/
 │   │   ├── model.ts           # Symbol, SymbolKind, Location, Span
 │   │   ├── symbolTree.ts      # SymbolTree utilities
 │   │   ├── result.ts          # Result<T, E> type
-│   │   ├── ports/             # Parser, FileSystem, Cache interfaces
-│   │   └── services/          # SyntaxService (main orchestrator)
+│   │   ├── ports/             # Parser, FileSystem, Cache, FileWatcher interfaces
+│   │   └── services/
+│   │       ├── SyntaxService.ts   # File-level operations
+│   │       └── ProjectIndex.ts    # Cross-file operations
 │   │
 │   ├── infrastructure/
 │   │   ├── parsers/           # TreeSitterParser
 │   │   ├── filesystem/        # NodeFileSystem
-│   │   └── cache/             # InMemoryCache
+│   │   ├── cache/             # InMemoryCache
+│   │   ├── scanner/           # NodeProjectScanner
+│   │   └── watcher/           # NodeFileWatcher
 │   │
 │   ├── tools/                 # MCP tool definitions
 │   ├── server.ts              # MCP server entry
 │   └── index.ts               # Library exports
 ```
-
-## Evolution Roadmap
-
-**Phase 1 (Current):** Symbol-aware file operations
-- list_symbols, read_symbol, edit_symbol, edit_lines
-
-**Phase 2:** Cross-file awareness
-- find_references, find_usages
-- rename_symbol (across files)
-- import management
-
-**Phase 3:** Code intelligence
-- go_to_definition
-- get_type_info
-- get_diagnostics
-
-**Phase 4:** Refactoring
-- extract_function, extract_variable
-- inline_symbol
-- move_symbol

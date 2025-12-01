@@ -167,7 +167,7 @@ export class ProcessService {
     });
   }
 
-  purge(options: { keepRunning?: boolean; olderThanMs?: number } = {}): number {
+purge(options: { keepRunning?: boolean; olderThanMs?: number } = {}): number {
     const { keepRunning = true, olderThanMs } = options;
     const now = Date.now();
     let purged = 0;
@@ -180,8 +180,9 @@ export class ProcessService {
         if (now - startedAt < olderThanMs) continue;
       }
 
-      this.processes.delete(proc.id);
+      // Delete logs first (child records), then session (parent record)
       this.logs.delete(proc.id);
+      this.processes.delete(proc.id);
       purged++;
     }
 

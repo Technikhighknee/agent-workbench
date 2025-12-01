@@ -94,11 +94,22 @@ export class TestRunnerServiceImpl implements TestRunnerService {
     }
 
     try {
+      // Default patterns include common conventions + monorepo patterns
       const patterns = this.config.testPatterns || [
+        // Standard test file patterns
         "**/*.test.ts",
         "**/*.spec.ts",
         "**/*.test.js",
         "**/*.spec.js",
+        "**/*.test.tsx",
+        "**/*.spec.tsx",
+        // Monorepo: test directories
+        "**/test/**/*.ts",
+        "**/test/**/*.js",
+        "**/tests/**/*.ts",
+        "**/tests/**/*.js",
+        "**/__tests__/**/*.ts",
+        "**/__tests__/**/*.js",
       ];
 
       const allFiles: string[] = [];
@@ -106,7 +117,12 @@ export class TestRunnerServiceImpl implements TestRunnerService {
       for (const pattern of patterns) {
         const files = await glob(pattern, {
           cwd: this.projectPath,
-          ignore: ["**/node_modules/**", "**/dist/**", "**/build/**"],
+          ignore: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/.git/**",
+          ],
           absolute: true,
         });
         allFiles.push(...files);

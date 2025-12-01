@@ -1,54 +1,39 @@
-# @agent-workbench/test-runner
+---
+name: test-runner
+description: Run tests with structured results. Parse failures, map to source. Jest/Vitest/Node.
+allowed-tools: mcp__test-runner__run_tests, mcp__test-runner__get_test_failures, mcp__test-runner__list_test_files, mcp__test-runner__rerun_failed
+---
 
-Run tests and get structured results with source-mapped failures.
+# test-runner
 
-## When to Use
-
-- After making code changes to verify nothing broke
-- When debugging test failures - get exact source locations
-- To iterate on fixes with `rerun_failed`
+**Structured test results.** Run tests, get pass/fail with source locations. Fast iteration.
 
 ## Tools
 
-### run_tests
-Run tests and get structured results.
+| Tool | Purpose |
+|------|---------|
+| `run_tests` | Run tests, get structured results |
+| `get_test_failures` | Detailed failure info with source locations |
+| `list_test_files` | Discover test files |
+| `rerun_failed` | Re-execute only failing tests |
+
+## Quick Examples
 
 ```
-# Run all tests
-run_tests()
+run_tests({})                                    // Run all tests
+run_tests({ files: ['src/utils.test.ts'] })      // Specific file
+run_tests({ testNamePattern: 'should handle' })  // Filter by name
 
-# Run specific files
-run_tests(files=["src/utils.test.ts"])
-
-# Filter by test name
-run_tests(testNamePattern="should handle errors")
+get_test_failures({})                            // After a run
+rerun_failed({})                                 // Iterate on fixes
+list_test_files({})                              // See what's available
 ```
-
-### get_test_failures
-Get detailed failure info from the last run.
-
-Returns:
-- Error message
-- Expected vs actual values
-- Stack trace with source locations
-
-### rerun_failed
-Rerun only failing tests. Faster iteration on fixes.
-
-### list_test_files
-List all test files in the project.
 
 ## Workflow
 
-1. `run_tests()` - Run suite, get overview
-2. `get_test_failures()` - See detailed failure info
+1. `run_tests` - Get overview
+2. `get_test_failures` - See detailed failures with locations
 3. Fix the code
-4. `rerun_failed()` - Verify fix without full suite
+4. `rerun_failed` - Verify without full suite
 
-## Framework Support
-
-- **Vitest** - Detected via vitest in package.json
-- **Jest** - Detected via jest in package.json
-- **Node test runner** - Fallback for npm test script
-
-JSON reporters used when available for structured output.
+**Supports:** Jest, Vitest, Node test runner. Auto-detects framework.

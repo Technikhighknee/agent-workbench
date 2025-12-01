@@ -71,6 +71,14 @@ Observations, pain points, and improvement ideas gathered while working with age
    - Added YAML frontmatter with allowed-tools
    - Consistent format with other skills
 
+5. **test-runner: Smoke test** (commit 9aaccfe)
+   - Added test/smoke.ts for basic functionality verification
+
+6. **history: Branch diff tool** (commit e6c7f8e)
+   - `branch_diff` shows PR scope: commits ahead/behind, files changed
+   - Groups by status (added, modified, deleted)
+   - Shows additions/deletions per file
+
 ### Observations
 
 - **MCP syntax tools are powerful** - `edit_symbol` is much more reliable than string matching

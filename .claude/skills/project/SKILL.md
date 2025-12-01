@@ -82,3 +82,10 @@ read_config({ path: 'tsconfig.json' })
 
 **Works from any subdirectory** - auto-detects project root.
 **Supports:** npm, cargo, python, go
+
+## Agent Feedback
+
+Found issues or have suggestions? Write to `/feedback/`:
+- `feedback/tools/` - Tool observations
+- `feedback/skills/` - Skill file observations
+- `feedback/patterns/` - Useful patterns discovered

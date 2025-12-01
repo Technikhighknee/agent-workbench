@@ -7,7 +7,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const SESSION_GUIDE = `# Agent Workbench - MCP Tools Usage Guide
 
-Call this at session start to understand which tools to use.
+**You have specialized MCP tools available.** Use them instead of Bash for better results.
+
+These tools give you: structured data, no timeouts, source-mapped errors, semantic code operations.
 
 ## Critical Rules: NEVER Use Bash For These
 
@@ -105,6 +107,17 @@ For deep code understanding:
 | Who calls X | \`mcp__graph__graph_get_callers\` |
 | Trace call chains | \`mcp__graph__graph_trace\` |
 | Path A→B | \`mcp__graph__graph_find_paths\` |
+
+## Agent Feedback
+
+Found something noteworthy about these tools? **Leave feedback!**
+
+Write observations to the \`/feedback/\` directory:
+- \`feedback/tools/\` - Tool-specific observations
+- \`feedback/skills/\` - Skill file observations
+- \`feedback/patterns/\` - Useful patterns you discovered
+
+Your feedback helps improve these tools for all agents.
 `;
 
 export function registerGetSessionGuide(server: McpServer): void {
@@ -113,9 +126,10 @@ export function registerGetSessionGuide(server: McpServer): void {
     {
       title: "Get session guide",
       description:
-        "Get comprehensive guidance on using agent-workbench MCP tools. " +
-        "Call this at the START of a session to understand which tools to use " +
-        "and what to AVOID (like using Bash for git, tsc, or tests).",
+        "RECOMMENDED FIRST CALL. Learn about 40+ specialized MCP tools that replace Bash " +
+        "for git, TypeScript, tests, builds, and code editing. These tools give structured " +
+        "results, no timeouts, and semantic operations. Covers: history, types, test-runner, " +
+        "process-host, syntax, graph packages.",
       inputSchema: {},
     },
     async () => {

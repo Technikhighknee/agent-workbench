@@ -1,15 +1,19 @@
 /**
  * Main GraphService - ties together storage, analysis, and queries.
  * Handles workspace indexing and incremental updates.
+ * Auto-reindexes when files change via file watcher.
  */
 
-import { readdirSync, statSync, existsSync } from "fs";
-import { join, relative } from "path";
+import { readdirSync, statSync, existsSync, watch, FSWatcher } from "fs";
+import { join, relative, extname } from "path";
 import { GraphStore } from "./GraphStore.js";
 import { TypeScriptAnalyzer } from "./TypeScriptAnalyzer.js";
+import { TreeSitterAnalyzer } from "./TreeSitterAnalyzer.js";
 import { QueryEngine } from "./QueryEngine.js";
 import {
   GraphNode,
+  GraphEdge,
+  EdgeKind,
   QueryOptions,
   QueryResult,
   SymbolKind,
@@ -27,22 +31,48 @@ export interface IndexStats {
 
 export class GraphService {
   private store: GraphStore;
-  private analyzer: TypeScriptAnalyzer;
+  private legacyAnalyzer: TypeScriptAnalyzer;
+  private treeSitterAnalyzer: TreeSitterAnalyzer | null = null;
   private queryEngine: QueryEngine;
   private workspacePath: string = "";
   private initialized: boolean = false;
+  private useTreeSitter: boolean = true;
 
-  constructor() {
+  // File watching for auto-reindex
+  private watcher: FSWatcher | null = null;
+  private reindexPending: boolean = false;
+  private reindexDebounceTimer: NodeJS.Timeout | null = null;
+  private readonly reindexDebounceMs = 500; // Debounce multiple rapid changes
+
+  constructor(options?: { useTreeSitter?: boolean }) {
     this.store = new GraphStore();
-    this.analyzer = new TypeScriptAnalyzer();
+    this.legacyAnalyzer = new TypeScriptAnalyzer();
     this.queryEngine = new QueryEngine(this.store);
+    this.useTreeSitter = options?.useTreeSitter ?? true;
+
+    // Initialize tree-sitter analyzer if enabled
+    if (this.useTreeSitter) {
+      try {
+        this.treeSitterAnalyzer = new TreeSitterAnalyzer();
+      } catch (error) {
+        console.error("[graph] Failed to initialize TreeSitterAnalyzer, using legacy analyzer:", error);
+        this.treeSitterAnalyzer = null;
+      }
+    }
   }
 
   async initialize(workspacePath: string): Promise<Result<IndexStats, Error>> {
     try {
+      // Stop any existing watcher
+      this.stopWatcher();
+
       this.workspacePath = workspacePath;
       const stats = await this.indexWorkspace(workspacePath);
       this.initialized = true;
+
+      // Start watching for file changes
+      this.startWatcher();
+
       return Ok(stats);
     } catch (error) {
       return Err(error instanceof Error ? error : new Error(String(error)));
@@ -56,17 +86,34 @@ export class GraphService {
   private async indexWorkspace(workspacePath: string): Promise<IndexStats> {
     const startTime = performance.now();
     this.store.clear();
-    
-    // Create fresh analyzer instance to pick up any code changes
-    this.analyzer = new TypeScriptAnalyzer();
 
-    const files = this.findTypeScriptFiles(workspacePath);
+    // Create fresh analyzer instances to pick up any code changes
+    this.legacyAnalyzer = new TypeScriptAnalyzer();
+    if (this.useTreeSitter) {
+      try {
+        this.treeSitterAnalyzer = new TreeSitterAnalyzer();
+      } catch {
+        this.treeSitterAnalyzer = null;
+      }
+    }
+
+    const files = this.findSourceFiles(workspacePath);
     let nodesCreated = 0;
     let edgesCreated = 0;
 
     for (const file of files) {
       try {
-        const { nodes, edges } = this.analyzer.analyze(file);
+        let result: { nodes: GraphNode[]; edges: GraphEdge[] };
+
+        // Try tree-sitter first for supported files
+        if (this.treeSitterAnalyzer && this.treeSitterAnalyzer.supportsFile(file)) {
+          result = await this.treeSitterAnalyzer.analyze(file);
+        } else {
+          // Fall back to legacy regex analyzer for TS/JS
+          result = this.legacyAnalyzer.analyze(file);
+        }
+
+        const { nodes, edges } = result;
 
         for (const node of nodes) {
           // Make paths relative
@@ -82,7 +129,8 @@ export class GraphService {
         }
 
         // Store file hash for incremental updates
-        const hash = this.analyzer.computeFileHash(file);
+        const hash = this.treeSitterAnalyzer?.computeFileHash(file) ??
+          this.legacyAnalyzer.computeFileHash(file);
         this.store.setFileHash(relative(workspacePath, file), hash);
       } catch (error) {
         // Skip files that fail to parse
@@ -103,10 +151,19 @@ export class GraphService {
     };
   }
 
-  private findTypeScriptFiles(dir: string, files: string[] = []): string[] {
+  /**
+   * Find all supported source files in a directory.
+   * Supports: TypeScript, JavaScript, Python, Go, Rust
+   */
+  private findSourceFiles(dir: string, files: string[] = []): string[] {
     if (!existsSync(dir)) return files;
 
     const entries = readdirSync(dir);
+
+    // Supported extensions based on whether tree-sitter is enabled
+    const supportedExtensions = this.treeSitterAnalyzer
+      ? [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs"]
+      : [".ts", ".tsx", ".js", ".jsx"];
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);
@@ -118,7 +175,11 @@ export class GraphService {
         entry === ".git" ||
         entry === "coverage" ||
         entry === ".next" ||
-        entry === "build"
+        entry === "build" ||
+        entry === "__pycache__" ||
+        entry === ".venv" ||
+        entry === "venv" ||
+        entry === "target" // Rust target directory
       ) {
         continue;
       }
@@ -127,16 +188,21 @@ export class GraphService {
         const stat = statSync(fullPath);
 
         if (stat.isDirectory()) {
-          this.findTypeScriptFiles(fullPath, files);
-        } else if (
-          entry.endsWith(".ts") ||
-          entry.endsWith(".tsx") ||
-          entry.endsWith(".js") ||
-          entry.endsWith(".jsx")
-        ) {
-          // Skip test files and declaration files for now
-          if (!entry.endsWith(".d.ts") && !entry.includes(".test.") && !entry.includes(".spec.")) {
-            files.push(fullPath);
+          this.findSourceFiles(fullPath, files);
+        } else {
+          const ext = extname(entry).toLowerCase();
+          if (supportedExtensions.includes(ext)) {
+            // Skip test files and declaration files
+            if (
+              !entry.endsWith(".d.ts") &&
+              !entry.includes(".test.") &&
+              !entry.includes(".spec.") &&
+              !entry.includes("_test.") && // Go test files
+              !entry.endsWith("_test.go") &&
+              !entry.endsWith("_test.py")
+            ) {
+              files.push(fullPath);
+            }
           }
         }
       } catch {
@@ -209,9 +275,10 @@ export class GraphService {
       return Err(new Error("GraphService not initialized"));
     }
 
-    const node = this.store.getNode(nameOrId) ||
-                 this.store.getNodeByQualifiedName(nameOrId) ||
-                 this.store.findNodesByName(nameOrId)[0];
+    const node =
+      this.store.getNode(nameOrId) ||
+      this.store.getNodeByQualifiedName(nameOrId) ||
+      this.store.findNodesByName(nameOrId)[0];
 
     if (!node) {
       return Err(new Error(`Symbol not found: ${nameOrId}`));
@@ -274,7 +341,7 @@ export class GraphService {
         direction: "forward",
         maxDepth: options?.depth ?? 5,
         minConfidence: options?.minConfidence ?? 0,
-        edgeKinds: options?.edgeKinds as any,
+        edgeKinds: options?.edgeKinds as EdgeKind[],
       },
       output: { format: "subgraph" },
     });
@@ -290,7 +357,7 @@ export class GraphService {
         direction: "backward",
         maxDepth: options?.depth ?? 5,
         minConfidence: options?.minConfidence ?? 0,
-        edgeKinds: options?.edgeKinds as any,
+        edgeKinds: options?.edgeKinds as EdgeKind[],
       },
       output: { format: "subgraph" },
     });
@@ -325,5 +392,101 @@ export class GraphService {
     }
 
     return this.initialize(this.workspacePath);
+  }
+
+  // --- File Watching ---
+
+  private startWatcher(): void {
+    if (!this.workspacePath || this.watcher) return;
+
+    // Supported extensions for watching
+    const watchExtensions = this.treeSitterAnalyzer
+      ? [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs"]
+      : [".ts", ".tsx", ".js", ".jsx"];
+
+    try {
+      this.watcher = watch(
+        this.workspacePath,
+        { recursive: true },
+        (eventType, filename) => {
+          if (!filename) return;
+
+          // Normalize path
+          const relativePath = filename.replace(/\\/g, "/");
+
+          // Skip non-source files
+          const ext = extname(relativePath).toLowerCase();
+          if (!watchExtensions.includes(ext)) return;
+
+          // Skip ignored directories
+          if (
+            relativePath.includes("node_modules/") ||
+            relativePath.includes("dist/") ||
+            relativePath.includes(".git/") ||
+            relativePath.includes("coverage/") ||
+            relativePath.includes("__pycache__/") ||
+            relativePath.includes("target/") ||
+            relativePath.endsWith(".d.ts") ||
+            relativePath.includes(".test.") ||
+            relativePath.includes(".spec.") ||
+            relativePath.includes("_test.")
+          ) {
+            return;
+          }
+
+          // Debounce reindex
+          this.scheduleReindex();
+        }
+      );
+
+      this.watcher.on("error", (error) => {
+        console.error("[graph] Watch error:", error.message);
+      });
+
+      console.error("[graph] Watching for file changes");
+    } catch (error) {
+      console.error("[graph] Failed to start watcher:", error);
+    }
+  }
+
+  private stopWatcher(): void {
+    if (this.watcher) {
+      this.watcher.close();
+      this.watcher = null;
+    }
+
+    if (this.reindexDebounceTimer) {
+      clearTimeout(this.reindexDebounceTimer);
+      this.reindexDebounceTimer = null;
+    }
+
+    this.reindexPending = false;
+  }
+
+  private scheduleReindex(): void {
+    // Already have a reindex scheduled
+    if (this.reindexPending) return;
+
+    this.reindexPending = true;
+
+    // Clear any existing timer
+    if (this.reindexDebounceTimer) {
+      clearTimeout(this.reindexDebounceTimer);
+    }
+
+    // Schedule reindex after debounce period
+    this.reindexDebounceTimer = setTimeout(async () => {
+      this.reindexDebounceTimer = null;
+      this.reindexPending = false;
+
+      console.error("[graph] Files changed, reindexing...");
+      const result = await this.indexWorkspace(this.workspacePath);
+
+      if (result) {
+        console.error(
+          `[graph] Reindexed: ${result.nodesCreated} nodes, ${result.edgesCreated} edges in ${Math.round(result.indexTimeMs)}ms`
+        );
+      }
+    }, this.reindexDebounceMs);
   }
 }

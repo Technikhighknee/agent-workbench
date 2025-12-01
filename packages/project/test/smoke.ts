@@ -87,6 +87,20 @@ async function main() {
   console.log(`   Scripts: ${syntaxInfo.value.scripts.map((s) => s.name).join(", ")}`);
   console.log("   PASS\n");
 
+  // Test auto-detect project root from deep subdirectory
+  console.log("6. Testing auto-detect project root...");
+  const deepService = new ProjectService(
+    path.join(projectRoot, "packages/syntax/src/core")
+  );
+  const deepRoot = await deepService.getProjectRoot();
+  // Should find packages/syntax (nearest package.json)
+  if (!deepRoot.endsWith("packages/syntax")) {
+    console.error(`   ERROR: Expected to find syntax package, got ${deepRoot}`);
+    process.exit(1);
+  }
+  console.log(`   From packages/syntax/src/core → ${path.basename(deepRoot)}`);
+  console.log("   PASS\n");
+
   console.log("==========================");
   console.log("All tests passed!");
 }

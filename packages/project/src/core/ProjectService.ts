@@ -87,12 +87,58 @@ const CONFIG_FILES: Record<string, ConfigType> = {
 };
 
 export class ProjectService {
+  private resolvedRoot: string | null = null;
+
   constructor(private readonly rootPath: string) {}
+
+  /**
+   * Find the project root by walking up directories.
+   * Looks for package.json, Cargo.toml, pyproject.toml, go.mod.
+   */
+  static async findProjectRoot(startPath: string): Promise<string> {
+    const markers = [
+      "package.json",
+      "Cargo.toml",
+      "pyproject.toml",
+      "setup.py",
+      "go.mod",
+    ];
+
+    let current = path.resolve(startPath);
+    const root = path.parse(current).root;
+
+    while (current !== root) {
+      for (const marker of markers) {
+        const markerPath = path.join(current, marker);
+        try {
+          await fs.access(markerPath);
+          return current;
+        } catch {
+          // Continue searching
+        }
+      }
+      current = path.dirname(current);
+    }
+
+    // No project root found, return original path
+    return startPath;
+  }
+
+  /**
+   * Get the resolved project root (cached after first call).
+   */
+  async getProjectRoot(): Promise<string> {
+    if (this.resolvedRoot === null) {
+      this.resolvedRoot = await ProjectService.findProjectRoot(this.rootPath);
+    }
+    return this.resolvedRoot;
+  }
 
   /**
    * Detect project type based on marker files.
    */
   async detectType(): Promise<ProjectType> {
+    const projectRoot = await this.getProjectRoot();
     const checks: [string, ProjectType][] = [
       ["package.json", "npm"],
       ["Cargo.toml", "cargo"],
@@ -102,7 +148,7 @@ export class ProjectService {
     ];
 
     for (const [file, type] of checks) {
-      const filePath = path.join(this.rootPath, file);
+      const filePath = path.join(projectRoot, file);
       try {
         await fs.access(filePath);
         return type;
@@ -145,7 +191,8 @@ export class ProjectService {
    * Parse npm/Node.js project.
    */
   private async parseNpmProject(): Promise<Result<ProjectInfo>> {
-    const pkgPath = path.join(this.rootPath, "package.json");
+    const projectRoot = await this.getProjectRoot();
+    const pkgPath = path.join(projectRoot, "package.json");
 
     try {
       const content = await fs.readFile(pkgPath, "utf-8");
@@ -191,12 +238,12 @@ export class ProjectService {
       }
 
       return ok({
-        name: pkg.name || path.basename(this.rootPath),
+        name: pkg.name || path.basename(projectRoot),
         version: pkg.version || "unknown",
         type: "npm",
         description: pkg.description,
         main: pkg.main,
-        rootPath: this.rootPath,
+        rootPath: projectRoot,
         scripts,
         dependencies,
         workspaces,
@@ -212,6 +259,7 @@ export class ProjectService {
   private async parseNpmWorkspaces(
     workspacesConfig: string[] | { packages: string[] }
   ): Promise<WorkspacePackage[]> {
+    const projectRoot = await this.getProjectRoot();
     const patterns = Array.isArray(workspacesConfig)
       ? workspacesConfig
       : workspacesConfig.packages || [];
@@ -222,7 +270,7 @@ export class ProjectService {
       // Simple glob expansion - handle "packages/*" pattern
       if (pattern.includes("*")) {
         const baseDir = pattern.replace(/\/\*.*$/, "");
-        const basePath = path.join(this.rootPath, baseDir);
+        const basePath = path.join(projectRoot, baseDir);
 
         try {
           const entries = await fs.readdir(basePath, { withFileTypes: true });
@@ -247,7 +295,7 @@ export class ProjectService {
         }
       } else {
         // Direct path
-        const pkgPath = path.join(this.rootPath, pattern, "package.json");
+        const pkgPath = path.join(projectRoot, pattern, "package.json");
         try {
           const content = await fs.readFile(pkgPath, "utf-8");
           const pkg = JSON.parse(content);
@@ -269,7 +317,8 @@ export class ProjectService {
    * Parse Rust/Cargo project.
    */
   private async parseCargoProject(): Promise<Result<ProjectInfo>> {
-    const cargoPath = path.join(this.rootPath, "Cargo.toml");
+    const projectRoot = await this.getProjectRoot();
+    const cargoPath = path.join(projectRoot, "Cargo.toml");
 
     try {
       const content = await fs.readFile(cargoPath, "utf-8");
@@ -316,11 +365,11 @@ export class ProjectService {
       }
 
       return ok({
-        name: nameMatch?.[1] || path.basename(this.rootPath),
+        name: nameMatch?.[1] || path.basename(projectRoot),
         version: versionMatch?.[1] || "unknown",
         type: "cargo",
         description: descMatch?.[1],
-        rootPath: this.rootPath,
+        rootPath: projectRoot,
         scripts,
         dependencies,
       });
@@ -333,8 +382,9 @@ export class ProjectService {
    * Parse Python project.
    */
   private async parsePythonProject(): Promise<Result<ProjectInfo>> {
+    const projectRoot = await this.getProjectRoot();
     // Try pyproject.toml first
-    const pyprojectPath = path.join(this.rootPath, "pyproject.toml");
+    const pyprojectPath = path.join(projectRoot, "pyproject.toml");
 
     try {
       const content = await fs.readFile(pyprojectPath, "utf-8");
@@ -353,21 +403,21 @@ export class ProjectService {
       ];
 
       return ok({
-        name: nameMatch?.[1] || path.basename(this.rootPath),
+        name: nameMatch?.[1] || path.basename(projectRoot),
         version: versionMatch?.[1] || "unknown",
         type: "python",
         description: descMatch?.[1],
-        rootPath: this.rootPath,
+        rootPath: projectRoot,
         scripts,
         dependencies: [], // Python deps are complex, skip for now
       });
     } catch {
       // Fall back to setup.py detection
       return ok({
-        name: path.basename(this.rootPath),
+        name: path.basename(projectRoot),
         version: "unknown",
         type: "python",
-        rootPath: this.rootPath,
+        rootPath: projectRoot,
         scripts: [
           { name: "install", command: "pip install -e ." },
           { name: "test", command: "pytest" },
@@ -381,7 +431,8 @@ export class ProjectService {
    * Parse Go project.
    */
   private async parseGoProject(): Promise<Result<ProjectInfo>> {
-    const goModPath = path.join(this.rootPath, "go.mod");
+    const projectRoot = await this.getProjectRoot();
+    const goModPath = path.join(projectRoot, "go.mod");
 
     try {
       const content = await fs.readFile(goModPath, "utf-8");
@@ -415,10 +466,10 @@ export class ProjectService {
       }
 
       return ok({
-        name: moduleMatch?.[1] || path.basename(this.rootPath),
+        name: moduleMatch?.[1] || path.basename(projectRoot),
         version: goVersionMatch?.[1] || "unknown",
         type: "go",
-        rootPath: this.rootPath,
+        rootPath: projectRoot,
         scripts,
         dependencies,
       });
@@ -431,14 +482,15 @@ export class ProjectService {
    * Find configuration files in the project.
    */
   async findConfigs(): Promise<Result<ConfigFile[]>> {
+    const projectRoot = await this.getProjectRoot();
     const configs: ConfigFile[] = [];
 
     try {
-      const entries = await fs.readdir(this.rootPath, { withFileTypes: true });
+      const entries = await fs.readdir(projectRoot, { withFileTypes: true });
 
       for (const entry of entries) {
         const name = entry.name;
-        const fullPath = path.join(this.rootPath, name);
+        const fullPath = path.join(projectRoot, name);
 
         if (name in CONFIG_FILES) {
           configs.push({
@@ -456,7 +508,7 @@ export class ProjectService {
       }
 
       // Check for nested configs
-      const vscodeDir = path.join(this.rootPath, ".vscode");
+      const vscodeDir = path.join(projectRoot, ".vscode");
       try {
         await fs.access(vscodeDir);
         configs.push({
@@ -478,9 +530,10 @@ export class ProjectService {
    * Read a specific config file.
    */
   async readConfig(configPath: string): Promise<Result<string>> {
+    const projectRoot = await this.getProjectRoot();
     const fullPath = path.isAbsolute(configPath)
       ? configPath
-      : path.join(this.rootPath, configPath);
+      : path.join(projectRoot, configPath);
 
     try {
       const content = await fs.readFile(fullPath, "utf-8");

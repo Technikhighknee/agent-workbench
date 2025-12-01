@@ -9,6 +9,7 @@ When an AI agent starts working on a project, it needs to quickly understand:
 - **What commands can I run?** → `get_scripts` lists available scripts
 - **What are the dependencies?** → `get_dependencies` shows packages
 - **Where are the configs?** → `find_configs` locates configuration files
+- **Is this a monorepo?** → `get_project_info` shows workspace packages
 
 ## Tools
 

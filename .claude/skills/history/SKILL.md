@@ -6,62 +6,77 @@ allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__histor
 
 # history
 
-**Stop guessing why code was written.** The commit message probably explains it.
+**Structured git operations.** No parsing output. Direct data access.
 
 ## MANDATORY SUBSTITUTIONS
 
 | WHEN you want to... | NEVER use... | ALWAYS use... |
 |---------------------|--------------|---------------|
-| See who wrote code + why | `Bash: git blame` | `blame_file({ file_path })` |
-| See commits that changed a file | `Bash: git log -- file` | `file_history({ file_path })` |
-| See recent repository activity | `Bash: git log` | `recent_changes({ count: N })` |
-| Get commit details | `Bash: git show` | `commit_info({ ref: 'abc123' })` |
-| Find commits by message | `Bash: git log --grep` | `search_commits({ query: 'fix auth' })` |
-| Compare file versions | `Bash: git diff` | `diff_file({ file_path, from_ref, to_ref })` |
-| Get PR scope vs main | `Bash: git diff main...HEAD` | `branch_diff({ base: 'main' })` |
+| See who wrote code | `git blame file.ts` | `blame_file({ file_path })` |
+| See file history | `git log -- file.ts` | `file_history({ file_path })` |
+| See recent changes | `git log --oneline` | `recent_changes({ count })` |
+| See commit details | `git show abc123` | `commit_info({ ref })` |
+| Search commit messages | `git log --grep` | `search_commits({ query })` |
+| See file diff | `git diff HEAD~1 file.ts` | `diff_file({ file_path, from_ref, to_ref })` |
+| Compare branches | `git diff main..feature` | `branch_diff({ base, head })` |
 
 ## WHY MANDATORY
 
-- `blame_file` returns **STRUCTURED data** - author, date, message per line
-- `file_history` includes **file stats** (additions/deletions) per commit
-- `branch_diff` gives **ahead/behind counts** + file change summary
-- Bash git commands return **raw text** requiring manual parsing
+1. **Structured data** - Get objects, not text to parse
+2. **No output parsing errors** - Direct field access
+3. **Consistent format** - Same shape every time
+4. **Better error handling** - Clear error messages
 
 ## NEGATIVE RULES
 
-- **NEVER** use `Bash: git blame` - use `blame_file`
-- **NEVER** use `Bash: git log` - use `file_history` or `recent_changes`
-- **NEVER** use `Bash: git diff` - use `diff_file` or `branch_diff`
-- **NEVER** parse git output manually - all history tools return structured JSON
+- **NEVER** `Bash: git log` - use `file_history` or `recent_changes`
+- **NEVER** `Bash: git blame` - use `blame_file`
+- **NEVER** `Bash: git diff` - use `diff_file` or `branch_diff`
+- **NEVER** `Bash: git show` - use `commit_info`
+- **NEVER** parse git output with grep/awk - use structured tools
 
-## WHEN TO USE HISTORY
+## TOOL REFERENCE
 
-Use history tools **BEFORE** modifying code that:
-- Looks unusual or has magic numbers
-- Has comments like "DO NOT CHANGE" or "WORKAROUND"
-- Was recently modified (check who/why)
-- You don't understand the purpose of
+| Tool | Purpose | Returns |
+|------|---------|---------|
+| `blame_file` | Who wrote each line? | Lines with author, commit, date |
+| `file_history` | How did file evolve? | Commits that touched file |
+| `recent_changes` | What changed lately? | Recent commits with files |
+| `commit_info` | What's in this commit? | Full commit details |
+| `search_commits` | Find by message | Matching commits |
+| `diff_file` | What changed in file? | Unified diff |
+| `branch_diff` | Branch comparison | Files changed, stats |
 
-## Tools
+## COMMON WORKFLOWS
 
-| Tool | Purpose |
-|------|---------|
-| `blame_file` | Who wrote each line + why |
-| `file_history` | All commits that touched a file |
-| `recent_changes` | What changed in last N commits |
-| `commit_info` | Full details of a commit |
-| `search_commits` | Find commits by message |
-| `diff_file` | Compare versions |
-| `branch_diff` | PR summary vs base branch |
-
-## Quick Examples
-
+### Understand Code Origin
 ```
 blame_file({ file_path: 'src/auth.ts' })
-recent_changes({ count: 5 })
-search_commits({ query: 'authentication' })
-diff_file({ file_path: 'src/auth.ts', from_ref: 'HEAD~5' })
-branch_diff({ base: 'main' })
+// See who wrote each line and when
 ```
 
-**30 seconds reading blame saves hours of debugging.**
+### Track Bug Introduction
+```
+file_history({ file_path: 'src/broken.ts', limit: 10 })
+// Find recent changes
+commit_info({ ref: 'abc123' })
+// See full details of suspicious commit
+```
+
+### Review Changes for PR
+```
+branch_diff({ base: 'main', head: 'HEAD' })
+// See all changes on branch
+diff_file({ file_path: 'src/changed.ts', from_ref: 'main' })
+// See specific file changes
+```
+
+### Find Related Changes
+```
+search_commits({ query: 'authentication' })
+// Find commits about auth
+recent_changes({ count: 20 })
+// See what happened recently
+```
+
+**Works with any git repository.** Auto-detects git root.

@@ -6,73 +6,75 @@ allowed-tools: mcp__types__get_diagnostics, mcp__types__get_type_at_position, mc
 
 # types
 
-**TypeScript language service.** Type errors, hover info, definitions. Know if code compiles.
+**TypeScript intelligence.** Type checking, hover info, go-to-definition.
 
 ## MANDATORY SUBSTITUTIONS
 
 | WHEN you want to... | NEVER use... | ALWAYS use... |
 |---------------------|--------------|---------------|
-| Check for type errors | `Bash: npx tsc --noEmit` | `get_diagnostics({})` |
-| Check single file for errors | `Bash: npx tsc file.ts` | `get_diagnostics({ file: 'file.ts' })` |
-| Understand a type | Read source + guess | `get_type_at_position({ file, line, column })` |
-| Find where symbol is defined | `Grep` for definition | `go_to_definition({ file, line, column })` |
-| Find all usages (type-aware) | `Grep` for name | `find_type_references({ file, line, column })` |
-| Fix a type error | Manual fix | `get_quick_fixes({ file, line, column })` |
+| Check for type errors | `tsc --noEmit` in Bash | `get_diagnostics({})` |
+| Check specific file | `tsc file.ts` | `get_diagnostics({ file })` |
+| See type of symbol | Read code and guess | `get_type_at_position({ file, line, column })` |
+| Find definition | Manual grep | `go_to_definition({ file, line, column })` |
+| Find all usages | Grep for name | `find_type_references({ file, line, column })` |
+| Auto-fix errors | Manual editing | `get_quick_fixes({ file, line, column })` |
 
 ## WHY MANDATORY
 
-- `get_diagnostics` returns **STRUCTURED errors** with file, line, column, message
-- `Bash: tsc` returns **raw text** with ANSI codes, requires parsing
-- `find_type_references` is **TYPE-AWARE** - won't match unrelated same-name symbols
-- `get_quick_fixes` provides **APPLICABLE FIXES** the language server suggests
+1. **Accurate type info** - Real TypeScript analysis, not guessing
+2. **Structured errors** - File, line, column, message
+3. **IDE-quality** - Same intelligence as VS Code
+4. **No output parsing** - Direct data access
 
 ## NEGATIVE RULES
 
-- **NEVER** use `Bash: tsc` for type checking - use `get_diagnostics`
-- **NEVER** use `Grep` for type usages - use `find_type_references`
-- **NEVER** guess types from context - use `get_type_at_position`
-- **NEVER** manually trace definitions - use `go_to_definition`
+- **NEVER** `Bash: tsc` - use `get_diagnostics`
+- **NEVER** guess types - use `get_type_at_position`
+- **NEVER** manually search for definitions - use `go_to_definition`
+- **NEVER** grep for type usages - use `find_type_references`
 
-## MANDATORY WORKFLOW
+## TOOL REFERENCE
 
-After **EVERY** code edit in TypeScript:
-1. `notify_file_changed({ file })` - Sync the language server
-2. `get_diagnostics({ file })` - Verify no type errors introduced
-3. If errors: `get_quick_fixes({ file, line, column })` - Get suggested fixes
+| Tool | Purpose | When to use |
+|------|---------|-------------|
+| `get_diagnostics` | Type errors | After edits, verify correctness |
+| `get_type_at_position` | Hover info | Understand types at cursor |
+| `go_to_definition` | Jump to source | Find where symbol is defined |
+| `find_type_references` | All usages | Before refactoring |
+| `get_quick_fixes` | Auto-fix suggestions | When errors reported |
+| `notify_file_changed` | Sync state | After editing files |
+| `reload` | Refresh projects | After structural changes |
 
-## WHEN TO RELOAD
+## COMMON WORKFLOWS
 
-Use `reload({})` when:
-- New packages added to monorepo
-- New `tsconfig.json` created
-- Project structure changed
-
-## Tools
-
-| Tool | Purpose |
-|------|---------|
-| `get_diagnostics` | Type errors for file or project |
-| `get_type_at_position` | Hover info at line:column |
-| `go_to_definition` | Jump to where symbol is defined |
-| `find_type_references` | All usages (type-aware) |
-| `get_quick_fixes` | Available fixes for errors |
-| `notify_file_changed` | Sync after edits |
-| `reload` | Re-discover tsconfig.json files |
-
-## Quick Examples
-
+### After Making Edits
 ```
-get_diagnostics({})                          // All project errors
-get_diagnostics({ file: 'src/api.ts' })      // Single file
-get_diagnostics({ errors_only: true })       // Skip warnings
-
-get_type_at_position({ file: 'src/api.ts', line: 42, column: 10 })
-go_to_definition({ file: 'src/api.ts', line: 42, column: 10 })
-
-notify_file_changed({ file: 'src/api.ts' })  // After editing
-get_diagnostics({ file: 'src/api.ts' })      // Re-check
-
-reload({})                                    // After adding new packages
+notify_file_changed({ file: 'src/edited.ts' })
+// Tell TypeScript about changes
+get_diagnostics({ file: 'src/edited.ts' })
+// Check for type errors
 ```
 
-**Auto-initializes** from `tsconfig.json` in working directory.
+### Understanding New Code
+```
+get_type_at_position({ file: 'src/api.ts', line: 42, column: 15 })
+// See what type this variable is
+go_to_definition({ file: 'src/api.ts', line: 42, column: 15 })
+// Jump to where it's defined
+```
+
+### Fixing Type Errors
+```
+get_diagnostics({ errors_only: true })
+// Get all errors
+get_quick_fixes({ file: 'src/broken.ts', line: 10, column: 5 })
+// See available fixes
+```
+
+### Safe Refactoring
+```
+find_type_references({ file: 'src/types.ts', line: 5, column: 10 })
+// Find all usages before changing
+```
+
+**Supports:** TypeScript, JavaScript with JSDoc

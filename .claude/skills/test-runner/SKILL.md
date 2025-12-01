@@ -6,62 +6,79 @@ allowed-tools: mcp__test-runner__run_tests, mcp__test-runner__get_test_failures,
 
 # test-runner
 
-**Structured test results.** Run tests, get pass/fail with source locations. Fast iteration.
+**Structured test execution.** Pass/fail status. Source-mapped stack traces.
 
 ## MANDATORY SUBSTITUTIONS
 
 | WHEN you want to... | NEVER use... | ALWAYS use... |
 |---------------------|--------------|---------------|
-| Run all tests | `Bash: npm test` | `run_tests({})` |
-| Run specific test file | `Bash: npm test -- file` | `run_tests({ files: ['src/foo.test.ts'] })` |
-| Run tests by name pattern | `Bash: npm test -- --grep` | `run_tests({ testNamePattern: 'should handle' })` |
-| See why tests failed | Parse Bash output | `get_test_failures({})` |
-| Re-run only failures | `Bash: npm test` again | `rerun_failed({})` |
+| Run all tests | `npm test` in Bash | `run_tests({})` |
+| Run specific file | `npm test -- file.test.ts` | `run_tests({ files: ['file.test.ts'] })` |
+| Run by pattern | `npm test -- -t "pattern"` | `run_tests({ testNamePattern: 'pattern' })` |
+| See failure details | Parse Bash output | `get_test_failures({})` |
 | Find test files | `Glob: **/*.test.ts` | `list_test_files({})` |
+| Retry failures | Manual re-run | `rerun_failed({})` |
 
 ## WHY MANDATORY
 
-- `run_tests` returns **STRUCTURED results** - pass/fail counts, names, locations
-- `get_test_failures` gives **SOURCE-MAPPED stack traces** pointing to exact lines
-- `rerun_failed` is **FASTER** - only reruns what failed, not entire suite
-- `Bash: npm test` returns **raw text** with ANSI codes requiring manual parsing
+1. **Structured results** - Pass/fail counts, not text parsing
+2. **Source-mapped traces** - Real file locations, not compiled JS
+3. **Better failures** - Expected vs actual values
+4. **No timeout issues** - Runs until completion
 
 ## NEGATIVE RULES
 
-- **NEVER** use `Bash: npm test` - use `run_tests`
-- **NEVER** parse test output manually - use `get_test_failures`
-- **NEVER** re-run full suite after fix - use `rerun_failed`
-- **NEVER** use `Glob` for test files - use `list_test_files`
+- **NEVER** `Bash: npm test` - use `run_tests`
+- **NEVER** parse test output with grep - use `get_test_failures`
+- **NEVER** `Glob` for test files - use `list_test_files`
+- **NEVER** manually re-run failed tests - use `rerun_failed`
 
-## MANDATORY WORKFLOW
+## TOOL REFERENCE
 
+| Tool | Purpose | Returns |
+|------|---------|---------|
+| `run_tests` | Execute tests | Pass/fail counts, failures |
+| `get_test_failures` | Failure details | Error messages, locations |
+| `list_test_files` | Find test files | Paths to test files |
+| `rerun_failed` | Retry failures | Only failed tests |
+
+## COMMON WORKFLOWS
+
+### After Making Changes
 ```
-1. run_tests({})              // Run all tests
-2. get_test_failures({})      // See detailed failures with source locations
-3. Fix the code
-4. rerun_failed({})           // Verify fix without full suite
-5. Repeat 3-4 until green
-```
-
-## Tools
-
-| Tool | Purpose |
-|------|---------|
-| `run_tests` | Run tests, get structured results |
-| `get_test_failures` | Detailed failure info with source locations |
-| `list_test_files` | Discover test files |
-| `rerun_failed` | Re-execute only failing tests |
-
-## Quick Examples
-
-```
-run_tests({})                                    // Run all tests
-run_tests({ files: ['src/utils.test.ts'] })      // Specific file
-run_tests({ testNamePattern: 'should handle' })  // Filter by name
-
-get_test_failures({})                            // After a run
-rerun_failed({})                                 // Iterate on fixes
-list_test_files({})                              // See what's available
+run_tests({})
+// Run all tests, get structured results
 ```
 
-**Supports:** Jest, Vitest, Node test runner. Auto-detects framework.
+### Fix Failing Tests
+```
+run_tests({})
+// Find failures
+get_test_failures({})
+// Get detailed failure info with source locations
+// ... fix the code ...
+rerun_failed({})
+// Verify fix without running all tests
+```
+
+### Run Specific Tests
+```
+list_test_files({})
+// See available test files
+run_tests({ files: ['src/auth.test.ts'] })
+// Run just auth tests
+run_tests({ testNamePattern: 'should validate email' })
+// Run tests matching pattern
+```
+
+### Debugging Test Failures
+```
+get_test_failures({})
+// Returns:
+// - Test name and file location
+// - Error message
+// - Expected vs actual values
+// - Source-mapped stack trace
+```
+
+**Supports:** Vitest, Jest (auto-detected)

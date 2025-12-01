@@ -50,6 +50,7 @@ TypeScript language service integration. Get type errors, hover info, and go-to-
 - `find_type_references` - Type-aware reference finding
 - `get_quick_fixes` - Available fixes for errors
 - `notify_file_changed` - Sync after edits
+- `reload` - Re-discover tsconfig.json files (monorepo support)
 
 ### [@agent-workbench/test-runner](packages/test-runner/)
 Run tests and get structured results. Framework-agnostic with source-mapped failures.

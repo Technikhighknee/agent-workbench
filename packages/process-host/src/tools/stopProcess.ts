@@ -1,6 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, StopResult, SignalValue } from "./types.js";
-import { ProcessStatusSchema, SignalSchema, StopResultSchema } from "./schemas.js";
+import { SignalSchema, StopResultSchema } from "./schemas.js";
 
 interface StopProcessInput {
   id: string;

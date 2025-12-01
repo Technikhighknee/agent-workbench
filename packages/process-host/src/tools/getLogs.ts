@@ -1,6 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, StreamValue } from "./types.js";
-import { ProcessStatusSchema, StreamSchema, LogsOutputSchema } from "./schemas.js";
+import { StreamSchema, LogsOutputSchema } from "./schemas.js";
 
 interface GetLogsInput {
   id: string;

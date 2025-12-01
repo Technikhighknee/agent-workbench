@@ -443,7 +443,7 @@ export class GitService {
     }
 
     // Parse the diff output
-    const files: import("./model.js").ChangedFile[] = [];
+    const files: ChangedFile[] = [];
     let totalAdditions = 0;
     let totalDeletions = 0;
 

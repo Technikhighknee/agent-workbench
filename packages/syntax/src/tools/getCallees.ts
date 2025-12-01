@@ -2,7 +2,6 @@ import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
 import type { ToolResponse } from "./types.js";
-import type { CallSite } from "../core/model.js";
 
 interface GetCalleesInput {
   file_path: string;

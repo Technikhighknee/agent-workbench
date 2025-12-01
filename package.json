@@ -19,6 +19,7 @@
     "url": "git+https://github.com/Technikhighknee/agent-workbench.git"
   },
   "workspaces": [
+    "packages/core",
     "packages/process-host",
     "packages/syntax",
     "packages/history",

@@ -1,7 +1,7 @@
 ---
 name: syntax
-description: Use for symbol-aware code operations. Read and edit by function/class name instead of line numbers or exact string matching. Index projects for cross-file search and refactoring.
-allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__index_project, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol
+description: Use for symbol-aware code operations. Read and edit by function/class name instead of line numbers or exact string matching. Index projects for cross-file search, refactoring, and call hierarchy.
+allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__index_project, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees
 ---
 
 # syntax
@@ -16,6 +16,7 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - Searching for symbols across a codebase
 - Finding all usages of a function/class
 - Renaming symbols across multiple files
+- Understanding call hierarchy (who calls what)
 
 ## Tools
 
@@ -36,6 +37,8 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 | `search_symbols` | Find symbols by pattern across all files |
 | `find_references` | Find all usages of a symbol |
 | `rename_symbol` | Rename symbol across codebase (supports dry_run) |
+| `get_callers` | Find all functions that call a given function |
+| `get_callees` | Find all functions called by a given function |
 
 ## Decision Tree
 
@@ -45,6 +48,10 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - Need full file → built-in `Read`
 - Searching across project → `index_project` then `search_symbols`
 - Finding usages → `index_project` then `find_references`
+
+### Understanding Code Flow
+- What calls this function? → `index_project` then `get_callers`
+- What does this function call? → `index_project` then `get_callees`
 
 ### Editing Code
 - Replacing entire function → `edit_symbol`
@@ -70,6 +77,13 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 4. rename_symbol({ old_name: 'oldFunctionName', new_name: 'newFunctionName' })
 ```
 
+### Understand Call Flow
+```
+1. index_project({ root_path: '/path/to/project' })
+2. get_callers({ symbol_name: 'processData' })  // Who calls processData?
+3. get_callees({ file_path: 'src/service.ts', symbol_name_path: 'Service/processData' })  // What does it call?
+```
+
 ### Find Symbol Across Codebase
 ```
 1. index_project({ root_path: '/path/to/project' })
@@ -86,4 +100,5 @@ TypeScript, JavaScript, Python, Go, Rust
 - Always call `index_project` before cross-file operations
 - Use `dry_run: true` with `rename_symbol` to preview changes
 - `list_symbols` with `depth: 0` gives only top-level symbols
+- Call hierarchy helps understand code flow without reading everything
 - Complements built-in `Read`, `Edit`, `Grep`, `Glob`

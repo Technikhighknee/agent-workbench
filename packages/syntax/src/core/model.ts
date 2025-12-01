@@ -151,3 +151,49 @@ export interface SymbolReference {
   /** Whether this is the definition (vs a usage) */
   isDefinition: boolean;
 }
+
+/**
+ * Information about a function/method call.
+ */
+export interface CallInfo {
+  /** Name of the function/method being called */
+  callee: string;
+  /** Line number where the call occurs */
+  line: number;
+  /** Column number */
+  column: number;
+  /** Full text of the call expression */
+  callText: string;
+}
+
+/**
+ * Call hierarchy entry showing caller-callee relationship.
+ */
+export interface CallHierarchyItem {
+  /** Symbol name (function/method) */
+  name: string;
+  /** Symbol kind */
+  kind: SymbolKind;
+  /** File path */
+  filePath: string;
+  /** Line where symbol is defined */
+  line: number;
+  /** Calls made by this symbol (for outgoing) or calls to this symbol (for incoming) */
+  calls: CallSite[];
+}
+
+/**
+ * A specific call site.
+ */
+export interface CallSite {
+  /** File where the call occurs */
+  filePath: string;
+  /** Line of the call */
+  line: number;
+  /** Column of the call */
+  column: number;
+  /** Name of the calling/called function */
+  fromSymbol?: string;
+  /** Context line */
+  context: string;
+}

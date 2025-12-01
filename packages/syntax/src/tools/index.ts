@@ -10,6 +10,8 @@ import { registerIndexProject } from "./indexProject.js";
 import { registerSearchSymbols } from "./searchSymbols.js";
 import { registerFindReferences } from "./findReferences.js";
 import { registerRenameSymbol } from "./renameSymbol.js";
+import { registerGetCallers } from "./getCallers.js";
+import { registerGetCallees } from "./getCallees.js";
 
 export interface Services {
   syntax: SyntaxService;
@@ -27,6 +29,8 @@ export function registerAllTools(server: McpServer, services: Services): void {
   registerIndexProject(server, services.index);
   registerSearchSymbols(server, services.index);
   registerFindReferences(server, services.index);
+  registerGetCallers(server, services.index);
+  registerGetCallees(server, services.index);
 
   // Cross-service operations
   registerRenameSymbol(server, services.index, services.syntax);

@@ -2,7 +2,7 @@ import Parser from "tree-sitter";
 import { Parser as ParserPort, ParseResult, ParseError } from "../../core/ports/Parser.js";
 import { Result, Ok, Err } from "../../core/result.js";
 import { SymbolTree } from "../../core/symbolTree.js";
-import { Symbol, SymbolKind, Language, LANGUAGES, detectLanguage, Span, Location } from "../../core/model.js";
+import { Symbol, SymbolKind, Language, LANGUAGES, detectLanguage, Span, Location, CallInfo } from "../../core/model.js";
 
 // Tree-sitter language type (uses any in the typings)
 type TreeSitterLanguage = unknown;
@@ -81,6 +81,82 @@ export class TreeSitterParser implements ParserPort {
 
   detectLanguage(filePath: string): Language | undefined {
     return detectLanguage(filePath);
+  }
+
+  /**
+   * Extract function/method calls from source code.
+   * Used for building call hierarchy.
+   */
+  async extractCalls(source: string, filePath: string): Promise<Result<CallInfo[], Error>> {
+    const lang = this.detectLanguage(filePath);
+    if (!lang) {
+      return Err(new Error(`Unsupported file type: ${filePath}`));
+    }
+
+    try {
+      const grammar = await this.getGrammar(lang.id, filePath);
+      this.parser.setLanguage(grammar);
+      const tree = this.parser.parse(source);
+
+      const calls: CallInfo[] = [];
+      this.findCallExpressions(tree.rootNode, source, calls);
+
+      return Ok(calls);
+    } catch (error) {
+      return Err(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * Recursively find all call expressions in a node.
+   */
+  private findCallExpressions(
+    node: Parser.SyntaxNode,
+    source: string,
+    calls: CallInfo[]
+  ): void {
+    if (node.type === "call_expression") {
+      const callee = this.extractCalleeName(node);
+      if (callee) {
+        calls.push({
+          callee,
+          line: node.startPosition.row + 1,
+          column: node.startPosition.column + 1,
+          callText: node.text.slice(0, 50), // Truncate for display
+        });
+      }
+    }
+
+    // Recurse into children
+    for (const child of node.children) {
+      this.findCallExpressions(child, source, calls);
+    }
+  }
+
+  /**
+   * Extract the function/method name from a call expression.
+   */
+  private extractCalleeName(callNode: Parser.SyntaxNode): string | null {
+    const callee = callNode.children[0];
+    if (!callee) return null;
+
+    // Direct function call: identifier
+    if (callee.type === "identifier") {
+      return callee.text;
+    }
+
+    // Method call: member_expression
+    if (callee.type === "member_expression") {
+      // Get the property (method name)
+      const property = callee.children.find(
+        (c) => c.type === "property_identifier" || c.type === "identifier"
+      );
+      if (property) {
+        return property.text;
+      }
+    }
+
+    return null;
   }
 
   private async getGrammar(languageId: string, filePath: string): Promise<TreeSitterLanguage> {

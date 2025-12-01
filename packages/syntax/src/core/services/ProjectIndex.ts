@@ -4,7 +4,7 @@ import { FileSystem } from "../ports/FileSystem.js";
 import { SymbolCache } from "../ports/Cache.js";
 import { ProjectScanner } from "../ports/ProjectScanner.js";
 import { SymbolTree, flattenSymbols } from "../symbolTree.js";
-import { Symbol, SymbolInfo, SymbolKind, LANGUAGES, SymbolReference } from "../model.js";
+import { Symbol, SymbolInfo, SymbolKind, LANGUAGES, SymbolReference, CallSite } from "../model.js";
 
 export interface IndexedSymbol {
   name: string;
@@ -283,6 +283,155 @@ export class ProjectIndex {
     });
 
     return Ok(references);
+  }
+
+  /**
+   * Get all functions/methods that call the given symbol.
+   * Returns the call sites where the symbol is invoked.
+   */
+  async getCallers(symbolName: string): Promise<Result<CallSite[], string>> {
+    if (this.isEmpty()) {
+      return Err("No project indexed. Call index first.");
+    }
+
+    const callers: CallSite[] = [];
+
+    // Search all indexed files for calls to this symbol
+    for (const [relativePath, tree] of this.indexedFiles) {
+      const fullPath = this.resolvePath(relativePath);
+      const sourceResult = this.fs.read(fullPath);
+      if (!sourceResult.ok) continue;
+
+      const source = sourceResult.value;
+      const lines = source.split("\n");
+
+      // Find all functions/methods in this file
+      const flattened = flattenSymbols(tree);
+      const callableSymbols = flattened.filter(({ symbol }) =>
+        symbol.kind === "function" || symbol.kind === "method"
+      );
+
+      // For each callable, check if it calls our target
+      for (const { symbol, namePath } of callableSymbols) {
+        // Extract the body of this symbol
+        const startLine = symbol.span.start.line;
+        const endLine = symbol.span.end.line;
+        const body = lines.slice(startLine - 1, endLine).join("\n");
+
+        // Search for calls to the target symbol
+        const callPattern = new RegExp(
+          `(?:^|[^\\w])${this.escapeRegex(symbolName)}\\s*\\(`,
+          "gm"
+        );
+
+        let match: RegExpExecArray | null;
+        while ((match = callPattern.exec(body)) !== null) {
+          // Calculate the actual line number
+          const beforeMatch = body.slice(0, match.index);
+          const lineOffset = (beforeMatch.match(/\n/g) || []).length;
+          const callLine = startLine + lineOffset;
+
+          callers.push({
+            filePath: relativePath,
+            line: callLine,
+            column: 1, // Approximate
+            fromSymbol: namePath,
+            context: lines[callLine - 1]?.trim() || "",
+          });
+        }
+      }
+    }
+
+    // Sort by file and line
+    callers.sort((a, b) => {
+      if (a.filePath !== b.filePath) {
+        return a.filePath.localeCompare(b.filePath);
+      }
+      return a.line - b.line;
+    });
+
+    return Ok(callers);
+  }
+
+  /**
+   * Get all functions/methods called by the given symbol.
+   * Requires the symbol's file path and name path.
+   */
+  async getCallees(
+    filePath: string,
+    symbolNamePath: string
+  ): Promise<Result<CallSite[], string>> {
+    if (this.isEmpty()) {
+      return Err("No project indexed. Call index first.");
+    }
+
+    // Resolve the file path
+    const relativePath = filePath.startsWith(this.rootPath)
+      ? filePath.slice(this.rootPath.length + 1)
+      : filePath;
+
+    const tree = this.indexedFiles.get(relativePath);
+    if (!tree) {
+      return Err(`File not indexed: ${filePath}`);
+    }
+
+    // Find the symbol
+    const flattened = flattenSymbols(tree);
+    const symbolEntry = flattened.find(({ namePath }) => namePath === symbolNamePath);
+    if (!symbolEntry) {
+      return Err(`Symbol not found: ${symbolNamePath}`);
+    }
+
+    const { symbol } = symbolEntry;
+    const fullPath = this.resolvePath(relativePath);
+    const sourceResult = this.fs.read(fullPath);
+    if (!sourceResult.ok) {
+      return Err(sourceResult.error.message);
+    }
+
+    const source = sourceResult.value;
+    const lines = source.split("\n");
+
+    // Extract the body of this symbol
+    const startLine = symbol.span.start.line;
+    const endLine = symbol.span.end.line;
+    const body = lines.slice(startLine - 1, endLine).join("\n");
+
+    // Find all function calls in the body using a regex
+    // This matches: identifier( or .identifier(
+    const callPattern = /(?:^|[^\w])(\w+)\s*\(/gm;
+    const callees: CallSite[] = [];
+    const seenCalls = new Set<string>();
+
+    let match: RegExpExecArray | null;
+    while ((match = callPattern.exec(body)) !== null) {
+      const calleeName = match[1];
+
+      // Skip common non-function patterns
+      if (["if", "for", "while", "switch", "catch", "function", "return"].includes(calleeName)) {
+        continue;
+      }
+
+      // Calculate the actual line number
+      const beforeMatch = body.slice(0, match.index);
+      const lineOffset = (beforeMatch.match(/\n/g) || []).length;
+      const callLine = startLine + lineOffset;
+
+      // Dedupe by name (we just want to know what's called, not every instance)
+      const key = `${calleeName}:${callLine}`;
+      if (seenCalls.has(key)) continue;
+      seenCalls.add(key);
+
+      callees.push({
+        filePath: relativePath,
+        line: callLine,
+        column: 1, // Approximate
+        fromSymbol: calleeName,
+        context: lines[callLine - 1]?.trim() || "",
+      });
+    }
+
+    return Ok(callees);
   }
 
   /**

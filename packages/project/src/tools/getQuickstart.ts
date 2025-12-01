@@ -26,11 +26,6 @@ export const registerGetQuickstart: ToolRegistrar = (server, service) => {
       inputSchema: {},
     },
     async () => {
-      const rootResult = service.getProjectRoot();
-      if (!rootResult.ok) {
-        return { content: [{ type: "text", text: `Error: ${rootResult.error}` }] };
-      }
-
       const infoResult = await service.getProjectInfo();
       if (!infoResult.ok) {
         return { content: [{ type: "text", text: `Error: ${infoResult.error}` }] };
@@ -43,7 +38,7 @@ export const registerGetQuickstart: ToolRegistrar = (server, service) => {
       // Determine package manager
       const fs = await import("fs");
       const path = await import("path");
-      const root = rootResult.value;
+      const root = await service.getProjectRoot();
 
       let packageManager = "npm";
       if (fs.existsSync(path.join(root, "pnpm-lock.yaml"))) {

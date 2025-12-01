@@ -165,4 +165,81 @@ describe("ProjectService", () => {
       expect(result.value).toContain("test-project");
     });
   });
+
+  describe("tech stack detection", () => {
+    it("detects Express as backend framework", async () => {
+      const service = new ProjectService(FIXTURES);
+      const result = await service.getProjectInfo();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const depNames = result.value.dependencies.map((d) => d.name);
+      expect(depNames).toContain("express");
+    });
+
+    it("detects TypeScript as language", async () => {
+      const service = new ProjectService(FIXTURES);
+      const result = await service.getProjectInfo();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const depNames = result.value.dependencies.map((d) => d.name);
+      expect(depNames).toContain("typescript");
+    });
+
+    it("detects Vitest as testing framework", async () => {
+      const service = new ProjectService(FIXTURES);
+      const result = await service.getProjectInfo();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const depNames = result.value.dependencies.map((d) => d.name);
+      expect(depNames).toContain("vitest");
+    });
+  });
+
+  describe("quickstart commands", () => {
+    it("has build script", async () => {
+      const service = new ProjectService(FIXTURES);
+      const result = await service.getProjectInfo();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const scriptNames = result.value.scripts.map((s) => s.name);
+      expect(scriptNames).toContain("build");
+    });
+
+    it("has test script", async () => {
+      const service = new ProjectService(FIXTURES);
+      const result = await service.getProjectInfo();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const scriptNames = result.value.scripts.map((s) => s.name);
+      expect(scriptNames).toContain("test");
+    });
+
+    it("has lint script", async () => {
+      const service = new ProjectService(FIXTURES);
+      const result = await service.getProjectInfo();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      const scriptNames = result.value.scripts.map((s) => s.name);
+      expect(scriptNames).toContain("lint");
+    });
+
+    it("returns project root for structure", async () => {
+      const service = new ProjectService(FIXTURES);
+      const root = await service.getProjectRoot();
+
+      expect(root).toBe(FIXTURES);
+    });
+  });
 });

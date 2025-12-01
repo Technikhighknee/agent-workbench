@@ -116,12 +116,7 @@ export const registerGetStructure: ToolRegistrar = (server, service) => {
       inputSchema: {},
     },
     async () => {
-      const rootResult = service.getProjectRoot();
-      if (!rootResult.ok) {
-        return { content: [{ type: "text", text: `Error: ${rootResult.error}` }] };
-      }
-
-      const root = rootResult.value;
+      const root = await service.getProjectRoot();
       const directories: DirectoryInfo[] = [];
       const rootFiles: string[] = [];
 

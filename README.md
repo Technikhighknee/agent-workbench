@@ -41,6 +41,24 @@ Project metadata operations. Quickly understand project structure, configs, and 
 - `get_dependencies` - Production and dev dependencies
 - `find_configs` / `read_config` - Configuration file discovery
 
+### [@agent-workbench/types](packages/types/)
+TypeScript language service integration. Get type errors, hover info, and go-to-definition.
+
+- `get_diagnostics` - Type errors and warnings for file or project
+- `get_type_at_position` - Hover info and type details
+- `go_to_definition` - Navigate to where symbols are defined
+- `find_type_references` - Type-aware reference finding
+- `get_quick_fixes` - Available fixes for errors
+- `notify_file_changed` - Sync after edits
+
+### [@agent-workbench/test-runner](packages/test-runner/)
+Run tests and get structured results. Framework-agnostic with source-mapped failures.
+
+- `run_tests` - Execute tests with structured pass/fail results
+- `get_test_failures` - Detailed failure info with source locations
+- `list_test_files` - Discover test files by pattern
+- `rerun_failed` - Re-execute only failing tests
+
 ## Quick Start
 
 ```bash

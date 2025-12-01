@@ -107,13 +107,44 @@ export class TreeSitterParser implements ParserPort {
     const symbols: Symbol[] = [];
 
     for (const child of node.children) {
-      const symbol = this.nodeToSymbol(child, source, language);
+      // Handle export statements - look inside for the actual declaration
+      const targetNode = this.unwrapExport(child, language);
+      const symbol = this.nodeToSymbol(targetNode, source, language);
       if (symbol) {
         symbols.push(symbol);
       }
     }
 
     return symbols;
+  }
+
+  /**
+   * Unwrap export statements to get the inner declaration.
+   * TypeScript/JavaScript: export_statement wraps class_declaration, function_declaration, etc.
+   */
+  private unwrapExport(node: Parser.SyntaxNode, language: string): Parser.SyntaxNode {
+    if (language !== "typescript" && language !== "javascript") {
+      return node;
+    }
+
+    if (node.type === "export_statement") {
+      // Find the actual declaration inside the export
+      for (const child of node.children) {
+        if (
+          child.type === "class_declaration" ||
+          child.type === "function_declaration" ||
+          child.type === "interface_declaration" ||
+          child.type === "type_alias_declaration" ||
+          child.type === "enum_declaration" ||
+          child.type === "lexical_declaration" ||
+          child.type === "variable_declaration"
+        ) {
+          return child;
+        }
+      }
+    }
+
+    return node;
   }
 
   private nodeToSymbol(node: Parser.SyntaxNode, source: string, language: string): Symbol | null {

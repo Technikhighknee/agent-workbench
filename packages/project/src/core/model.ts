@@ -81,6 +81,7 @@ export interface ConfigFile {
  * Known configuration file types.
  */
 export type ConfigType =
+  | "npm"
   | "typescript"
   | "eslint"
   | "prettier"

@@ -22,6 +22,8 @@ import {
  * Known config files and their types.
  */
 const CONFIG_FILES: Record<string, ConfigType> = {
+  // Package managers
+  "package.json": "npm",
   // TypeScript
   "tsconfig.json": "typescript",
   "tsconfig.base.json": "typescript",

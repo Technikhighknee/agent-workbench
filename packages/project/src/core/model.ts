@@ -103,4 +103,5 @@ export type ConfigType =
   | "other";
 
 // Re-export Result utilities from core
-export { Result, ok, err } from "@agent-workbench/core";
+export type { Result } from "@agent-workbench/core";
+export { ok, err } from "@agent-workbench/core";

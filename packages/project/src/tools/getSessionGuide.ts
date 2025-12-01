@@ -45,6 +45,13 @@ These tools give you: structured data, no timeouts, source-mapped errors, semant
 - \`spawn_process\` - background processes
 - \`get_logs\` - check output
 - \`wait_for_pattern\` - wait for "ready" messages
+- \`stop_process\` - stop when done
+- \`list_processes\` - see what's running
+
+**Keep processes tidy:**
+- Stop dev servers when done: \`stop_process({ id })\`
+- Check for orphans: \`list_processes({ running_only: true })\`
+- Clean up old logs: \`purge_processes({ older_than_hours: 24 })\`
 
 ### Reading/Editing Code
 ❌ NEVER: Read + Edit for functions/classes

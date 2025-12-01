@@ -105,3 +105,29 @@ stop_all_processes({})
 ```
 
 **Process IDs persist** - Can reference processes later in session.
+
+## PROCESS HYGIENE
+
+**Keep the process list tidy:**
+
+1. **Stop servers when done** - Don't leave dev servers running
+   ```
+   stop_process({ id: '<process-id>' })
+   ```
+
+2. **Check for orphans** - Before starting new servers
+   ```
+   list_processes({ running_only: true })
+   ```
+
+3. **Clean up old logs** - Periodically purge old records
+   ```
+   purge_processes({ older_than_hours: 24 })
+   ```
+
+4. **Use labels** - Make processes identifiable
+   ```
+   spawn_process({ command: 'npm run dev', label: 'Dev Server' })
+   ```
+
+**Don't leave orphaned processes!** Check `list_processes` and clean up.

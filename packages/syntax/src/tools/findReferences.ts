@@ -33,6 +33,7 @@ export function registerFindReferences(server: McpServer, index: ProjectIndex): 
       title: "Find references",
       description: `Find all usages and references of a symbol throughout the codebase.
 
+INSTEAD OF: Grep for symbol names (which can't distinguish definitions from usages).
 Requires index_project to be called first. Uses text-based search for the symbol
 name as an identifier (word boundary matching).
 

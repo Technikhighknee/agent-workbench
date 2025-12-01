@@ -14,7 +14,7 @@ export const registerBlameFile: ToolRegistrar = (server, service) => {
     "blame_file",
     {
       title: "Blame file",
-      description: "Get git blame for a file - shows who wrote each line and when",
+      description: "Get git blame for a file - shows who wrote each line and when. INSTEAD OF: `git blame` in Bash.",
       inputSchema: {
         file_path: z.string().describe("Path to the file to blame"),
       },

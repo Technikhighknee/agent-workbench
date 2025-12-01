@@ -23,6 +23,8 @@ export const registerGetDiagnostics: ToolRegistrar = (server, service) => {
       title: "Get type diagnostics",
       description: `Get TypeScript type errors, warnings, and suggestions for a file or the entire project.
 
+INSTEAD OF: \`tsc --noEmit\` or \`npx tsc\` in Bash (which can timeout or produce noisy output).
+
 This is the primary tool for checking if code is type-correct. Use it after making edits to verify no type errors were introduced.
 
 Use cases:

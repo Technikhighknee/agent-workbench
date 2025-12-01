@@ -18,6 +18,8 @@ export function registerRunTests(server: McpServer, service: TestRunnerServiceIm
       title: "Run tests",
       description: `Run tests in the project and get structured results.
 
+INSTEAD OF: \`npm test\`, \`vitest\`, \`jest\` in Bash (which produces raw output and can timeout).
+
 Returns detailed test results including:
 - Pass/fail status for each test
 - Failure messages with expected/actual values

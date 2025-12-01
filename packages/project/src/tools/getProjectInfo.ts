@@ -10,7 +10,7 @@ export const registerGetProjectInfo: ToolRegistrar = (server, service) => {
     {
       title: "Get project info",
       description:
-        "Get basic project information - name, type, version, available scripts",
+        "Get basic project information - name, type, version, available scripts. INSTEAD OF: Reading package.json directly.",
       inputSchema: {},
     },
     async () => {

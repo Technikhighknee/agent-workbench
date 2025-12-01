@@ -16,7 +16,7 @@ export const registerDiffFile: ToolRegistrar = (server, service) => {
     "diff_file",
     {
       title: "Diff file",
-      description: "Get diff of a file between two commits",
+      description: "Get diff of a file between two commits. INSTEAD OF: `git diff` in Bash.",
       inputSchema: {
         file_path: z.string().describe("Path to the file to diff"),
         from_ref: z

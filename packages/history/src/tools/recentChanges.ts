@@ -14,7 +14,7 @@ export const registerRecentChanges: ToolRegistrar = (server, service) => {
     "recent_changes",
     {
       title: "Recent changes",
-      description: "Get recently changed files across the repository",
+      description: "Get recently changed files across the repository. INSTEAD OF: `git log --name-only` in Bash.",
       inputSchema: {
         count: z
           .number()

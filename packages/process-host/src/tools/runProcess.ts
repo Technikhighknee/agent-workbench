@@ -33,6 +33,8 @@ export const registerRunProcess: ToolRegistrar = (server, service) => {
       title: "Run process",
       description: `Run a command and wait for completion. Output is cleaned and compacted.
 
+INSTEAD OF: Bash tool for builds/tests (which has 2-minute timeout and raw output).
+
 Use cases:
 - Build commands: "npm run build", "cargo build"
 - Tests: "npm test", "pytest"

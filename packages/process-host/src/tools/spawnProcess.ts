@@ -23,6 +23,8 @@ export const registerSpawnProcess: ToolRegistrar = (server, service) => {
       title: "Spawn process",
       description: `Spawn a background process. Returns immediately with process ID for later reference.
 
+INSTEAD OF: Bash with \`&\` for background processes (which loses output and can't be monitored).
+
 Use cases:
 - Dev servers: "npm run dev", "python -m http.server"
 - Build watchers: "npm run watch", "tsc --watch"

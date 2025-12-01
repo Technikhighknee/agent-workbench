@@ -22,6 +22,8 @@ export const registerReadSymbol: ToolRegistrar = (server, service) => {
       title: "Read symbol",
       description: `Read a specific symbol's code by its name path.
 
+INSTEAD OF: Read tool for functions/classes (which requires knowing line numbers).
+
 Name paths are hierarchical: "MyClass/myMethod" reads myMethod inside MyClass.
 For top-level symbols, just use the name: "myFunction".
 

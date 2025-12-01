@@ -1,7 +1,7 @@
 ---
 name: project
 description: "MANDATORY: Use INSTEAD of Read package.json. Structured project info, scripts, deps. NEVER read package.json directly."
-allowed-tools: mcp__project__get_project_info, mcp__project__get_scripts, mcp__project__get_dependencies, mcp__project__find_configs, mcp__project__read_config
+allowed-tools: mcp__project__get_session_guide, mcp__project__get_project_info, mcp__project__get_scripts, mcp__project__get_dependencies, mcp__project__find_configs, mcp__project__read_config
 ---
 
 # project
@@ -36,14 +36,15 @@ allowed-tools: mcp__project__get_project_info, mcp__project__get_scripts, mcp__p
 ## WHEN TO USE PROJECT
 
 Use project tools at **SESSION START**:
-1. `get_project_info({})` - Understand what you're working with
-2. `get_scripts({})` - Know available commands
-3. `find_configs({})` - Know what tools are configured
-
+1. `get_session_guide({})` - **FIRST** - Learn which MCP tools to use and when
+2. `get_project_info({})` - Understand what you're working with
+3. `get_scripts({})` - Know available commands
+4. `find_configs({})` - Know what tools are configured
 ## Tools
 
 | Tool | Purpose |
 |------|---------|
+| `get_session_guide` | **CALL FIRST** - Learn all MCP tools and when to use them |
 | `get_project_info` | Full overview: type, version, scripts, workspaces |
 | `get_scripts` | Available commands |
 | `get_dependencies` | Packages (production/dev/all) |

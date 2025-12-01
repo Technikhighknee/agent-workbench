@@ -1,0 +1,12 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    name: "types",
+    include: ["test/**/*.test.ts"],
+    exclude: ["dist/**", "node_modules/**"],
+    environment: "node",
+    testTimeout: 15000, // TypeScript operations can be slow
+    globals: true,
+  },
+});

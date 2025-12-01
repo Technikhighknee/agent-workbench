@@ -12,7 +12,10 @@
     "build:types": "npm run build -w @agent-workbench/types",
     "build:test-runner": "npm run build -w @agent-workbench/test-runner",
     "clean": "rm -rf packages/*/dist",
-    "test": "npm run test --workspaces --if-present"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "repository": {
     "type": "git",
@@ -38,5 +41,9 @@
   "bugs": {
     "url": "https://github.com/Technikhighknee/agent-workbench/issues"
   },
-  "homepage": "https://github.com/Technikhighknee/agent-workbench#readme"
+  "homepage": "https://github.com/Technikhighknee/agent-workbench#readme",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.14",
+    "vitest": "^4.0.14"
+  }
 }

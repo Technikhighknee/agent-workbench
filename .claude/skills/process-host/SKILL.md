@@ -1,7 +1,7 @@
 ---
 name: process-host
 description: "MANDATORY: Use INSTEAD of Bash for builds/tests. No timeouts, clean output. NEVER use Bash for npm run/test."
-allowed-tools: mcp__process-host__run_process, mcp__process-host__spawn_process, mcp__process-host__get_logs, mcp__process-host__stop_process, mcp__process-host__list_processes, mcp__process-host__get_process, mcp__process-host__restart_process, mcp__process-host__wait_for_pattern, mcp__process-host__search_logs
+allowed-tools: mcp__process-host__run_process, mcp__process-host__spawn_process, mcp__process-host__get_logs, mcp__process-host__stop_process, mcp__process-host__list_processes, mcp__process-host__get_process, mcp__process-host__restart_process, mcp__process-host__wait_for_pattern, mcp__process-host__search_logs, mcp__process-host__write_stdin, mcp__process-host__send_signal, mcp__process-host__purge_processes, mcp__process-host__stop_all_processes, mcp__process-host__get_stats
 ---
 
 # process-host
@@ -24,6 +24,16 @@ allowed-tools: mcp__process-host__run_process, mcp__process-host__spawn_process,
 2. **Clean output** - ANSI codes stripped, progress bars removed
 3. **Background processes** - Persist across tool calls
 4. **Structured management** - List, stop, restart by ID
+5. **You stay in control** - `run_process` returns after 30s if still running
+
+## HOW `run_process` WORKS
+
+`run_process` waits up to 30 seconds (default). If the process is still running:
+- Returns control to you with the process ID
+- Process continues in background
+- Output includes hints: `stop_process`, `get_logs`, `wait_for_pattern`
+
+**You're never stuck.** Use `stop_process({ id })` to cancel like Ctrl+C.
 
 ## NEGATIVE RULES
 
@@ -50,6 +60,15 @@ allowed-tools: mcp__process-host__run_process, mcp__process-host__spawn_process,
 | `search_logs` | Find patterns in output |
 | `list_processes` | See all processes |
 | `get_process` | Get process details |
+| `write_stdin` | Send input to process |
+| `send_signal` | Send signal (SIGHUP, etc.) |
+
+### Cleanup & Management
+| Tool | Purpose |
+|------|---------|
+| `stop_all_processes` | Stop everything at once |
+| `purge_processes` | Clean up old records |
+| `get_stats` | Process statistics |
 
 ## COMMON WORKFLOWS
 

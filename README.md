@@ -9,6 +9,7 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 
 - `list_symbols` - Get file structure
 - `read_symbol` / `edit_symbol` - Read/write by symbol name
+- `edit_lines` - Replace lines by number (for non-symbol edits)
 - `get_imports` / `get_exports` - Analyze module boundaries
 - `search_symbols` / `find_references` - Cross-file search
 - `get_callers` / `get_callees` - Call hierarchy
@@ -21,8 +22,13 @@ Process management with persistent tracking, log capture, and lifecycle control.
 - `run_process` - Run command, wait for completion
 - `spawn_process` - Start background process
 - `get_logs` / `search_logs` - Monitor output
+- `get_process` / `list_processes` - Query process state
 - `stop_process` / `restart_process` - Lifecycle control
+- `stop_all_processes` - Stop everything at once
 - `wait_for_pattern` - Block until output matches
+- `write_stdin` - Send input to running process
+- `send_signal` - Send signals (SIGHUP, SIGINT, etc.)
+- `purge_processes` / `get_stats` - Cleanup and statistics
 
 ### [@agent-workbench/history](packages/history/)
 Git history operations for AI agents. Understand code evolution through blame, history, and commit search.

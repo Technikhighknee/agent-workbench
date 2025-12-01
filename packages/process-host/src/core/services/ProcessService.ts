@@ -409,7 +409,27 @@ purge(options: { keepRunning?: boolean; olderThanMs?: number } = {}): number {
    * Run a command and wait for it to complete.
    * Returns the process info and all logs.
    */
-  async run(params: StartProcessParams): Promise<Result<{ process: ProcessInfo; logs: string; exitCode: number | null }, string>> {
+  /**
+   * Run a command and wait for it to complete.
+   * Returns the process info and all logs.
+   * Default timeout: 10 minutes (to prevent indefinite hangs).
+   */
+  /**
+   * Run a command and wait for it to complete.
+   * Returns the process info and all logs.
+   * 
+   * If the process doesn't complete within the initial wait period (default: 30s),
+   * returns early with the process still running - giving the agent control back.
+   */
+  async run(params: StartProcessParams): Promise<Result<{ 
+    process: ProcessInfo; 
+    logs: string; 
+    exitCode: number | null;
+    stillRunning: boolean;
+  }, string>> {
+    const DEFAULT_INITIAL_WAIT_MS = 30 * 1000; // 30 seconds initial wait
+    const initialWaitMs = params.timeoutMs ?? DEFAULT_INITIAL_WAIT_MS;
+
     const startResult = this.start(params);
     if (!startResult.ok) {
       return Err(startResult.error);
@@ -418,19 +438,19 @@ purge(options: { keepRunning?: boolean; olderThanMs?: number } = {}): number {
     const process = startResult.value;
 
     try {
-      const exitCode = await this.waitForExit(process.id, { timeoutMs: params.timeoutMs });
+      const exitCode = await this.waitForExit(process.id, { timeoutMs: initialWaitMs });
       const logsResult = this.logs.get(process.id, 10000);
       const logs = logsResult?.logs ?? "";
       const updatedProcess = this.processes.get(process.id) ?? process;
 
-      return Ok({ process: updatedProcess, logs, exitCode });
+      return Ok({ process: updatedProcess, logs, exitCode, stillRunning: false });
     } catch (error) {
-      // On timeout, still return what we have
+      // Timeout - process still running, return control to agent
       const logsResult = this.logs.get(process.id, 10000);
       const logs = logsResult?.logs ?? "";
       const updatedProcess = this.processes.get(process.id) ?? process;
 
-      return Ok({ process: updatedProcess, logs, exitCode: null });
+      return Ok({ process: updatedProcess, logs, exitCode: null, stillRunning: true });
     }
   }
 }

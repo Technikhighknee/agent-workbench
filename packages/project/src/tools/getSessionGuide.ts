@@ -41,12 +41,15 @@ These tools give you: structured data, no timeouts, source-mapped errors, semant
 ### Build & Long-Running Processes
 ❌ NEVER: Bash for builds (timeout issues)
 ✅ ALWAYS: \`mcp__process-host__*\` tools
-- \`run_process\` - blocking with clean output
+- \`run_process\` - waits 30s, then returns control if still running
 - \`spawn_process\` - background processes
 - \`get_logs\` - check output
 - \`wait_for_pattern\` - wait for "ready" messages
-- \`stop_process\` - stop when done
+- \`stop_process\` - cancel (like Ctrl+C)
 - \`list_processes\` - see what's running
+
+**If \`run_process\` takes too long:** it returns with the process ID and hints.
+Use \`stop_process({ id })\` to cancel, or \`get_logs({ id })\` to check progress.
 
 **Keep processes tidy:**
 - Stop dev servers when done: \`stop_process({ id })\`
@@ -133,7 +136,7 @@ export function registerGetSessionGuide(server: McpServer): void {
     {
       title: "Get session guide",
       description:
-        "RECOMMENDED FIRST CALL. Learn about 40+ specialized MCP tools that replace Bash " +
+        "RECOMMENDED FIRST CALL. Learn about 60+ specialized MCP tools that replace Bash " +
         "for git, TypeScript, tests, builds, and code editing. These tools give structured " +
         "results, no timeouts, and semantic operations. Covers: history, types, test-runner, " +
         "process-host, syntax, graph packages.",

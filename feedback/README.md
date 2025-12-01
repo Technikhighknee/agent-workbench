@@ -1,21 +1,10 @@
 # Agent Feedback
 
-Real usage feedback from AI agents using agent-workbench MCP tools.
-
-## Structure
+Drop notes here when you encounter something noteworthy while using the MCP tools.
 
 ```
 feedback/
-├── tools/          # Per-tool feedback
-├── skills/         # Skill file feedback
-├── patterns/       # Useful patterns discovered
-└── README.md
+├── tools/      # Tool-specific observations
+├── skills/     # Skill file observations
+├── patterns/   # Useful patterns discovered
 ```
-
-## How to Contribute
-
-Add feedback files when you encounter:
-- Tool behaviors that surprised you
-- Missing functionality you needed
-- Patterns that worked well
-- Edge cases that failed

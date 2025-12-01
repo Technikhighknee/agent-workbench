@@ -5,7 +5,7 @@ import { SymbolCache } from "../ports/Cache.js";
 import { ProjectScanner } from "../ports/ProjectScanner.js";
 import { FileWatcher } from "../ports/FileWatcher.js";
 import { SymbolTree, flattenSymbols } from "../symbolTree.js";
-import { Symbol, SymbolInfo, SymbolKind, LANGUAGES, SymbolReference, CallSite, DependencyAnalysis, CircularDependency, ImportInfo } from "../model.js";
+import { SymbolKind, LANGUAGES, SymbolReference, CallSite, DependencyAnalysis, CircularDependency, ImportInfo } from "../model.js";
 import path from "path";
 
 export interface IndexedSymbol {
@@ -158,7 +158,6 @@ export class ProjectIndex {
     const fullPath = this.resolvePath(relativePath);
 
     // Remove old symbols for this file
-    const oldSymbolCount = this.allSymbols.length;
     const filtered = this.allSymbols.filter((s) => s.filePath !== relativePath);
     this.allSymbols.length = 0;
     this.allSymbols.push(...filtered);
@@ -294,7 +293,7 @@ export class ProjectIndex {
    */
   async findReferences(
     symbolName: string,
-    definitionFile?: string
+    _definitionFile?: string
   ): Promise<Result<SymbolReference[], string>> {
     if (this.isEmpty()) {
       return Err("No project indexed. Call index first.");
@@ -307,7 +306,7 @@ export class ProjectIndex {
     const pattern = new RegExp(`\\b${this.escapeRegex(symbolName)}\\b`, "g");
 
     // Search all indexed files
-    for (const [relativePath, tree] of this.indexedFiles) {
+    for (const [relativePath] of this.indexedFiles) {
       const fullPath = this.resolvePath(relativePath);
       const sourceResult = this.fs.read(fullPath);
 
@@ -315,11 +314,6 @@ export class ProjectIndex {
 
       const source = sourceResult.value;
       const lines = source.split("\n");
-
-      // Check if this file defines the symbol
-      const isDefinitionFile = definitionFile
-        ? relativePath === definitionFile || fullPath === definitionFile
-        : false;
 
       // Search each line for matches
       for (let i = 0; i < lines.length; i++) {

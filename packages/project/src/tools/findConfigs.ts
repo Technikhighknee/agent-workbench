@@ -2,7 +2,6 @@
  * find_configs tool - Find configuration files in the project.
  */
 
-import * as z from "zod/v4";
 import type { ToolRegistrar } from "./types.js";
 
 export const registerFindConfigs: ToolRegistrar = (server, service) => {

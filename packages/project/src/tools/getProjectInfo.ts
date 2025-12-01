@@ -2,7 +2,6 @@
  * get_project_info tool - Get basic project information.
  */
 
-import * as z from "zod/v4";
 import type { ToolRegistrar } from "./types.js";
 
 export const registerGetProjectInfo: ToolRegistrar = (server, service) => {

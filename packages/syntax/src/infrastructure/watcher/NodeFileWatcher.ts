@@ -96,7 +96,7 @@ export class NodeFileWatcher implements FileWatcher {
     this.debounceTimers.set(key, timer);
   }
 
-  private determineEvent(fullPath: string, eventType: string): FileWatchEvent {
+  private determineEvent(fullPath: string, _eventType: string): FileWatchEvent {
     // fs.watch doesn't distinguish add/change/unlink well
     // We check if file exists to determine the event type
     try {

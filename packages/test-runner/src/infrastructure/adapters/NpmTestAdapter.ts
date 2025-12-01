@@ -9,7 +9,6 @@ import type {
   TestResult,
   TestSuite,
   TestConfig,
-  TestSummary,
   TestFailure,
   RunTestsOptions,
   TestFramework,
@@ -272,7 +271,7 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
     };
   }
 
-  private parseTextOutput(output: string, exitCode: number): TestRun {
+  private parseTextOutput(output: string, _exitCode: number): TestRun {
     const tests: TestResult[] = [];
     const lines = output.split("\n");
 

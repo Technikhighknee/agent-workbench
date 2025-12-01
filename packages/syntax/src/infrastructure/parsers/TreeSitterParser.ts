@@ -1,8 +1,7 @@
 import Parser from "tree-sitter";
 import { Parser as ParserPort, ParseResult, ParseError } from "../../core/ports/Parser.js";
 import { Result, Ok, Err } from "@agent-workbench/core";
-import { SymbolTree } from "../../core/symbolTree.js";
-import { Symbol, SymbolKind, Language, LANGUAGES, detectLanguage, Span, Location, CallInfo, ImportInfo, ImportBinding, ImportType, ExportInfo, ExportBinding, ExportType } from "../../core/model.js";
+import { Symbol, SymbolKind, Language, LANGUAGES, detectLanguage, Span, CallInfo, ImportInfo, ImportBinding, ImportType, ExportInfo, ExportBinding, ExportType } from "../../core/model.js";
 
 // Tree-sitter language type (uses any in the typings)
 type TreeSitterLanguage = unknown;
@@ -347,7 +346,7 @@ export class TreeSitterParser implements ParserPort {
     return imports;
   }
 
-  private extractGoImportSpec(spec: Parser.SyntaxNode, baseLine: number): ImportInfo | null {
+  private extractGoImportSpec(spec: Parser.SyntaxNode, _baseLine: number): ImportInfo | null {
     let source = "";
     let alias: string | undefined;
     const bindings: ImportBinding[] = [];
@@ -414,7 +413,7 @@ export class TreeSitterParser implements ParserPort {
     };
   }
 
-  private extractRustUseTree(node: Parser.SyntaxNode, prefix: string, bindings: ImportBinding[]): void {
+  private extractRustUseTree(node: Parser.SyntaxNode, _prefix: string, bindings: ImportBinding[]): void {
     for (const child of node.children) {
       if (child.type === "identifier" || child.type === "crate" || child.type === "self") {
         bindings.push({ name: child.text });
@@ -1010,7 +1009,7 @@ export class TreeSitterParser implements ParserPort {
     return null;
   }
 
-  private getSymbolName(node: Parser.SyntaxNode, language: string): string | null {
+  private getSymbolName(node: Parser.SyntaxNode, _language: string): string | null {
     // Look for identifier/name child nodes
     const nameNodeTypes = ["identifier", "name", "property_identifier", "type_identifier"];
 

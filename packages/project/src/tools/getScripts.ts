@@ -2,7 +2,6 @@
  * get_scripts tool - Get available scripts/commands.
  */
 
-import * as z from "zod/v4";
 import type { ToolRegistrar } from "./types.js";
 
 export const registerGetScripts: ToolRegistrar = (server, service) => {

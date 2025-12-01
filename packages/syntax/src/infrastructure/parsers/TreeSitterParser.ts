@@ -1,6 +1,6 @@
 import Parser from "tree-sitter";
 import { Parser as ParserPort, ParseResult, ParseError } from "../../core/ports/Parser.js";
-import { Result, Ok, Err } from "@agent-workbench/core";
+import { type Result, Ok, Err } from "@agent-workbench/core";
 import { Symbol, SymbolKind, Language, LANGUAGES, detectLanguage, Span, CallInfo, ImportInfo, ImportBinding, ImportType, ExportInfo, ExportBinding, ExportType } from "../../core/model.js";
 
 // Tree-sitter language type (uses any in the typings)

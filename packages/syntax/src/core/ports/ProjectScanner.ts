@@ -1,4 +1,4 @@
-import { Result } from "@agent-workbench/core";
+import type { Result } from "@agent-workbench/core";
 
 /**
  * Port for discovering files in a project.

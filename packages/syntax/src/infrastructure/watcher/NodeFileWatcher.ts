@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { FileWatcher, FileWatchCallback, FileWatchEvent } from "../../core/ports/FileWatcher.js";
 import type { ProjectScanner } from "../../core/ports/ProjectScanner.js";
-import { Result, Ok, Err } from "@agent-workbench/core";
+import { type Result, Ok, Err } from "@agent-workbench/core";
 
 /**
  * Node.js implementation of FileWatcher using native fs.watch.

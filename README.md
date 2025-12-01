@@ -31,14 +31,20 @@ Process management with persistent tracking, log capture, and lifecycle control.
 - `purge_processes` / `get_stats` - Cleanup and statistics
 
 ### [@agent-workbench/history](packages/history/)
-Git history operations for AI agents. Understand code evolution through blame, history, and commit search.
+Git operations for AI agents. Understand code evolution and create commits.
 
+**Read operations:**
 - `blame_file` - Who wrote each line and why
 - `file_history` - Commits that touched a file
 - `recent_changes` - What changed recently
 - `commit_info` / `search_commits` - Commit details and search
 - `diff_file` - Compare file between commits
 - `branch_diff` - Summary of changes vs base branch (PR scope)
+
+**Write operations:**
+- `git_status` - Current branch, staged/unstaged changes
+- `git_add` - Stage files for commit
+- `git_commit` - Create a commit with staged changes
 
 ### [@agent-workbench/project](packages/project/)
 Project metadata and orientation. Quickly understand project structure, configs, and available commands.
@@ -54,24 +60,26 @@ Project metadata and orientation. Quickly understand project structure, configs,
 
 ### [@agent-workbench/graph](packages/graph/)
 Semantic code graph for deep code understanding. Trace call chains, find paths, understand relationships.
+**Auto-initializes on first query** using current working directory.
 
-- `graph_initialize` - Index the codebase
 - `graph_get_symbol` - Get symbol with source code
 - `graph_get_callers` / `graph_get_callees` - Call relationships
 - `graph_trace` - Follow call chains forward/backward
 - `graph_find_paths` - All paths between two symbols
 - `graph_find_symbols` - Search by pattern or tags
 - `graph_query` - Compound queries with traversal
+- `graph_initialize` - Manually re-index if needed
 
 ### [@agent-workbench/types](packages/types/)
 TypeScript language service integration. Get type errors, hover info, and go-to-definition.
+**Auto-syncs** via file watcher (no manual notify needed).
 
 - `get_diagnostics` - Type errors and warnings for file or project
 - `get_type_at_position` - Hover info and type details
 - `go_to_definition` - Navigate to where symbols are defined
 - `find_type_references` - Type-aware reference finding
 - `get_quick_fixes` - Available fixes for errors
-- `notify_file_changed` - Sync after edits
+- `notify_file_changed` - Manual sync if needed
 - `reload` - Re-discover tsconfig.json files (monorepo support)
 
 ### [@agent-workbench/test-runner](packages/test-runner/)

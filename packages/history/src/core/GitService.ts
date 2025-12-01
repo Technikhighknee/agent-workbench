@@ -14,6 +14,10 @@ import {
   type Commit,
   type ChangedFile,
   type RecentChanges,
+  type GitStatus,
+  type StatusFile,
+  type AddResult,
+  type CommitResult,
 } from "./model.js";
 
 export class GitService {
@@ -536,5 +540,222 @@ export class GitService {
     }
 
     return commits;
+  }
+
+  // ============== WRITE OPERATIONS ==============
+
+  /**
+   * Get the current git status.
+   */
+  async status(): Promise<Result<GitStatus, string>> {
+    // Use porcelain=v2 for machine-readable output
+    const result = await this.exec([
+      "status",
+      "--porcelain=v2",
+      "--branch",
+    ]);
+
+    if (!result.ok) {
+      return err(result.error);
+    }
+
+    const status: GitStatus = {
+      branch: "",
+      ahead: 0,
+      behind: 0,
+      staged: [],
+      unstaged: [],
+      untracked: [],
+      conflicted: [],
+    };
+
+    const lines = result.value.split("\n");
+    for (const line of lines) {
+      if (!line) continue;
+
+      // Branch header: # branch.head <name>
+      if (line.startsWith("# branch.head ")) {
+        status.branch = line.slice(14);
+      }
+      // Upstream: # branch.upstream <name>
+      else if (line.startsWith("# branch.upstream ")) {
+        status.upstream = line.slice(18);
+      }
+      // Ahead/behind: # branch.ab +<ahead> -<behind>
+      else if (line.startsWith("# branch.ab ")) {
+        const match = line.match(/\+(\d+) -(\d+)/);
+        if (match) {
+          status.ahead = parseInt(match[1], 10);
+          status.behind = parseInt(match[2], 10);
+        }
+      }
+      // Changed entry: 1 <XY> ... <path>
+      else if (line.startsWith("1 ")) {
+        const parts = line.split(" ");
+        const xy = parts[1]; // XY status
+        const filePath = parts.slice(8).join(" ");
+
+        const stagedStatus = xy[0];
+        const unstagedStatus = xy[1];
+
+        if (stagedStatus !== ".") {
+          status.staged.push({
+            path: filePath,
+            status: stagedStatus as StatusFile["status"],
+          });
+        }
+        if (unstagedStatus !== ".") {
+          status.unstaged.push({
+            path: filePath,
+            status: unstagedStatus as StatusFile["status"],
+          });
+        }
+      }
+      // Renamed: 2 <XY> ... <path><tab><origPath>
+      else if (line.startsWith("2 ")) {
+        const parts = line.split("\t");
+        const mainPart = parts[0].split(" ");
+        const xy = mainPart[1];
+        const filePath = mainPart.slice(9).join(" ");
+        const oldPath = parts[1];
+
+        if (xy[0] !== ".") {
+          status.staged.push({
+            path: filePath,
+            status: "R",
+            oldPath,
+          });
+        }
+      }
+      // Unmerged: u <XY> ... <path>
+      else if (line.startsWith("u ")) {
+        const parts = line.split(" ");
+        const filePath = parts.slice(10).join(" ");
+        status.conflicted.push(filePath);
+      }
+      // Untracked: ? <path>
+      else if (line.startsWith("? ")) {
+        status.untracked.push(line.slice(2));
+      }
+    }
+
+    return ok(status);
+  }
+
+  /**
+   * Stage files for commit.
+   */
+  async add(paths: string[]): Promise<Result<AddResult, string>> {
+    if (paths.length === 0) {
+      return err("No files specified to add");
+    }
+
+    // Resolve paths
+    const resolvedPaths = paths.map((p) =>
+      path.isAbsolute(p) ? path.relative(this.rootPath, p) : p
+    );
+
+    const result = await this.exec(["add", "--verbose", ...resolvedPaths]);
+
+    if (!result.ok) {
+      return err(result.error);
+    }
+
+    // Parse verbose output to get added files
+    const added: string[] = [];
+    const lines = result.value.split("\n").filter(Boolean);
+    for (const line of lines) {
+      // Verbose output: "add 'filename'"
+      const match = line.match(/^add '(.+)'$/);
+      if (match) {
+        added.push(match[1]);
+      }
+    }
+
+    // If verbose didn't give us output, assume all specified files were added
+    if (added.length === 0 && result.value.trim() === "") {
+      added.push(...resolvedPaths);
+    }
+
+    return ok({
+      added,
+      count: added.length,
+    });
+  }
+
+  /**
+   * Create a commit with staged changes.
+   */
+  async commit(message: string): Promise<Result<CommitResult, string>> {
+    if (!message.trim()) {
+      return err("Commit message cannot be empty");
+    }
+
+    // Check if there are staged changes
+    const statusResult = await this.status();
+    if (!statusResult.ok) {
+      return err(statusResult.error);
+    }
+    if (statusResult.value.staged.length === 0) {
+      return err("No staged changes to commit");
+    }
+
+    // Create the commit
+    const result = await this.exec(["commit", "-m", message]);
+
+    if (!result.ok) {
+      return err(result.error);
+    }
+
+    // Get commit details
+    const commitResult = await this.exec([
+      "log",
+      "-1",
+      "--format=%H%x00%h%x00%s",
+    ]);
+
+    if (!commitResult.ok) {
+      return err(`Commit created but failed to get details: ${commitResult.error}`);
+    }
+
+    const parts = commitResult.value.trim().split("\x00");
+    const hash = parts[0];
+    const shortHash = parts[1];
+    const subject = parts[2];
+
+    // Get stats from the commit output
+    let filesChanged = 0;
+    let insertions = 0;
+    let deletions = 0;
+
+    // Parse commit output for stats: "X files changed, Y insertions(+), Z deletions(-)"
+    const statsMatch = result.value.match(
+      /(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?/
+    );
+    if (statsMatch) {
+      filesChanged = parseInt(statsMatch[1], 10) || 0;
+      insertions = parseInt(statsMatch[2], 10) || 0;
+      deletions = parseInt(statsMatch[3], 10) || 0;
+    }
+
+    return ok({
+      hash,
+      shortHash,
+      subject,
+      filesChanged,
+      insertions,
+      deletions,
+    });
+  }
+
+  /**
+   * Get current branch name.
+   */
+  async getCurrentBranch(): Promise<Result<string, string>> {
+    const result = await this.exec(["rev-parse", "--abbrev-ref", "HEAD"]);
+    if (!result.ok) {
+      return err(result.error);
+    }
+    return ok(result.value.trim());
   }
 }

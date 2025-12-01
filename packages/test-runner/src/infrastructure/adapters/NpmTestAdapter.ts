@@ -84,7 +84,21 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
       args: ["test", "--"],
       cwd: projectPath,
       configFile: pkgPath,
-      testPatterns: ["**/*.test.ts", "**/*.spec.ts", "**/*.test.js", "**/*.spec.js"],
+      // Include both standard patterns and monorepo patterns
+      testPatterns: [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/*.test.js",
+        "**/*.spec.js",
+        "**/*.test.tsx",
+        "**/*.spec.tsx",
+        "**/test/**/*.ts",
+        "**/test/**/*.js",
+        "**/tests/**/*.ts",
+        "**/tests/**/*.js",
+        "**/__tests__/**/*.ts",
+        "**/__tests__/**/*.js",
+      ],
     });
   }
 

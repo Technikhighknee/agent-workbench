@@ -100,6 +100,25 @@
           "rerun_failed for faster iteration on fixes"
         ]
       }
+    },
+    "graph": {
+      "command": "npx",
+      "args": ["-y", "tsx", "--watch", "packages/graph/src/server.ts"],
+      "agentPreferences": {
+        "description": "Semantic code graph. One query replaces 10 file reads. Full source in responses. Confidence scores.",
+        "toolGroups": {
+          "query": { "tools": ["graph_query", "graph_find_symbols"] },
+          "symbol": { "tools": ["graph_get_symbol", "graph_get_callers", "graph_get_callees"] },
+          "trace": { "tools": ["graph_trace", "graph_find_paths"] },
+          "lifecycle": { "tools": ["graph_initialize", "graph_stats"] }
+        },
+        "tips": [
+          "graph_initialize first with workspace path",
+          "graph_query for compound queries with traversal",
+          "graph_get_symbol returns full source, no follow-up Read needed",
+          "graph_trace forward/backward for call chains"
+        ]
+      }
     }
   }
 }

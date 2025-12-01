@@ -10,12 +10,16 @@ import { registerGetScripts } from "./getScripts.js";
 import { registerGetDependencies } from "./getDependencies.js";
 import { registerFindConfigs } from "./findConfigs.js";
 import { registerReadConfig } from "./readConfig.js";
+import { registerGetSessionGuide } from "./getSessionGuide.js";
 
 /**
  * Register all project tools with an MCP server.
  */
 export function registerTools(server: McpServer, projectRoot: string): void {
   const service = new ProjectService(projectRoot);
+
+  // Session guide - call at start for tool usage guidance
+  registerGetSessionGuide(server);
 
   registerGetProjectInfo(server, service);
   registerGetScripts(server, service);

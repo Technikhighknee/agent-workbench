@@ -93,6 +93,44 @@ Observations, pain points, and improvement ideas gathered while working with age
 
 ---
 
+## Session: 2025-12-01 (Context Continuation)
+
+### Fixes Implemented
+
+1. **history: Migrate to modern registerTool API** (commit 4e0f3b6)
+   - Replaced deprecated `server.tool()` with `server.registerTool()`
+   - Each tool now has its own register function
+   - Added types.ts for shared ToolRegistrar interface
+
+2. **project: Migrate to modern registerTool API** (commit 3ad7e7b)
+   - Same pattern as history package
+   - Proper inputSchema objects using zod v4
+
+3. **All packages: Remove unused imports** (commit 48fe8cf)
+   - Removed unused fs/path in TestRunnerServiceImpl
+   - Removed unused ProcessStatusSchema in process-host tools
+   - Removed unused zod imports in test-runner and types tools
+   - Fixed inline import to use already-imported ChangedFile type
+
+4. **syntax: Remove unused type imports** (commit 9f8cbfd)
+   - Cleaned up SymbolReference and CallSite imports
+
+### Observations
+
+- **Deprecation warnings are important to fix early** - SDK updates could break deprecated APIs
+- **Consistent patterns across packages help** - All tools now use same registerTool structure
+- **TypeScript service caches aggressively** - Reload tool helps refresh state
+
+### Code Quality Improvements Made
+
+| Before | After |
+|--------|-------|
+| 39 hints | ~25 hints (structural issues remain) |
+| Deprecated API in history/project | Modern registerTool API |
+| Inconsistent tool registration | Unified pattern across packages |
+
+---
+
 ## Contributing Feedback
 
 As you work with agent-workbench, add observations here:

@@ -1,12 +1,14 @@
 ---
 name: syntax
-description: Use for symbol-aware code operations. Read and edit by function/class name instead of line numbers or exact string matching. Index projects for cross-file search, refactoring, and call hierarchy.
-allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__index_project, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees
+description: Use for symbol-aware code operations. Read and edit by function/class name instead of line numbers or exact string matching. Auto-indexes the project and watches for changes.
+allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees
 ---
 
 # syntax
 
 Symbol-aware code operations for AI agents. Read and edit code by function/class name, not line numbers.
+
+**Auto-indexing**: The project is automatically indexed on startup and watches for file changes. No manual indexing required.
 
 ## When to Use
 
@@ -20,7 +22,7 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 
 ## Tools
 
-### File Operations (no index required)
+### File Operations
 
 | Tool | Description |
 |------|-------------|
@@ -29,11 +31,10 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 | `edit_symbol` | Replace entire symbol by name |
 | `edit_lines` | Replace line range |
 
-### Project Operations (call `index_project` first)
+### Project Operations
 
 | Tool | Description |
 |------|-------------|
-| `index_project` | Index all source files in a directory |
 | `search_symbols` | Find symbols by pattern across all files |
 | `find_references` | Find all usages of a symbol |
 | `rename_symbol` | Rename symbol across codebase (supports dry_run) |
@@ -46,17 +47,17 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - Know exact symbol → `read_symbol`
 - Need file overview → `list_symbols`
 - Need full file → built-in `Read`
-- Searching across project → `index_project` then `search_symbols`
-- Finding usages → `index_project` then `find_references`
+- Searching across project → `search_symbols`
+- Finding usages → `find_references`
 
 ### Understanding Code Flow
-- What calls this function? → `index_project` then `get_callers`
-- What does this function call? → `index_project` then `get_callees`
+- What calls this function? → `get_callers`
+- What does this function call? → `get_callees`
 
 ### Editing Code
 - Replacing entire function → `edit_symbol`
 - Replacing line range → `edit_lines`
-- Renaming across files → `index_project` then `rename_symbol`
+- Renaming across files → `rename_symbol`
 - Small inline change → built-in `Edit`
 - Unsupported language → built-in `Edit`
 
@@ -71,23 +72,20 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 
 ### Cross-file Refactoring
 ```
-1. index_project({ root_path: '/path/to/project' })
-2. find_references({ symbol_name: 'oldFunctionName' })
-3. rename_symbol({ old_name: 'oldFunctionName', new_name: 'newFunctionName', dry_run: true })
-4. rename_symbol({ old_name: 'oldFunctionName', new_name: 'newFunctionName' })
+1. find_references({ symbol_name: 'oldFunctionName' })
+2. rename_symbol({ old_name: 'oldFunctionName', new_name: 'newFunctionName', dry_run: true })
+3. rename_symbol({ old_name: 'oldFunctionName', new_name: 'newFunctionName' })
 ```
 
 ### Understand Call Flow
 ```
-1. index_project({ root_path: '/path/to/project' })
-2. get_callers({ symbol_name: 'processData' })  // Who calls processData?
-3. get_callees({ file_path: 'src/service.ts', symbol_name_path: 'Service/processData' })  // What does it call?
+1. get_callers({ symbol_name: 'processData' })  // Who calls processData?
+2. get_callees({ file_path: 'src/service.ts', symbol_name_path: 'Service/processData' })  // What does it call?
 ```
 
 ### Find Symbol Across Codebase
 ```
-1. index_project({ root_path: '/path/to/project' })
-2. search_symbols({ pattern: 'handle.*Request' })
+search_symbols({ pattern: 'handle.*Request' })
 ```
 
 ## Supported Languages
@@ -97,8 +95,8 @@ TypeScript, JavaScript, Python, Go, Rust
 ## Notes
 
 - Name paths are hierarchical: `Class/method` or `module/function`
-- Always call `index_project` before cross-file operations
 - Use `dry_run: true` with `rename_symbol` to preview changes
 - `list_symbols` with `depth: 0` gives only top-level symbols
 - Call hierarchy helps understand code flow without reading everything
+- Index auto-updates when files change - always current
 - Complements built-in `Read`, `Edit`, `Grep`, `Glob`

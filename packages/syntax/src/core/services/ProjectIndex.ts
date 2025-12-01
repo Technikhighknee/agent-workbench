@@ -3,6 +3,7 @@ import { Parser, ParseResult } from "../ports/Parser.js";
 import { FileSystem } from "../ports/FileSystem.js";
 import { SymbolCache } from "../ports/Cache.js";
 import { ProjectScanner } from "../ports/ProjectScanner.js";
+import { FileWatcher } from "../ports/FileWatcher.js";
 import { SymbolTree, flattenSymbols } from "../symbolTree.js";
 import { Symbol, SymbolInfo, SymbolKind, LANGUAGES, SymbolReference, CallSite } from "../model.js";
 
@@ -26,6 +27,7 @@ export interface IndexStats {
   symbolsIndexed: number;
   languages: Record<string, number>;
   lastUpdated: string;
+  watching: boolean;
 }
 
 /**
@@ -36,6 +38,8 @@ export class ProjectIndex {
   private readonly allSymbols: IndexedSymbol[] = [];
   private rootPath: string = "";
   private lastIndexTime: Date | null = null;
+  private watcher: FileWatcher | null = null;
+  private watchCallback: ((event: string, file: string) => void) | null = null;
 
   constructor(
     private readonly parser: Parser,
@@ -101,6 +105,7 @@ export class ProjectIndex {
       symbolsIndexed: this.allSymbols.length,
       languages,
       lastUpdated: this.lastIndexTime.toISOString(),
+      watching: this.isWatching(),
     });
   }
 
@@ -197,6 +202,7 @@ export class ProjectIndex {
       symbolsIndexed: this.allSymbols.length,
       languages,
       lastUpdated: this.lastIndexTime?.toISOString() ?? "never",
+      watching: this.isWatching(),
     };
   }
 
@@ -205,6 +211,80 @@ export class ProjectIndex {
    */
   isEmpty(): boolean {
     return this.indexedFiles.size === 0;
+  }
+
+  /**
+   * Start watching for file changes and auto-reindex.
+   */
+  startWatching(
+    watcher: FileWatcher,
+    callback?: (event: string, file: string) => void
+  ): Result<void, string> {
+    if (!this.rootPath) {
+      return Err("No project indexed. Call index first.");
+    }
+
+    // Stop any existing watcher
+    this.stopWatching();
+
+    this.watcher = watcher;
+    this.watchCallback = callback ?? null;
+
+    const extensions = Object.values(LANGUAGES).flatMap((l) => l.extensions);
+
+    const result = watcher.watch(this.rootPath, extensions, async (event, relativePath) => {
+      // Handle the event
+      if (event === "unlink") {
+        // File deleted - remove from index
+        this.removeFile(relativePath);
+      } else {
+        // File added or changed - reindex
+        await this.reindexFile(relativePath);
+      }
+
+      // Notify callback
+      if (this.watchCallback) {
+        this.watchCallback(event, relativePath);
+      }
+    });
+
+    if (!result.ok) {
+      return Err(result.error.message);
+    }
+
+    return Ok(undefined);
+  }
+
+  /**
+   * Stop watching for file changes.
+   */
+  stopWatching(): void {
+    if (this.watcher) {
+      this.watcher.stop();
+      this.watcher = null;
+      this.watchCallback = null;
+    }
+  }
+
+  /**
+   * Check if currently watching for changes.
+   */
+  isWatching(): boolean {
+    return this.watcher !== null && this.watcher.isWatching();
+  }
+
+  /**
+   * Remove a file from the index.
+   */
+  private removeFile(relativePath: string): void {
+    this.indexedFiles.delete(relativePath);
+
+    // Remove symbols for this file
+    const filtered = this.allSymbols.filter((s) => s.filePath !== relativePath);
+    this.allSymbols.length = 0;
+    this.allSymbols.push(...filtered);
+
+    this.lastIndexTime = new Date();
   }
 
   /**

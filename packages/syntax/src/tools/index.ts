@@ -1,12 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SyntaxService } from "../core/services/SyntaxService.js";
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
+import type { FileWatcher } from "../core/ports/FileWatcher.js";
 
 import { registerListSymbols } from "./listSymbols.js";
 import { registerReadSymbol } from "./readSymbol.js";
 import { registerEditSymbol } from "./editSymbol.js";
 import { registerEditLines } from "./editLines.js";
-import { registerIndexProject } from "./indexProject.js";
 import { registerSearchSymbols } from "./searchSymbols.js";
 import { registerFindReferences } from "./findReferences.js";
 import { registerRenameSymbol } from "./renameSymbol.js";
@@ -16,6 +16,7 @@ import { registerGetCallees } from "./getCallees.js";
 export interface Services {
   syntax: SyntaxService;
   index: ProjectIndex;
+  watcherFactory: () => FileWatcher;
 }
 
 export function registerAllTools(server: McpServer, services: Services): void {
@@ -25,8 +26,7 @@ export function registerAllTools(server: McpServer, services: Services): void {
   registerEditSymbol(server, services.syntax);
   registerEditLines(server, services.syntax);
 
-  // Project-level operations (ProjectIndex)
-  registerIndexProject(server, services.index);
+  // Project-level operations (ProjectIndex) - auto-indexed on startup
   registerSearchSymbols(server, services.index);
   registerFindReferences(server, services.index);
   registerGetCallers(server, services.index);

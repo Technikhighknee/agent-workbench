@@ -7,6 +7,7 @@ import { TreeSitterParser } from "./infrastructure/parsers/TreeSitterParser.js";
 import { NodeFileSystem } from "./infrastructure/filesystem/NodeFileSystem.js";
 import { InMemoryCache } from "./infrastructure/cache/InMemoryCache.js";
 import { NodeProjectScanner } from "./infrastructure/scanner/NodeProjectScanner.js";
+import { NodeFileWatcher } from "./infrastructure/watcher/NodeFileWatcher.js";
 import { registerAllTools, Services } from "./tools/index.js";
 
 interface ServerConfig {
@@ -28,6 +29,7 @@ function createServices(): Services {
   return {
     syntax: new SyntaxService(parser, fs, cache),
     index: new ProjectIndex(parser, fs, cache, scanner),
+    watcherFactory: () => new NodeFileWatcher(scanner),
   };
 }
 
@@ -42,18 +44,33 @@ function createServer(services: Services, config: ServerConfig = DEFAULT_CONFIG)
   return server;
 }
 
+async function autoIndex(services: Services): Promise<void> {
+  const rootPath = process.cwd();
+
+  const result = await services.index.index(rootPath);
+  if (result.ok) {
+    // Start watching for changes
+    const watcher = services.watcherFactory();
+    services.index.startWatching(watcher);
+  }
+}
+
 async function main(): Promise<void> {
   const services = createServices();
   const server = createServer(services);
   const transport = new StdioServerTransport();
 
   const shutdown = async (): Promise<void> => {
+    services.index.stopWatching();
     await server.close();
     process.exit(0);
   };
 
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
+
+  // Auto-index the working directory and start watching
+  await autoIndex(services);
 
   await server.connect(transport);
 }

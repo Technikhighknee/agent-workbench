@@ -1,7 +1,7 @@
 ---
 name: syntax
 description: Use for symbol-aware code operations. Read and edit by function/class name instead of line numbers or exact string matching. Auto-indexes the project and watches for changes.
-allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees
+allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__get_imports, mcp__syntax__get_exports, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees, mcp__syntax__analyze_deps
 ---
 
 # syntax
@@ -19,6 +19,8 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - Finding all usages of a function/class
 - Renaming symbols across multiple files
 - Understanding call hierarchy (who calls what)
+- Analyzing imports and exports
+- Detecting circular dependencies
 
 ## Tools
 
@@ -30,6 +32,8 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 | `read_symbol` | Read symbol by name path (e.g., `UserService/create`) |
 | `edit_symbol` | Replace entire symbol by name |
 | `edit_lines` | Replace line range |
+| `get_imports` | Get all imports from a file |
+| `get_exports` | Get all exports from a file |
 
 ### Project Operations
 
@@ -40,6 +44,7 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 | `rename_symbol` | Rename symbol across codebase (supports dry_run) |
 | `get_callers` | Find all functions that call a given function |
 | `get_callees` | Find all functions called by a given function |
+| `analyze_deps` | Analyze dependencies and detect circular imports |
 
 ## Decision Tree
 
@@ -49,10 +54,13 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - Need full file → built-in `Read`
 - Searching across project → `search_symbols`
 - Finding usages → `find_references`
+- Understanding imports → `get_imports`
+- Understanding exports → `get_exports`
 
 ### Understanding Code Flow
 - What calls this function? → `get_callers`
 - What does this function call? → `get_callees`
+- Circular dependencies? → `analyze_deps`
 
 ### Editing Code
 - Replacing entire function → `edit_symbol`
@@ -86,6 +94,13 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 ### Find Symbol Across Codebase
 ```
 search_symbols({ pattern: 'handle.*Request' })
+```
+
+### Analyze Module Dependencies
+```
+1. get_imports({ file_path: 'src/service.ts' })  // What does this file import?
+2. get_exports({ file_path: 'src/utils.ts' })    // What does this file export?
+3. analyze_deps({})                               // Check for circular dependencies
 ```
 
 ## Supported Languages

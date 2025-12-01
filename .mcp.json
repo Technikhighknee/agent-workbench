@@ -72,12 +72,14 @@
         "toolGroups": {
           "diagnostics": { "tools": ["get_diagnostics"] },
           "navigation": { "tools": ["get_type_at_position", "go_to_definition", "find_type_references"] },
-          "fixes": { "tools": ["get_quick_fixes", "notify_file_changed"] }
+          "fixes": { "tools": ["get_quick_fixes", "notify_file_changed"] },
+          "lifecycle": { "tools": ["reload"] }
         },
         "tips": [
           "get_diagnostics after edits to verify type safety",
           "get_type_at_position for hover info",
-          "notify_file_changed before re-checking edited files"
+          "notify_file_changed before re-checking edited files",
+          "reload to discover new tsconfig.json files"
         ]
       }
     },

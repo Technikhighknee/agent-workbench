@@ -76,6 +76,12 @@ export interface TypeService {
   initialize(projectPath: string): Promise<Result<ProjectInfo, Error>>;
 
   /**
+   * Reload the type service, re-discovering tsconfig.json files.
+   * Use this when new packages are added to a monorepo.
+   */
+  reload(): Promise<Result<ProjectInfo, Error>>;
+
+  /**
    * Check if the service is initialized.
    */
   isInitialized(): boolean;

@@ -7,6 +7,7 @@ import { registerGoToDefinition } from "./goToDefinition.js";
 import { registerFindReferences } from "./findReferences.js";
 import { registerGetQuickFixes } from "./getQuickFixes.js";
 import { registerNotifyFileChanged } from "./notifyFileChanged.js";
+import { registerReload } from "./reload.js";
 
 export interface Services {
   types: TypeService;
@@ -22,6 +23,7 @@ export function registerAllTools(server: McpServer, services: Services): void {
   registerFindReferences(server, types);
   registerGetQuickFixes(server, types);
   registerNotifyFileChanged(server, types);
+  registerReload(server, types);
 }
 
 export * from "./types.js";

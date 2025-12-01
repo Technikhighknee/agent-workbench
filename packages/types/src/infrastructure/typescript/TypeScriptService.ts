@@ -97,6 +97,13 @@ export class TypeScriptService implements TypeService {
     }
   }
 
+  async reload(): Promise<Result<ProjectInfo, Error>> {
+    if (!this.workspaceRoot) {
+      return Err(new Error("Service not initialized. Call initialize() first."));
+    }
+    return this.initialize(this.workspaceRoot);
+  }
+
   isInitialized(): boolean {
     return this.initialized && this.projects.size > 0;
   }

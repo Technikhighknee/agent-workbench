@@ -90,13 +90,22 @@ Benefits over Bash:
         endedAt: p.endedAt ?? null,
       };
 
+      // Calculate duration
+      const durationMs = p.endedAt && p.startedAt
+        ? new Date(p.endedAt).getTime() - new Date(p.startedAt).getTime()
+        : null;
+      const durationStr = durationMs !== null
+        ? durationMs < 1000 ? `${durationMs}ms` : `${(durationMs / 1000).toFixed(1)}s`
+        : "";
+
       const statusText = exitCode === 0 ? "✓" : exitCode === null ? "timeout" : `✗ exit ${exitCode}`;
       const cleanLogs = compactOutput(logs);
 
-      // Concise output: status line + cleaned logs
-      const output = cleanLogs.trim()
-        ? `[${statusText}] ${p.label ?? p.command}\n${cleanLogs}`
+      // Concise output: status + duration + logs
+      const header = durationStr
+        ? `[${statusText}] ${p.label ?? p.command} (${durationStr})`
         : `[${statusText}] ${p.label ?? p.command}`;
+      const output = cleanLogs.trim() ? `${header}\n${cleanLogs}` : header;
 
       return {
         content: [{ type: "text", text: output }],

@@ -22,6 +22,9 @@ Get available quick fixes and code actions.
 ### `notify_file_changed`
 Notify the service that a file has changed.
 
+### `reload`
+Re-discover and reload all TypeScript projects. Use when new tsconfig.json files are added to a monorepo.
+
 ## Usage
 
 ```bash

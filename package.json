@@ -11,6 +11,8 @@
     "build:project": "npm run build -w @agent-workbench/project",
     "build:types": "npm run build -w @agent-workbench/types",
     "build:test-runner": "npm run build -w @agent-workbench/test-runner",
+    "build:graph": "npm run build -w @agent-workbench/graph",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "clean": "rm -rf packages/*/dist",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -28,7 +30,8 @@
     "packages/history",
     "packages/project",
     "packages/types",
-    "packages/test-runner"
+    "packages/test-runner",
+    "packages/graph"
   ],
   "keywords": [
     "ai-agent",
@@ -44,6 +47,7 @@
   "homepage": "https://github.com/Technikhighknee/agent-workbench#readme",
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.14",
+    "tsup": "^8.5.1",
     "vitest": "^4.0.14"
   }
 }

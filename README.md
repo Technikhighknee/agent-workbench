@@ -1,11 +1,11 @@
 # agent-workbench
 > Inspired by IDE    
 
-**At it's current state: A collection of MCP servers that form an extensive operating toolbelt for AI-Agents like Claude Code**  
+**At its current state: A collection of MCP servers that form an extensive operating toolbelt for AI-Agents like Claude Code**  
 
 This monorepo provides the agent with:
 
-- Long-running processes then don't lose
+- Long-running processes they don't lose
 - Symbol-aware code editing
 - Real project orientation
 - Git history with intent

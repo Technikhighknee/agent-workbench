@@ -63,6 +63,39 @@
           "get_callers/get_callees before refactoring"
         ]
       }
+    },
+    "types": {
+      "command": "npx",
+      "args": ["-y", "tsx", "packages/types/src/server.ts"],
+      "agentPreferences": {
+        "description": "TypeScript type checking. Get errors, hover info, definitions. Verify edits didn't break types.",
+        "toolGroups": {
+          "diagnostics": { "tools": ["get_diagnostics"] },
+          "navigation": { "tools": ["get_type_at_position", "go_to_definition", "find_type_references"] },
+          "fixes": { "tools": ["get_quick_fixes", "notify_file_changed"] }
+        },
+        "tips": [
+          "get_diagnostics after edits to verify type safety",
+          "get_type_at_position for hover info",
+          "notify_file_changed before re-checking edited files"
+        ]
+      }
+    },
+    "test-runner": {
+      "command": "npx",
+      "args": ["-y", "tsx", "packages/test-runner/src/server.ts"],
+      "agentPreferences": {
+        "description": "Run tests with structured results. Parse failures, map to source. Jest/Vitest/Node.",
+        "toolGroups": {
+          "run": { "tools": ["run_tests", "rerun_failed"] },
+          "results": { "tools": ["get_test_failures", "list_test_files"] }
+        },
+        "tips": [
+          "run_tests for full suite, get structured results",
+          "get_test_failures for detailed failure info with source locations",
+          "rerun_failed for faster iteration on fixes"
+        ]
+      }
     }
   }
 }

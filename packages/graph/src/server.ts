@@ -50,7 +50,7 @@ server.tool(
   "Execute a compound query against the code graph. Supports traversal, path finding, and filtering. Returns nodes with full source code.",
   querySchema.shape,
   async (args) => {
-    const result = handleQuery(args as any);
+    const result = await handleQuery(args as any);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -62,7 +62,7 @@ server.tool(
   "Get full information about a symbol including its source code. No follow-up Read needed.",
   getSymbolSchema.shape,
   async (args) => {
-    const result = handleGetSymbol(args as any);
+    const result = await handleGetSymbol(args as any);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -74,7 +74,7 @@ server.tool(
   "Find all functions/methods that call a given symbol. Returns caller nodes with source.",
   getCallersSchema.shape,
   async (args) => {
-    const result = handleGetCallers(args as any);
+    const result = await handleGetCallers(args as any);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -86,7 +86,7 @@ server.tool(
   "Find all functions/methods called by a given symbol. Returns callee nodes with source.",
   getCalleesSchema.shape,
   async (args) => {
-    const result = handleGetCallees(args as any);
+    const result = await handleGetCallees(args as any);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -98,7 +98,7 @@ server.tool(
   "Trace call chains forward (what does this call?) or backward (who calls this?). Returns subgraph.",
   traceSchema.shape,
   async (args) => {
-    const result = handleTrace(args as any);
+    const result = await handleTrace(args as any);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -110,7 +110,7 @@ server.tool(
   "Find all paths between two symbols. Useful for understanding how data/control flows.",
   findPathsSchema.shape,
   async (args) => {
-    const result = handleFindPaths(args as any);
+    const result = await handleFindPaths(args as any);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -122,7 +122,7 @@ server.tool(
   "Search for symbols by pattern, tags, or kind. Use tags like 'handler', 'validation', 'database', 'async'.",
   findSymbolsSchema.shape,
   async (args) => {
-    const result = handleFindSymbols(args as any);
+    const result = await handleFindSymbols(args as any);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -134,7 +134,7 @@ server.tool(
   "Get statistics about the indexed graph: node count, edge count, file count.",
   getStatsSchema.shape,
   async () => {
-    const result = handleGetStats();
+    const result = await handleGetStats();
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };

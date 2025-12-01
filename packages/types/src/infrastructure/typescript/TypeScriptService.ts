@@ -2,7 +2,7 @@ import ts from "typescript";
 import path from "path";
 import fs from "fs";
 
-import { Result, Ok, Err } from "@agent-workbench/core";
+import { type Result, Ok, Err } from "@agent-workbench/core";
 import type {
   TypeService,
   GetDiagnosticsOptions,

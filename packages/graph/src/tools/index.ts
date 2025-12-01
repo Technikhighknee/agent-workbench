@@ -9,12 +9,56 @@ import { SymbolKind, EdgeKind } from "../core/model.js";
 
 // Singleton service instance
 let graphService: GraphService | null = null;
+let autoInitPromise: Promise<void> | null = null;
 
 export function getGraphService(): GraphService {
   if (!graphService) {
     graphService = new GraphService();
   }
   return graphService;
+}
+
+/**
+ * Auto-initialize the graph if not already initialized.
+ * Uses current working directory as workspace path.
+ * Returns true if graph is initialized (either already or just now), false on error.
+ */
+async function ensureInitialized(): Promise<{ ok: boolean; error?: string; autoInitialized?: boolean }> {
+  const service = getGraphService();
+
+  if (service.isInitialized()) {
+    return { ok: true };
+  }
+
+  // Prevent concurrent auto-initialization
+  if (autoInitPromise) {
+    await autoInitPromise;
+    return { ok: service.isInitialized() };
+  }
+
+  const workspacePath = process.cwd();
+  console.error(`[graph] Auto-initializing graph for workspace: ${workspacePath}`);
+
+  autoInitPromise = (async () => {
+    try {
+      const result = await service.initialize(workspacePath);
+      if (result.ok) {
+        console.error(`[graph] Auto-initialized: ${result.value.nodesCreated} nodes, ${result.value.edgesCreated} edges in ${Math.round(result.value.indexTimeMs)}ms`);
+      } else {
+        console.error(`[graph] Auto-initialization failed: ${result.error.message}`);
+      }
+    } finally {
+      autoInitPromise = null;
+    }
+  })();
+
+  await autoInitPromise;
+
+  if (service.isInitialized()) {
+    return { ok: true, autoInitialized: true };
+  }
+
+  return { ok: false, error: "Auto-initialization failed. Use graph_initialize to manually specify workspace path." };
 }
 
 // --- Tool Schemas ---
@@ -103,13 +147,13 @@ export async function handleInitialize(args: z.infer<typeof initializeSchema>) {
   };
 }
 
-export function handleQuery(args: z.infer<typeof querySchema>) {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+export async function handleQuery(args: z.infer<typeof querySchema>) {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
   }
 
+  const service = getGraphService();
   const result = service.query({
     from: args.from as any,
     traverse: args.direction ? {
@@ -131,16 +175,21 @@ export function handleQuery(args: z.infer<typeof querySchema>) {
     return { error: result.error.message };
   }
 
-  return result.value;
-}
-
-export function handleGetSymbol(args: z.infer<typeof getSymbolSchema>) {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+  const response = result.value as any;
+  if (initResult.autoInitialized) {
+    response._hint = "Graph was auto-initialized using current working directory.";
   }
 
+  return response;
+}
+
+export async function handleGetSymbol(args: z.infer<typeof getSymbolSchema>) {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
+  }
+
+  const service = getGraphService();
   const result = service.getSymbol(args.name);
 
   if (!result.ok) {
@@ -150,13 +199,13 @@ export function handleGetSymbol(args: z.infer<typeof getSymbolSchema>) {
   return result.value;
 }
 
-export function handleGetCallers(args: z.infer<typeof getCallersSchema>) {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+export async function handleGetCallers(args: z.infer<typeof getCallersSchema>) {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
   }
 
+  const service = getGraphService();
   const result = service.getCallers(args.symbol);
 
   if (!result.ok) {
@@ -166,13 +215,13 @@ export function handleGetCallers(args: z.infer<typeof getCallersSchema>) {
   return result.value;
 }
 
-export function handleGetCallees(args: z.infer<typeof getCalleesSchema>) {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+export async function handleGetCallees(args: z.infer<typeof getCalleesSchema>) {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
   }
 
+  const service = getGraphService();
   const result = service.getCallees(args.symbol);
 
   if (!result.ok) {
@@ -182,13 +231,13 @@ export function handleGetCallees(args: z.infer<typeof getCalleesSchema>) {
   return result.value;
 }
 
-export function handleTrace(args: z.infer<typeof traceSchema>) {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+export async function handleTrace(args: z.infer<typeof traceSchema>) {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
   }
 
+  const service = getGraphService();
   const result = args.direction === "forward"
     ? service.traceForward(args.symbol, {
         depth: args.depth,
@@ -208,13 +257,13 @@ export function handleTrace(args: z.infer<typeof traceSchema>) {
   return result.value;
 }
 
-export function handleFindPaths(args: z.infer<typeof findPathsSchema>) {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+export async function handleFindPaths(args: z.infer<typeof findPathsSchema>) {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
   }
 
+  const service = getGraphService();
   const result = service.findPaths(args.from, args.to, {
     maxDepth: args.max_depth,
     mustAvoid: args.must_avoid,
@@ -227,13 +276,13 @@ export function handleFindPaths(args: z.infer<typeof findPathsSchema>) {
   return result.value;
 }
 
-export function handleFindSymbols(args: z.infer<typeof findSymbolsSchema>) {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+export async function handleFindSymbols(args: z.infer<typeof findSymbolsSchema>) {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
   }
 
+  const service = getGraphService();
   const result = service.findSymbols({
     pattern: args.pattern,
     tags: args.tags,
@@ -248,13 +297,13 @@ export function handleFindSymbols(args: z.infer<typeof findSymbolsSchema>) {
   return result.value;
 }
 
-export function handleGetStats() {
-  const service = getGraphService();
-
-  if (!service.isInitialized()) {
-    return { error: "Graph not initialized. Call graph_initialize first." };
+export async function handleGetStats() {
+  const initResult = await ensureInitialized();
+  if (!initResult.ok) {
+    return { error: initResult.error };
   }
 
+  const service = getGraphService();
   return service.getStats();
 }
 

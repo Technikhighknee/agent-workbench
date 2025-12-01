@@ -14,13 +14,16 @@ These tools give you: structured data, no timeouts, source-mapped errors, semant
 ## Critical Rules: NEVER Use Bash For These
 
 ### Git Operations
-❌ NEVER: \`git log\`, \`git blame\`, \`git diff\`, \`git status\`
+❌ NEVER: \`git log\`, \`git blame\`, \`git diff\`, \`git status\`, \`git add\`, \`git commit\`
 ✅ ALWAYS: \`mcp__history__*\` tools
 - \`blame_file\` - who wrote each line
 - \`file_history\` - commits that touched a file
 - \`commit_info\` - details of a commit
 - \`branch_diff\` - compare branches
 - \`diff_file\` - diff between commits
+- \`git_status\` - current branch, staged/unstaged changes
+- \`git_add\` - stage files for commit
+- \`git_commit\` - create a commit with staged changes
 
 ### TypeScript Checking
 ❌ NEVER: \`tsc\`, \`tsc --noEmit\`
@@ -84,10 +87,11 @@ When starting in a new codebase:
 ### Code Understanding (Semantic)
 For deep code understanding:
 ✅ USE: \`mcp__graph__*\` tools
-- \`graph_initialize\` - index the codebase
-- \`graph_query\` - traverse relationships
+- \`graph_query\` - traverse relationships (auto-initializes on first call)
 - \`graph_trace\` - call chains forward/backward
 - \`graph_find_paths\` - how does A reach B?
+- \`graph_get_callers\` / \`graph_get_callees\` - call relationships
+- \`graph_initialize\` - manually re-index if needed
 
 ## Quick Decision Guide
 
@@ -110,6 +114,9 @@ For deep code understanding:
 | **Git** | |
 | See git history | \`mcp__history__file_history\` |
 | Who wrote this | \`mcp__history__blame_file\` |
+| Current status | \`mcp__history__git_status\` |
+| Stage files | \`mcp__history__git_add\` |
+| Create commit | \`mcp__history__git_commit\` |
 | **Builds/Servers** | |
 | Build project | \`mcp__process-host__run_process\` |
 | Start dev server | \`mcp__process-host__spawn_process\` |
@@ -136,10 +143,10 @@ export function registerGetSessionGuide(server: McpServer): void {
     {
       title: "Get session guide",
       description:
-        "RECOMMENDED FIRST CALL. Learn about 60+ specialized MCP tools that replace Bash " +
-        "for git, TypeScript, tests, builds, and code editing. These tools give structured " +
-        "results, no timeouts, and semantic operations. Covers: history, types, test-runner, " +
-        "process-host, syntax, graph packages.",
+        "MANDATORY: Call this at the start of every session and after context compacting. " +
+        "Learn about 60+ specialized MCP tools that replace Bash for git, TypeScript, tests, " +
+        "builds, and code editing. These tools give structured results, no timeouts, and " +
+        "semantic operations. Covers: history, types, test-runner, process-host, syntax, graph packages.",
       inputSchema: {},
     },
     async () => {

@@ -3,7 +3,7 @@ import { ProcessInfo, Signal, LogStream } from "../model.js";
 import { ProcessRepository } from "../ports/ProcessRepository.js";
 import { ProcessSpawner, RunningProcessHandle } from "../ports/ProcessSpawner.js";
 import { LogRepository } from "../ports/LogRepository.js";
-import { Result, Ok, Err } from "@agent-workbench/core";
+import { type Result, Ok, Err } from "@agent-workbench/core";
 
 export interface StartProcessParams {
   command: string;

@@ -106,6 +106,84 @@ export interface BranchDiff {
   mergeBase?: string;
 }
 
+/**
+ * Git status result.
+ */
+export interface GitStatus {
+  /** Current branch name */
+  branch: string;
+  /** Tracking branch (e.g., "origin/main") */
+  upstream?: string;
+  /** Commits ahead of upstream */
+  ahead: number;
+  /** Commits behind upstream */
+  behind: number;
+  /** Staged files */
+  staged: StatusFile[];
+  /** Unstaged modified files */
+  unstaged: StatusFile[];
+  /** Untracked files */
+  untracked: string[];
+  /** Files with merge conflicts */
+  conflicted: string[];
+}
+
+/**
+ * A file in git status output.
+ */
+export interface StatusFile {
+  /** File path */
+  path: string;
+  /** Status: A=added, M=modified, D=deleted, R=renamed */
+  status: "A" | "M" | "D" | "R" | "C" | "?" | "!" | "U";
+  /** Old path (for renames) */
+  oldPath?: string;
+}
+
+/**
+ * Result of a git add operation.
+ */
+export interface AddResult {
+  /** Files that were added/staged */
+  added: string[];
+  /** Number of files staged */
+  count: number;
+}
+
+/**
+ * Result of a git commit operation.
+ */
+export interface CommitResult {
+  /** Commit hash */
+  hash: string;
+  /** Short hash */
+  shortHash: string;
+  /** Commit message subject */
+  subject: string;
+  /** Number of files changed */
+  filesChanged: number;
+  /** Lines added */
+  insertions: number;
+  /** Lines deleted */
+  deletions: number;
+}
+
+/**
+ * Result of a git push operation.
+ */
+export interface PushResult {
+  /** Whether push succeeded */
+  success: boolean;
+  /** Remote name */
+  remote: string;
+  /** Branch pushed */
+  branch: string;
+  /** New commits pushed */
+  commitsPushed: number;
+  /** Any warnings or messages */
+  message?: string;
+}
+
 // Re-export Result utilities from core
 export type { Result } from "@agent-workbench/core";
 export { ok, err } from "@agent-workbench/core";

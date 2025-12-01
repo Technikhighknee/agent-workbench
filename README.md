@@ -24,6 +24,15 @@ Process management with persistent tracking, log capture, and lifecycle control.
 - `stop_process` / `restart_process` - Lifecycle control
 - `wait_for_pattern` - Block until output matches
 
+### [@agent-workbench/history](packages/history/)
+Git history operations for AI agents. Understand code evolution through blame, history, and commit search.
+
+- `blame_file` - Who wrote each line and why
+- `file_history` - Commits that touched a file
+- `recent_changes` - What changed recently
+- `commit_info` / `search_commits` - Commit details and search
+- `diff_file` - Compare file between commits
+
 ## Quick Start
 
 ```bash

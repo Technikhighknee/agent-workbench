@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, ProcessSummary } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 import { ProcessSummarySchema } from "./schemas.js";
 
 interface SpawnProcessInput {
@@ -72,8 +73,12 @@ For commands that complete, use run_process instead.`,
         startedAt: p.startedAt,
       };
 
+      const lines = [`Spawned: ${p.label ?? p.command} (${p.id})`];
+      const runningHint = formatRunningProcessesHint(service.listRunning(), p.id);
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: `Spawned: ${p.label ?? p.command} (${p.id})` }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { success: true, process: processSummary },
       };
     }

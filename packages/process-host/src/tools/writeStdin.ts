@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 
 interface WriteStdinInput {
   id: string;
@@ -45,8 +46,12 @@ Add \\n for newline if the process expects Enter.`,
         };
       }
 
+      const lines = [result.value ? "Written" : "Write failed (stdin closed?)"];
+      const runningHint = formatRunningProcessesHint(service.listRunning(), input.id);
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: result.value ? "Written" : "Write failed (stdin closed?)" }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { success: true, written: result.value },
       };
     }

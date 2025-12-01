@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, ProcessDetails } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 import { ProcessDetailsSchema } from "./schemas.js";
 
 /** Strip ANSI codes and trim output */
@@ -132,18 +133,9 @@ Benefits over Bash:
       }
 
       // Check for orphan processes and warn
-      const running = service.listRunning();
-      const otherRunning = running.filter(proc => proc.id !== p.id);
-      if (otherRunning.length > 0) {
-        lines.push(`\n---`);
-        lines.push(`⚠️ ${otherRunning.length} other process(es) still running:`);
-        for (const proc of otherRunning.slice(0, 3)) {
-          lines.push(`  - ${proc.label ?? proc.command} (id: ${proc.id})`);
-        }
-        if (otherRunning.length > 3) {
-          lines.push(`  - ... and ${otherRunning.length - 3} more`);
-        }
-        lines.push(`Use \`list_processes({ running_only: true })\` to see all.`);
+      const runningHint = formatRunningProcessesHint(service.listRunning(), p.id);
+      if (runningHint) {
+        lines.push(runningHint);
       }
 
       return {

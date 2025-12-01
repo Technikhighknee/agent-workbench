@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, ProcessDetails } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 import { ProcessDetailsSchema } from "./schemas.js";
 
 interface GetProcessInput {
@@ -50,8 +51,12 @@ export const registerGetProcess: ToolRegistrar = (server, service) => {
         endedAt: p.endedAt ?? null,
       };
 
+      const lines = [`[${p.status}] ${p.label ?? p.command}`];
+      const runningHint = formatRunningProcessesHint(service.listRunning(), p.id);
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: `[${p.status}] ${p.label ?? p.command}` }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { found: true, process: processDetails },
       };
     }

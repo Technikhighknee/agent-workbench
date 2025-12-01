@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse, ProcessSummary } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 import { ProcessSummarySchema } from "./schemas.js";
 
 interface RestartProcessInput {
@@ -58,8 +59,12 @@ Use cases:
         startedAt: p.startedAt,
       };
 
+      const lines = [`Restarted: ${p.label ?? p.command} (${input.id} → ${p.id})`];
+      const runningHint = formatRunningProcessesHint(service.listRunning(), p.id);
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: `Restarted: ${p.label ?? p.command} (${input.id} → ${p.id})` }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { success: true, originalId: input.id, process: processSummary },
       };
     }

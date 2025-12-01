@@ -1,5 +1,6 @@
 import * as z from "zod/v4";
 import type { ToolRegistrar, ToolResponse } from "./types.js";
+import { formatRunningProcessesHint } from "./types.js";
 import { SignalSchema } from "./schemas.js";
 
 interface SendSignalInput {
@@ -50,8 +51,12 @@ Use cases:
         };
       }
 
+      const lines = [`Sent ${input.signal} to ${input.id}`];
+      const runningHint = formatRunningProcessesHint(service.listRunning(), input.id);
+      if (runningHint) lines.push(runningHint);
+
       return {
-        content: [{ type: "text", text: `Sent ${input.signal} to ${input.id}` }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: { success: true, signalSent: input.signal },
       };
     }

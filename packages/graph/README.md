@@ -189,3 +189,21 @@ graph_initialize({ workspace_path: "/path/to/fullstack-project" })
 // Find all async operations across languages
 graph_find_symbols({ tags: ["async"] })
 ```
+
+## Known Limitations
+
+### MCP Server Native Module Loading
+
+When running as an MCP server via stdio transport, tree-sitter native modules may not load correctly in some environments. This can cause the graph to fall back to TypeScript-only indexing.
+
+**Workaround**: If you need multi-language support, use the `GraphService` as a library directly:
+
+```typescript
+import { GraphService } from "@agent-workbench/graph";
+
+const graph = new GraphService();
+await graph.initialize("/path/to/project");
+// Python, Go, Rust files will be indexed
+```
+
+When used as a library, tree-sitter works correctly and all supported languages are indexed.

@@ -21,11 +21,12 @@ Observations, pain points, and improvement ideas gathered while working with age
    - Project conventions and patterns
    - The `project` MCP helps but could go deeper
 
-2. **Test Runner Gaps**:
-   - `list_test_files` returns empty when test patterns don't match (monorepo tests in packages/)
-   - Status shows "FAILED" when exit code is non-zero even with 0 failed tests (skipped tests cause non-zero exit)
+2. **Test Runner Gaps**: ✅ FIXED
+   - `list_test_files` returns empty when test patterns don't match (monorepo tests in packages/) → Added `**/test/**/*.ts` patterns
+   - Status shows "FAILED" when exit code is non-zero even with 0 failed tests → Now based on `failed === 0`
 
-3. **Types MCP Restart Required** - New tsconfig.json files aren't discovered until restart
+3. **Types MCP Restart Required**: ✅ FIXED
+   - New tsconfig.json files aren't discovered until restart → Added `reload` tool
 
 4. **No Unified Search** - Finding "where is X handled" requires multiple grep/glob operations
    - Would benefit from semantic search or pre-indexed cross-references
@@ -33,9 +34,9 @@ Observations, pain points, and improvement ideas gathered while working with age
 ### Ideas for Enhancement
 
 #### High Value
-- [ ] **Workspace-aware test discovery** - Search packages/*/test for test files
+- [x] **Workspace-aware test discovery** - Search packages/*/test for test files ✅
 - [ ] **Semantic code search** - "Find error handling" without knowing exact patterns
-- [ ] **Auto-restart/reload** - Watch for tsconfig.json changes
+- [x] **Manual reload** - `reload` tool to re-discover tsconfig.json files ✅
 - [ ] **Unified "explain" tool** - Given a concept, find all related code
 
 #### Medium Value
@@ -47,6 +48,40 @@ Observations, pain points, and improvement ideas gathered while working with age
 - [ ] **Learning from corrections** - Track when agent makes mistakes and patterns
 - [ ] **Conversation context** - Remember findings across sessions
 - [ ] **Proactive suggestions** - "You're editing X, did you consider Y?"
+
+---
+
+## Session: 2025-12-01 (Continued)
+
+### Fixes Implemented
+
+1. **test-runner: Monorepo test discovery** (commit 1fc6e0f)
+   - Added patterns: `**/test/**/*.ts`, `**/tests/**/*.ts`, `**/__tests__/**/*.ts`
+   - Now finds `packages/*/test/smoke.ts` files
+
+2. **test-runner: Success status logic** (commit d58225c)
+   - Changed from `success: exitCode === 0` to `success: failed === 0`
+   - Exit code can be non-zero for skipped tests, warnings
+
+3. **types: Reload capability** (commit 7009e91)
+   - Added `reload()` method to re-discover tsconfig.json files
+   - No restart needed when adding new packages
+
+4. **test-runner: Skill file standardization** (commit f4693d7)
+   - Added YAML frontmatter with allowed-tools
+   - Consistent format with other skills
+
+### Observations
+
+- **MCP syntax tools are powerful** - `edit_symbol` is much more reliable than string matching
+- **Skills with examples are essential** - Quick examples section helps understand tool usage
+- **Result<T,E> pattern is duplicated** - 6 implementations across packages, could be shared
+
+### Next Enhancement Candidates
+
+1. **Shared core package** - Factor out Result<T,E>, common types
+2. **Semantic search** - Index code for concept-based queries
+3. **Health check tool** - Combined types + tests + git status
 
 ---
 

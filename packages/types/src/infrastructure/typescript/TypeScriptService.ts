@@ -651,7 +651,8 @@ export class TypeScriptService implements TypeService {
     const preview = this.getPreview(def, project);
 
     return {
-      file: project.host.relativePath(def.fileName),
+      // Use absolute path for consistency with other MCP tools
+      file: def.fileName,
       line,
       column,
       endLine,
@@ -668,6 +669,9 @@ export class TypeScriptService implements TypeService {
     const sourceFile = project.host.getSourceFile(file);
 
     let line = 1, column = 1, endLine = 1, endColumn = 1;
+    let name = "";
+    let kind: string = "unknown";
+
     if (sourceFile) {
       const start = sourceFile.getLineAndCharacterOfPosition(ref.textSpan.start);
       const end = sourceFile.getLineAndCharacterOfPosition(
@@ -677,16 +681,28 @@ export class TypeScriptService implements TypeService {
       column = start.character + 1;
       endLine = end.line + 1;
       endColumn = end.character + 1;
+
+      // Extract the actual text of the reference
+      name = sourceFile.text.slice(ref.textSpan.start, ref.textSpan.start + ref.textSpan.length);
+
+      // Determine the kind based on the reference type
+      // ReferenceEntry has isWriteAccess but not isDefinition
+      if (ref.isWriteAccess) {
+        kind = "variable"; // Write access implies variable assignment
+      } else {
+        kind = "unknown"; // Read access - could be any reference
+      }
     }
 
     return {
-      file: project.host.relativePath(file),
+      // Use absolute path for consistency with other MCP tools
+      file,
       line,
       column,
       endLine,
       endColumn,
-      name: "",
-      kind: "unknown",
+      name,
+      kind: kind as SymbolKind,
     };
   }
 

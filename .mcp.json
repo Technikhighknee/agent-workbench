@@ -2,7 +2,7 @@
   "mcpServers": {
     "process-host": {
       "command": "npx",
-      "args": ["-y", "tsx", "packages/process-host/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/process-host/src/server.ts"],
       "agentPreferences": {
         "description": "No timeouts. Clean output. Run builds/tests with run_process, start servers with spawn_process.",
         "toolGroups": {
@@ -17,7 +17,7 @@
     },
     "history": {
       "command": "npx",
-      "args": ["-y", "tsx", "packages/history/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/history/src/server.ts"],
       "agentPreferences": {
         "description": "Git blame, history, commits. Understand WHY code exists.",
         "toolGroups": {
@@ -35,7 +35,7 @@
     },
     "project": {
       "command": "npx",
-      "args": ["-y", "tsx", "packages/project/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/project/src/server.ts"],
       "agentPreferences": {
         "description": "Instant project orientation. Type, scripts, dependencies, configs. Auto-detects root.",
         "toolGroups": {
@@ -50,7 +50,7 @@
     },
     "syntax": {
       "command": "npx",
-      "args": ["-y", "tsx", "packages/syntax/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/syntax/src/server.ts"],
       "agentPreferences": {
         "description": "Edit by function name, not line numbers. Auto-indexed. TS/JS/Python/Go/Rust.",
         "toolGroups": {
@@ -68,7 +68,7 @@
     },
     "types": {
       "command": "npx",
-      "args": ["-y", "tsx", "packages/types/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/types/src/server.ts"],
       "agentPreferences": {
         "description": "TypeScript type checking. Get errors, hover info, definitions. Verify edits didn't break types.",
         "toolGroups": {
@@ -87,7 +87,7 @@
     },
     "test-runner": {
       "command": "npx",
-      "args": ["-y", "tsx", "packages/test-runner/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/test-runner/src/server.ts"],
       "agentPreferences": {
         "description": "Run tests with structured results. Parse failures, map to source. Jest/Vitest/Node.",
         "toolGroups": {

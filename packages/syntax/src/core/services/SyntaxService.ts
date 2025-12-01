@@ -332,11 +332,24 @@ export class SyntaxService {
   }
 
   private filterByKinds(symbols: SymbolInfo[], kinds: SymbolKind[]): SymbolInfo[] {
-    return symbols
-      .filter((s) => kinds.includes(s.kind))
-      .map((s) => ({
-        ...s,
-        children: s.children ? this.filterByKinds(s.children, kinds) : undefined,
-      }));
+    const result: SymbolInfo[] = [];
+
+    const collectMatching = (syms: SymbolInfo[]): void => {
+      for (const s of syms) {
+        if (kinds.includes(s.kind)) {
+          // Include this symbol, and recursively filter its children
+          result.push({
+            ...s,
+            children: s.children ? this.filterByKinds(s.children, kinds) : undefined,
+          });
+        } else if (s.children) {
+          // This symbol doesn't match, but check its children
+          collectMatching(s.children);
+        }
+      }
+    };
+
+    collectMatching(symbols);
+    return result;
   }
 }

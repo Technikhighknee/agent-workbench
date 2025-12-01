@@ -86,6 +86,9 @@ const CONFIG_FILES: Record<string, ConfigType> = {
   ".env.example": "env",
   ".env.development": "env",
   ".env.production": "env",
+  // Claude / AI
+  ".mcp.json": "mcp",
+  "CLAUDE.md": "claude",
 };
 
 export class ProjectService {
@@ -506,20 +509,35 @@ export class ProjectService {
             path: fullPath,
             type: "github",
           });
+        } else if (entry.isDirectory() && name === ".claude") {
+          configs.push({
+            name,
+            path: fullPath,
+            type: "claude",
+          });
         }
       }
 
-      // Check for nested configs
-      const vscodeDir = path.join(projectRoot, ".vscode");
-      try {
-        await fs.access(vscodeDir);
-        configs.push({
-          name: ".vscode",
-          path: vscodeDir,
-          type: "editor",
-        });
-      } catch {
-        // No .vscode
+      // Check for nested config directories
+      const nestedDirs: Array<{ name: string; type: ConfigType }> = [
+        { name: ".vscode", type: "editor" },
+      ];
+
+      for (const { name, type } of nestedDirs) {
+        const dirPath = path.join(projectRoot, name);
+        try {
+          await fs.access(dirPath);
+          // Only add if not already present
+          if (!configs.some(c => c.name === name)) {
+            configs.push({
+              name,
+              path: dirPath,
+              type,
+            });
+          }
+        } catch {
+          // Directory doesn't exist
+        }
       }
 
       return ok(configs.sort((a, b) => a.name.localeCompare(b.name)));

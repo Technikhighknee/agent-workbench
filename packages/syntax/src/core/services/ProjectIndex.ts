@@ -371,6 +371,24 @@ export class ProjectIndex {
 
     const callers: CallSite[] = [];
 
+    // Patterns that indicate a function/method declaration rather than a call
+    const declarationPatterns = [
+      /\bfunction\s+$/,
+      /\basync\s+function\s+$/,
+      /\bclass\s+$/,
+      /\binterface\s+$/,
+      /\btype\s+$/,
+      /\bconst\s+$/,
+      /\blet\s+$/,
+      /\bvar\s+$/,
+      /\bexport\s+function\s+$/,
+      /\bexport\s+async\s+function\s+$/,
+      /\bexport\s+default\s+function\s+$/,
+      /\bexport\s+class\s+$/,
+      /\bexport\s+interface\s+$/,
+      /\bexport\s+type\s+$/,
+    ];
+
     // Search all indexed files for calls to this symbol
     for (const [relativePath, tree] of this.indexedFiles) {
       const fullPath = this.resolvePath(relativePath);
@@ -388,6 +406,9 @@ export class ProjectIndex {
 
       // For each callable, check if it calls our target
       for (const { symbol, namePath } of callableSymbols) {
+        // Skip if this IS the symbol we're looking for (don't report definition as caller)
+        if (symbol.name === symbolName) continue;
+
         // Extract the body of this symbol
         const startLine = symbol.span.start.line;
         const endLine = symbol.span.end.line;
@@ -401,9 +422,17 @@ export class ProjectIndex {
 
         let match: RegExpExecArray | null;
         while ((match = callPattern.exec(body)) !== null) {
+          // Check if this is a declaration rather than a call
+          const beforeMatch = body.slice(0, match.index + 1).trimEnd();
+          const isDeclaration = declarationPatterns.some(pattern => 
+            pattern.test(beforeMatch)
+          );
+          
+          if (isDeclaration) continue;
+
           // Calculate the actual line number
-          const beforeMatch = body.slice(0, match.index);
-          const lineOffset = (beforeMatch.match(/\n/g) || []).length;
+          const beforeMatchFull = body.slice(0, match.index);
+          const lineOffset = (beforeMatchFull.match(/\n/g) || []).length;
           const callLine = startLine + lineOffset;
 
           callers.push({
@@ -467,10 +496,18 @@ export class ProjectIndex {
     const source = sourceResult.value;
     const lines = source.split("\n");
 
-    // Extract the body of this symbol
+    // Extract the body of this symbol (skip the first line which is the declaration)
     const startLine = symbol.span.start.line;
     const endLine = symbol.span.end.line;
-    const body = lines.slice(startLine - 1, endLine).join("\n");
+    
+    // Skip the declaration line to avoid matching the function's own name
+    const bodyStartLine = startLine + 1;
+    if (bodyStartLine > endLine) {
+      // Single-line function or no body
+      return Ok([]);
+    }
+    
+    const body = lines.slice(bodyStartLine - 1, endLine).join("\n");
 
     // Find all function calls in the body using a regex
     // This matches: identifier( or .identifier(
@@ -478,19 +515,36 @@ export class ProjectIndex {
     const callees: CallSite[] = [];
     const seenCalls = new Set<string>();
 
+    // Keywords and patterns to skip
+    const skipPatterns = new Set([
+      "if", "for", "while", "switch", "catch", "function", "return",
+      "async", "await", "new", "typeof", "instanceof", "class", "interface",
+      "type", "const", "let", "var", "export", "import"
+    ]);
+
     let match: RegExpExecArray | null;
     while ((match = callPattern.exec(body)) !== null) {
       const calleeName = match[1];
 
       // Skip common non-function patterns
-      if (["if", "for", "while", "switch", "catch", "function", "return"].includes(calleeName)) {
+      if (skipPatterns.has(calleeName)) {
         continue;
+      }
+
+      // Skip the function's own name (recursive calls are ok, but not the definition)
+      // This is an extra safeguard
+      if (calleeName === symbol.name) {
+        // Check if this looks like a recursive call (not a declaration)
+        const contextLine = lines[bodyStartLine - 1 + Math.floor(match.index / 100)]?.trim() || "";
+        if (contextLine.startsWith("function ") || contextLine.startsWith("async function ")) {
+          continue;
+        }
       }
 
       // Calculate the actual line number
       const beforeMatch = body.slice(0, match.index);
       const lineOffset = (beforeMatch.match(/\n/g) || []).length;
-      const callLine = startLine + lineOffset;
+      const callLine = bodyStartLine + lineOffset;
 
       // Dedupe by name (we just want to know what's called, not every instance)
       const key = `${calleeName}:${callLine}`;

@@ -100,6 +100,8 @@ export type ConfigType =
   | "monorepo"
   | "linter"
   | "env"
+  | "mcp"
+  | "claude"
   | "other";
 
 // Re-export Result utilities from core

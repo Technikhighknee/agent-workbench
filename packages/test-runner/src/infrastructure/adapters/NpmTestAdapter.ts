@@ -106,12 +106,19 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
     if (!configResult.ok) return configResult;
 
     const config = configResult.value;
-    const { command, args } = this.buildCommand(config, options);
+    
+    // For file-specific tests in a monorepo, detect workspace and run there
+    const workspaceInfo = options?.files?.length 
+      ? await this.detectWorkspaceForFiles(projectPath, options.files)
+      : null;
+    
+    const { command, args } = this.buildCommand(config, options, workspaceInfo);
+    const cwd = workspaceInfo?.workspacePath || config.cwd;
 
     const startedAt = new Date().toISOString();
     const startTime = Date.now();
 
-    const runResult = await this.executeCommand(command, args, config.cwd);
+    const runResult = await this.executeCommand(command, args, cwd);
 
     const completedAt = new Date().toISOString();
     const duration = Date.now() - startTime;
@@ -135,12 +142,26 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
     return Ok(testRun);
   }
 
-  buildCommand(config: TestConfig, options?: RunTestsOptions): { command: string; args: string[] } {
-    const args = [...config.args];
-
-    // Add file filters
-    if (options?.files?.length) {
-      args.push(...options.files);
+  buildCommand(
+    config: TestConfig, 
+    options?: RunTestsOptions,
+    workspaceInfo?: { workspaceName: string; workspacePath: string; relativeFiles: string[] } | null
+  ): { command: string; args: string[] } {
+    const args: string[] = ["test"];
+    
+    // If we detected a workspace, run in that workspace
+    if (workspaceInfo) {
+      args.push("-w", workspaceInfo.workspaceName, "--");
+      // Use relative file paths within the workspace
+      if (workspaceInfo.relativeFiles.length) {
+        args.push(...workspaceInfo.relativeFiles);
+      }
+    } else {
+      args.push("--");
+      // Add file filters (absolute paths for non-workspace runs)
+      if (options?.files?.length) {
+        args.push(...options.files);
+      }
     }
 
     // Add test name pattern
@@ -405,11 +426,89 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
     return undefined;
   }
 
+  /**
+   * Detect which workspace a set of files belongs to in a monorepo.
+   * Returns workspace info if all files are in the same workspace, null otherwise.
+   */
+  private async detectWorkspaceForFiles(
+    projectPath: string,
+    files: string[]
+  ): Promise<{ workspaceName: string; workspacePath: string; relativeFiles: string[] } | null> {
+    const pkgPath = path.join(projectPath, "package.json");
+    if (!fs.existsSync(pkgPath)) return null;
+
+    let pkg: { workspaces?: string[] };
+    try {
+      pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+    } catch {
+      return null;
+    }
+
+    // Not a monorepo
+    if (!pkg.workspaces?.length) return null;
+
+    // Resolve workspace paths
+    const workspaceDirs: Array<{ name: string; path: string }> = [];
+    for (const ws of pkg.workspaces) {
+      // Handle glob patterns like "packages/*"
+      const wsPath = path.join(projectPath, ws.replace("/*", ""));
+      if (fs.existsSync(wsPath) && fs.statSync(wsPath).isDirectory()) {
+        // List subdirectories
+        const subdirs = fs.readdirSync(wsPath);
+        for (const subdir of subdirs) {
+          const fullPath = path.join(wsPath, subdir);
+          const pkgJsonPath = path.join(fullPath, "package.json");
+          if (fs.existsSync(pkgJsonPath)) {
+            try {
+              const wsPkg = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+              if (wsPkg.name) {
+                workspaceDirs.push({ name: wsPkg.name, path: fullPath });
+              }
+            } catch {
+              // Skip invalid package.json
+            }
+          }
+        }
+      }
+    }
+
+    // Find which workspace each file belongs to
+    let matchedWorkspace: { name: string; path: string } | null = null;
+    const relativeFiles: string[] = [];
+
+    for (const file of files) {
+      const absoluteFile = path.isAbsolute(file) ? file : path.join(projectPath, file);
+
+      for (const ws of workspaceDirs) {
+        if (absoluteFile.startsWith(ws.path + path.sep)) {
+          if (matchedWorkspace && matchedWorkspace.name !== ws.name) {
+            // Files span multiple workspaces, can't optimize
+            return null;
+          }
+          matchedWorkspace = ws;
+          relativeFiles.push(path.relative(ws.path, absoluteFile));
+          break;
+        }
+      }
+    }
+
+    if (!matchedWorkspace) return null;
+
+    return {
+      workspaceName: matchedWorkspace.name,
+      workspacePath: matchedWorkspace.path,
+      relativeFiles,
+    };
+  }
+
   private async executeCommand(
     command: string,
     args: string[],
     cwd: string
   ): Promise<Result<{ output: string; exitCode: number }, Error>> {
+    const MAX_OUTPUT_SIZE = 5 * 1024 * 1024; // 5MB limit
+    const TIMEOUT_MS = 5 * 60 * 1000; // 5 minute timeout
+
     return new Promise((resolve) => {
       const proc = spawn(command, args, {
         cwd,
@@ -418,10 +517,53 @@ export class NpmTestAdapter implements TestFrameworkAdapter {
       });
 
       let output = "";
-      proc.stdout?.on("data", (d) => (output += d.toString()));
-      proc.stderr?.on("data", (d) => (output += d.toString()));
-      proc.on("error", (e) => resolve(Err(e)));
-      proc.on("close", (code) => resolve(Ok({ output, exitCode: code ?? 0 })));
+      let outputTruncated = false;
+      let resolved = false;
+
+      const cleanup = (): void => {
+        if (!resolved) {
+          resolved = true;
+          proc.kill("SIGKILL");
+        }
+      };
+
+      // Timeout handler
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          output += "\n\n[TEST RUNNER TIMEOUT: Process killed after 5 minutes]\n";
+          cleanup();
+          resolve(Ok({ output, exitCode: 124 })); // 124 = timeout exit code
+        }
+      }, TIMEOUT_MS);
+
+      const appendOutput = (data: Buffer): void => {
+        if (outputTruncated) return;
+        const chunk = data.toString();
+        if (output.length + chunk.length > MAX_OUTPUT_SIZE) {
+          output += chunk.slice(0, MAX_OUTPUT_SIZE - output.length);
+          output += "\n\n[OUTPUT TRUNCATED: Exceeded 5MB limit]\n";
+          outputTruncated = true;
+        } else {
+          output += chunk;
+        }
+      };
+
+      proc.stdout?.on("data", appendOutput);
+      proc.stderr?.on("data", appendOutput);
+      proc.on("error", (e) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          resolve(Err(e));
+        }
+      });
+      proc.on("close", (code) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          resolve(Ok({ output, exitCode: code ?? 0 }));
+        }
+      });
     });
   }
 }

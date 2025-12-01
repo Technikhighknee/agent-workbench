@@ -37,8 +37,11 @@ export const registerGetDependencies: ToolRegistrar = (server, service) => {
       }
 
       if (dependencies.length === 0) {
+        const message = filterType === "all"
+          ? "No dependencies found."
+          : `No ${filterType} dependencies found.`;
         return {
-          content: [{ type: "text", text: `No ${filterType} dependencies found.` }],
+          content: [{ type: "text", text: message }],
         };
       }
 

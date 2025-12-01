@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(packages/**)",
+      "Write(packages/**)",
+      "Edit(packages/**)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(cat *)",
+      "Bash(find *)",
+      "Bash(timeout *)"
+    ],
+    "deny": [
+      
+    ]
+  }
+}

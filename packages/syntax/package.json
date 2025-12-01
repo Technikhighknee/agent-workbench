@@ -25,6 +25,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsc --watch",
+    "test": "npx tsx test/smoke.ts",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build"
   },

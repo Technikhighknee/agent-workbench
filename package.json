@@ -8,7 +8,7 @@
     "build:syntax": "npm run build -w @agent-workbench/syntax",
     "build:process-host": "npm run build -w @agent-workbench/process-host",
     "clean": "rm -rf packages/*/dist",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test --workspaces --if-present"
   },
   "repository": {
     "type": "git",

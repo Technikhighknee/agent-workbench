@@ -86,7 +86,7 @@ Use cases:
 
 function formatDiagnostics(diagnostics: Diagnostic[], summary?: DiagnosticSummary): string {
   if (diagnostics.length === 0) {
-    return "No diagnostics found. Code is type-correct.";
+    return "No diagnostics found. Code is type-correct.\n\n---\n**Tip:** Use `mcp__test-runner__run_tests` to verify behavior.";
   }
 
   const lines: string[] = [];
@@ -116,6 +116,15 @@ function formatDiagnostics(diagnostics: Diagnostic[], summary?: DiagnosticSummar
     }
     lines.push("");
   }
+
+  // Contextual tips
+  lines.push("---");
+  const hasErrors = summary?.errorCount && summary.errorCount > 0;
+  if (hasErrors) {
+    lines.push("**Tip:** Use `get_quick_fixes` for auto-fix suggestions at error locations.");
+    lines.push("**Tip:** Use `go_to_definition` to understand undefined symbols.");
+  }
+  lines.push("**Tip:** Call `notify_file_changed` after edits to refresh diagnostics.");
 
   return lines.join("\n");
 }

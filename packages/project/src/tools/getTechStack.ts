@@ -196,6 +196,24 @@ export const registerGetTechStack: ToolRegistrar = (server, service) => {
       output.push(`- Development dependencies: ${devDeps}`);
       output.push("");
 
+      // Contextual tips based on detected tech
+      output.push("---");
+      output.push("**Related MCP tools:**");
+
+      const hasTypeScript = info.dependencies.some(d => d.name === "typescript");
+      if (hasTypeScript) {
+        output.push("- TypeScript detected: Use `mcp__types__get_diagnostics` for type checking");
+      }
+
+      const hasTestFramework = info.dependencies.some(d =>
+        ["vitest", "jest", "mocha"].includes(d.name)
+      );
+      if (hasTestFramework) {
+        output.push("- Test framework detected: Use `mcp__test-runner__run_tests` for structured results");
+      }
+
+      output.push("- Call `get_session_guide` for full MCP tool guidance");
+
       return { content: [{ type: "text", text: output.join("\n") }] };
     }
   );

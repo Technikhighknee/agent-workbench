@@ -253,6 +253,14 @@ export const registerGetStructure: ToolRegistrar = (server, service) => {
 
       output.push("");
 
+      // Contextual tips for code navigation
+      output.push("---");
+      output.push("**Related MCP tools:**");
+      output.push("- Use `mcp__syntax__list_symbols` to see functions/classes in a file");
+      output.push("- Use `mcp__syntax__read_symbol` to read code by symbol name");
+      output.push("- Use `mcp__graph__graph_initialize` then `graph_trace` for call chains");
+      output.push("- Call `get_session_guide` for full MCP tool guidance");
+
       return { content: [{ type: "text", text: output.join("\n") }] };
     }
   );

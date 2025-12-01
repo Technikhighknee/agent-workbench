@@ -73,6 +73,10 @@ export const registerGetProjectInfo: ToolRegistrar = (server, service) => {
         output.push("");
       }
 
+      // Bootstrap hint for new sessions
+      output.push("---");
+      output.push("**Tip:** Call `get_session_guide` for comprehensive MCP tool usage guidance.");
+
       return { content: [{ type: "text", text: output.join("\n") }] };
     }
   );

@@ -1,6 +1,6 @@
 ---
 name: syntax
-description: Edit code by function name, not line numbers. No fragile string matching. Auto-indexed. (project)
+description: "MANDATORY: Use INSTEAD of Read/Edit/Grep for code. Edit by symbol name, not string matching. NEVER use Edit for functions."
 allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__get_imports, mcp__syntax__get_exports, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees, mcp__syntax__analyze_deps
 ---
 

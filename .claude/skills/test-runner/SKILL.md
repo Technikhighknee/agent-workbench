@@ -1,6 +1,6 @@
 ---
 name: test-runner
-description: Run tests with structured results. Parse failures, map to source. Jest/Vitest/Node. (project)
+description: "MANDATORY: Use INSTEAD of Bash npm test. Structured results, source-mapped failures. NEVER parse test output manually."
 allowed-tools: mcp__test-runner__run_tests, mcp__test-runner__get_test_failures, mcp__test-runner__list_test_files, mcp__test-runner__rerun_failed
 ---
 

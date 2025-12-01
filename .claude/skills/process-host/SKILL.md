@@ -1,6 +1,6 @@
 ---
 name: process-host
-description: Run builds and tests without timeouts. Start dev servers properly. Clean output, full lifecycle control. (project)
+description: "MANDATORY: Use INSTEAD of Bash for builds/tests. No timeouts, clean output. NEVER use Bash for npm run/test."
 allowed-tools: mcp__process-host__run_process, mcp__process-host__spawn_process, mcp__process-host__get_logs, mcp__process-host__stop_process, mcp__process-host__wait_for_pattern, mcp__process-host__list_processes, mcp__process-host__restart_process, mcp__process-host__get_process, mcp__process-host__purge_processes, mcp__process-host__stop_all_processes, mcp__process-host__send_signal, mcp__process-host__search_logs, mcp__process-host__get_stats, mcp__process-host__write_stdin
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: project
-description: Instant project orientation. Type, commands, dependencies, configs - one call gets you started. (project)
+description: "MANDATORY: Use INSTEAD of Read package.json. Structured project info, scripts, deps. NEVER read package.json directly."
 allowed-tools: mcp__project__get_project_info, mcp__project__get_scripts, mcp__project__get_dependencies, mcp__project__find_configs, mcp__project__read_config
 ---
 

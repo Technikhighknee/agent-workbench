@@ -1,6 +1,6 @@
 ---
 name: types
-description: TypeScript type checking. Get errors, hover info, go-to-definition. Verify edits didn't break types. (project)
+description: "MANDATORY: Use INSTEAD of Bash tsc. Structured type errors, hover info, definitions. NEVER use Bash for TypeScript."
 allowed-tools: mcp__types__get_diagnostics, mcp__types__get_type_at_position, mcp__types__go_to_definition, mcp__types__find_type_references, mcp__types__get_quick_fixes, mcp__types__notify_file_changed, mcp__types__reload
 ---
 

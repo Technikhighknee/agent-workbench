@@ -1,6 +1,6 @@
 ---
 name: history
-description: Understand WHY code exists. Git blame, history, and commit search - the context that makes changes safer. (project)
+description: "MANDATORY: Use INSTEAD of Bash git commands. Structured git blame, history, diff. NEVER use Bash for git operations."
 allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__history__recent_changes, mcp__history__commit_info, mcp__history__search_commits, mcp__history__diff_file, mcp__history__branch_diff
 ---
 

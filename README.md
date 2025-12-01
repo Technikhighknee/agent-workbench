@@ -33,6 +33,14 @@ Git history operations for AI agents. Understand code evolution through blame, h
 - `commit_info` / `search_commits` - Commit details and search
 - `diff_file` - Compare file between commits
 
+### [@agent-workbench/project](packages/project/)
+Project metadata operations. Quickly understand project structure, configs, and available commands.
+
+- `get_project_info` - Project name, type, version, scripts overview
+- `get_scripts` - Available commands to run
+- `get_dependencies` - Production and dev dependencies
+- `find_configs` / `read_config` - Configuration file discovery
+
 ## Quick Start
 
 ```bash

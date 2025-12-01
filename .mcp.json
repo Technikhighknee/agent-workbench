@@ -1,0 +1,67 @@
+{
+  "mcpServers": {
+    "process-host": {
+      "command": "npx",
+      "args": ["-y", "tsx", "packages/process-host/src/server.ts"]
+    },
+    "syntax": {
+      "command": "npx",
+      "args": ["-y", "tsx", "packages/syntax/src/server.ts"],
+      "agentPreferences": {
+        "description": "Symbol-aware code operations for AI agents. Read and edit code by function/class name instead of line numbers. Supports TypeScript, JavaScript, Python, Go, and Rust.",
+        "toolGroups": {
+          "file": {
+            "description": "Single-file operations (no index required)",
+            "tools": ["list_symbols", "read_symbol", "edit_symbol", "edit_lines"]
+          },
+          "project": {
+            "description": "Multi-file operations (requires index_project first)",
+            "tools": ["index_project", "search_symbols", "find_references", "rename_symbol"]
+          }
+        },
+        "workflows": {
+          "navigateCode": {
+            "description": "Navigate and understand code structure",
+            "steps": [
+              "Use list_symbols to get overview of a file",
+              "Use read_symbol to read specific functions/classes",
+              "Use search_symbols (after indexing) to find symbols across files"
+            ]
+          },
+          "editSymbol": {
+            "description": "Edit a specific function or class",
+            "steps": [
+              "Use list_symbols to find the symbol's name path",
+              "Use read_symbol to see current implementation",
+              "Use edit_symbol to replace the entire body"
+            ]
+          },
+          "refactorAcrossFiles": {
+            "description": "Rename or refactor symbols across the codebase",
+            "steps": [
+              "Call index_project to index the codebase first",
+              "Use find_references to see all usages",
+              "Use rename_symbol with dry_run=true to preview changes",
+              "Use rename_symbol to apply the rename"
+            ]
+          },
+          "findUsages": {
+            "description": "Find all usages of a symbol",
+            "steps": [
+              "Call index_project if not already indexed",
+              "Use find_references with the symbol name",
+              "Review definitions vs usages in the output"
+            ]
+          }
+        },
+        "tips": [
+          "Always call index_project before using search_symbols, find_references, or rename_symbol",
+          "Use list_symbols with depth=0 for just top-level symbols, depth=1 to include class methods",
+          "Use read_symbol's context parameter to see surrounding code",
+          "Use rename_symbol's dry_run=true to preview changes before applying",
+          "After editing files, call index_project again to refresh the index"
+        ]
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@ This monorepo provides the agent with:
 - Git history with intent
 - TypeScript verification
 - Test execution
-- Semantic graph navigation
+- Call graph analysis
 
 Each package solves one foundational pain point.
 Together, they form a minimal "development environment" for autonomous or semi-autonomous AI coding.
@@ -37,6 +37,9 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - `get_callers` / `get_callees` - Call hierarchy
 - `analyze_deps` - Circular dependency detection
 - `find_unused_exports` - Find dead code (unused exports)
+- `trace` - Follow call chains forward/backward
+- `find_paths` - All paths between two symbols
+- `find_dead_code` - Find functions unreachable from exports
 
 **Refactoring:**
 - `rename_symbol` - Safe cross-file renaming
@@ -84,19 +87,6 @@ Project metadata and orientation. Quickly understand project structure and avail
 - `get_project_info` - Project name, type, version, scripts overview
 - `get_scripts` - Available commands to run
 
-### [@agent-workbench/graph](packages/graph/)
-Semantic code graph for deep code understanding. Trace call chains, find paths, understand relationships.
-**Auto-initializes on startup** for the current working directory.
-
-- `graph_get_symbol` - Get symbol with full source code
-- `graph_get_callers` / `graph_get_callees` - Call relationships
-- `graph_trace` - Follow call chains forward/backward
-- `graph_find_paths` - All paths between two symbols
-- `graph_find_symbols` - Search by pattern or kind
-- `graph_find_dead_code` - Find functions unreachable from exports
-- `graph_stats` - Graph statistics (nodes, edges, files)
-- `graph_initialize` - Re-index a different workspace
-
 ### [@agent-workbench/types](packages/types/)
 TypeScript language service integration. Get type errors, hover info, and go-to-definition.
 **Auto-syncs** via file watcher (no manual notify needed).
@@ -128,7 +118,6 @@ Key principle: **Use these MCP tools instead of Bash** for:
 - Long builds → `mcp__task-runner__*`
 - Code read/edit → `mcp__syntax__*`
 - Project info → `mcp__project__*`
-- Call graph analysis → `mcp__graph__*`
 
 Each package has a skill file in `.claude/skills/` with detailed usage patterns.
 

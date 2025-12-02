@@ -12,7 +12,6 @@
     "build:project": "npm run build -w @agent-workbench/project",
     "build:types": "npm run build -w @agent-workbench/types",
     "build:test-runner": "npm run build -w @agent-workbench/test-runner",
-    "build:graph": "npm run build -w @agent-workbench/graph",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "clean": "rm -rf packages/*/dist",
     "test": "vitest run",
@@ -31,7 +30,6 @@
     "packages/project",
     "packages/types",
     "packages/test-runner",
-    "packages/graph",
     "packages/task-runner"
   ],
   "keywords": [

@@ -1,7 +1,7 @@
 ---
 name: syntax
 description: "MANDATORY: Use INSTEAD of Read/Edit/Grep for code. Edit by symbol name, not string matching. NEVER use Edit for functions."
-allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__get_imports, mcp__syntax__get_exports, mcp__syntax__add_import, mcp__syntax__remove_unused_imports, mcp__syntax__organize_imports, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees, mcp__syntax__analyze_deps, mcp__syntax__move_file, mcp__syntax__move_symbol, mcp__syntax__extract_function, mcp__syntax__inline_function, mcp__syntax__find_unused_exports, mcp__syntax__apply_edits
+allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__edit_lines, mcp__syntax__get_imports, mcp__syntax__get_exports, mcp__syntax__add_import, mcp__syntax__remove_unused_imports, mcp__syntax__organize_imports, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees, mcp__syntax__analyze_deps, mcp__syntax__move_file, mcp__syntax__move_symbol, mcp__syntax__extract_function, mcp__syntax__inline_function, mcp__syntax__find_unused_exports, mcp__syntax__apply_edits, mcp__syntax__trace, mcp__syntax__find_paths, mcp__syntax__find_dead_code
 ---
 
 # syntax
@@ -63,6 +63,9 @@ allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax_
 | `inline_function` | Replace call with function body | Eliminate indirection |
 | `find_unused_exports` | Find unused exports | Clean up dead code |
 | `apply_edits` | Multi-file atomic edits | Batch changes with rollback |
+| `trace` | Follow call chains | Trace forward/backward from any symbol |
+| `find_paths` | All paths A→B | Security audits, data flow analysis |
+| `find_dead_code` | Find unreachable functions | Deep dead code detection via call graph |
 
 ## WORKFLOW EXAMPLES
 
@@ -150,13 +153,31 @@ apply_edits({
 // All validated before apply, rollback on failure
 ```
 
-## COMPLEMENT TO GRAPH
+## CALL GRAPH ANALYSIS
 
-| If you need... | Use... |
-|----------------|--------|
-| Edit code | `mcp__syntax__*` tools |
-| Trace call chains across files | `mcp__graph__*` tools |
-| Local callers/callees | `mcp__syntax__get_callers/get_callees` |
-| Deep call chain analysis | `mcp__graph__graph_trace` |
+| Tool | Purpose | When to use |
+|------|---------|-------------|
+| `get_callers` | Who calls this? | Impact analysis before changes |
+| `get_callees` | What does this call? | Understand function dependencies |
+| `trace` | Follow call chains | Trace data/control flow through codebase |
+| `find_paths` | All paths A→B | Security audits, understand how code connects |
+| `find_dead_code` | Find unreachable functions | Clean up after refactoring |
+
+### Trace Call Chains
+```
+trace({ symbol: 'handleRequest', direction: 'backward', depth: 3 })  // Who calls this?
+trace({ symbol: 'saveToDb', direction: 'forward', depth: 5 })  // What does this call?
+```
+
+### Find Paths Between Symbols
+```
+find_paths({ from: 'parseInput', to: 'executeQuery', max_depth: 10 })  // Security audit
+```
+
+### Find Dead Code
+```
+find_dead_code({})  // Find all unreachable functions
+find_dead_code({ file_pattern: 'src/.*\\.ts' })  // Limit scope
+```
 
 **Supports:** TypeScript, JavaScript, Python (more languages coming)

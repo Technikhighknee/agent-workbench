@@ -45,6 +45,9 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - `extract_function` - Extract code block into new function
 - `inline_function` - Replace function call with function body
 
+**Multi-file operations:**
+- `apply_edits` - Apply multiple edits atomically with rollback on failure
+
 ### [@agent-workbench/task-runner](packages/task-runner/)
 Task execution with SQLite persistence. Tasks survive server restarts.
 

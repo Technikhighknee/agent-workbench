@@ -23,6 +23,7 @@ import { registerInlineFunction } from "./inlineFunction.js";
 import { registerAddImport } from "./addImport.js";
 import { registerRemoveUnusedImports } from "./removeUnusedImports.js";
 import { registerOrganizeImports } from "./organizeImports.js";
+import { registerApplyEdits } from "./applyEdits.js";
 
 export interface Services {
   syntax: SyntaxService;
@@ -62,6 +63,9 @@ export function registerAllTools(server: McpServer, services: Services): void {
 
   // Refactoring tools (requires both index and syntax)
   registerInlineFunction(server, services.index, services.syntax);
+
+  // Multi-file operations (SyntaxService only)
+  registerApplyEdits(server, services.syntax);
 }
 
 export * from "./types.js";

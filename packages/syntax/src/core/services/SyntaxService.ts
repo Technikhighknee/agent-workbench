@@ -227,6 +227,22 @@ export class SyntaxService {
   }
 
   /**
+   * Delete a file.
+   */
+  deleteFile(filePath: string): Result<void, Error> {
+    this.cache.invalidate(filePath);
+    return this.fs.delete(filePath);
+  }
+
+  /**
+   * Move/rename a file.
+   */
+  moveFile(oldPath: string, newPath: string): Result<void, Error> {
+    this.cache.invalidate(oldPath);
+    return this.fs.rename(oldPath, newPath);
+  }
+
+  /**
    * Replace lines by line number range.
    */
   async editLines(params: EditLinesParams): Promise<Result<EditResult, string>> {

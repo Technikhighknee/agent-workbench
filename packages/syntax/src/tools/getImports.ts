@@ -1,5 +1,7 @@
 import * as z from "zod/v4";
-import type { ToolRegistrar, ToolResponse } from "./types.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SyntaxService } from "../core/services/SyntaxService.js";
+import type { ToolResponse } from "./types.js";
 import { ImportInfoSchema } from "./schemas.js";
 import type { ImportInfo } from "../core/model.js";
 
@@ -14,7 +16,7 @@ interface GetImportsOutput extends Record<string, unknown> {
   count?: number;
 }
 
-export const registerGetImports: ToolRegistrar = (server, service) => {
+export function registerGetImports(server: McpServer, service: SyntaxService): void {
   server.registerTool(
     "get_imports",
     {
@@ -52,52 +54,31 @@ Use cases:
       }
 
       const imports = result.value;
-      const formatted = formatImports(imports);
+
+      if (imports.length === 0) {
+        return {
+          content: [{ type: "text", text: "No imports found in this file." }],
+          structuredContent: { success: true, imports: [], count: 0 },
+        };
+      }
+
+      const lines: string[] = [`# Imports (${imports.length})`];
+      for (const imp of imports) {
+        const bindings = imp.bindings.map((b) => {
+          if (b.originalName && b.originalName !== b.name) {
+            return `${b.originalName} as ${b.name}`;
+          }
+          return b.name;
+        });
+
+        const bindingStr = bindings.length > 0 ? bindings.join(", ") : "";
+        lines.push(`- L${imp.line}: ${imp.type} from "${imp.source}" ${bindingStr ? `[${bindingStr}]` : ""}`);
+      }
 
       return {
-        content: [{ type: "text", text: formatted }],
-        structuredContent: {
-          success: true,
-          imports,
-          count: imports.length,
-        },
+        content: [{ type: "text", text: lines.join("\n") }],
+        structuredContent: { success: true, imports, count: imports.length },
       };
     }
   );
-};
-
-function formatImports(imports: ImportInfo[]): string {
-  if (imports.length === 0) {
-    return "No imports found";
-  }
-
-  const lines: string[] = [];
-  lines.push(`Found ${imports.length} import(s):\n`);
-
-  for (const imp of imports) {
-    const typeIcon = getTypeIcon(imp.type);
-    const bindings = imp.bindings.map((b) => {
-      if (b.originalName) {
-        return `${b.originalName} as ${b.name}`;
-      }
-      return b.name;
-    }).join(", ");
-
-    const bindingsStr = bindings ? ` { ${bindings} }` : "";
-    lines.push(`${typeIcon} L${imp.line}: from "${imp.source}"${bindingsStr}`);
-  }
-
-  return lines.join("\n");
-}
-
-function getTypeIcon(type: ImportInfo["type"]): string {
-  const icons: Record<ImportInfo["type"], string> = {
-    default: "📥",
-    named: "📦",
-    namespace: "📁",
-    side_effect: "⚡",
-    type: "🏷️",
-    require: "📎",
-  };
-  return icons[type] ?? "•";
 }

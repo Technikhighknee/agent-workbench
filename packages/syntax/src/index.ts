@@ -5,5 +5,5 @@ export * from "./core/services/index.js";
 // Infrastructure implementations
 export * from "./infrastructure/index.js";
 
-// Tools
-export { registerAllTools } from "./tools/index.js";
+// Tool exports
+export { registerAllTools, type Services } from "./tools/index.js";

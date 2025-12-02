@@ -2,6 +2,7 @@ import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
 import type { ToolResponse } from "./types.js";
+import type { CallSite } from "../core/model.js";
 
 interface GetCalleesInput {
   file_path: string;
@@ -11,13 +12,8 @@ interface GetCalleesInput {
 interface GetCalleesOutput extends Record<string, unknown> {
   success: boolean;
   error?: string;
-  symbolNamePath?: string;
-  calleeCount?: number;
-  callees?: Array<{
-    name: string;
-    line: number;
-    context: string;
-  }>;
+  callees?: CallSite[];
+  count?: number;
 }
 
 export function registerGetCallees(server: McpServer, index: ProjectIndex): void {
@@ -36,81 +32,60 @@ Use cases:
 - Find dependencies before extracting/refactoring code`,
       inputSchema: {
         file_path: z.string().describe("Path to the file containing the symbol"),
-        symbol_name_path: z
-          .string()
-          .describe("Name path of the function/method (e.g., 'MyClass/myMethod' or 'myFunction')"),
+        symbol_name_path: z.string().describe("Name path of the function/method (e.g., 'MyClass/myMethod' or 'myFunction')"),
       },
       outputSchema: {
         success: z.boolean(),
         error: z.string().optional(),
-        symbolNamePath: z.string().optional(),
-        calleeCount: z.number().optional(),
         callees: z
           .array(
             z.object({
-              name: z.string(),
+              filePath: z.string(),
               line: z.number(),
+              column: z.number(),
+              fromSymbol: z.string().optional(),
               context: z.string(),
             })
           )
           .optional(),
+        count: z.number().optional(),
       },
     },
     async (input: GetCalleesInput): Promise<ToolResponse<GetCalleesOutput>> => {
-      const { file_path, symbol_name_path } = input;
-
       if (index.isEmpty()) {
         return {
           content: [{ type: "text", text: "Error: No project indexed. Call index_project first." }],
-          structuredContent: {
-            success: false,
-            error: "No project indexed. Call index_project first.",
-          },
+          structuredContent: { success: false, error: "No project indexed" },
         };
       }
 
-      const result = await index.getCallees(file_path, symbol_name_path);
+      const result = await index.getCallees(input.file_path, input.symbol_name_path);
 
       if (!result.ok) {
         return {
           content: [{ type: "text", text: `Error: ${result.error}` }],
-          structuredContent: {
-            success: false,
-            error: result.error,
-          },
+          structuredContent: { success: false, error: result.error },
         };
       }
 
       const callees = result.value;
-      const formattedCallees = callees.map((c) => ({
-        name: c.fromSymbol || "unknown",
-        line: c.line,
-        context: c.context,
-      }));
 
-      // Format text output
-      const lines: string[] = [
-        `"${symbol_name_path}" calls ${callees.length} function(s)`,
-        "",
-      ];
+      if (callees.length === 0) {
+        return {
+          content: [{ type: "text", text: `No callees found for: ${input.symbol_name_path}` }],
+          structuredContent: { success: true, callees: [], count: 0 },
+        };
+      }
 
-      if (callees.length > 0) {
-        for (const callee of callees) {
-          lines.push(`  ${callee.fromSymbol || "?"}() - line ${callee.line}`);
-          lines.push(`    ${callee.context}`);
-        }
-      } else {
-        lines.push("  No function calls found.");
+      const lines: string[] = [`# Callees of ${input.symbol_name_path} (${callees.length})`];
+      for (const callee of callees) {
+        lines.push(`- L${callee.line}: ${callee.fromSymbol ?? "unknown"}`);
+        lines.push(`  ${callee.context}`);
       }
 
       return {
         content: [{ type: "text", text: lines.join("\n") }],
-        structuredContent: {
-          success: true,
-          symbolNamePath: symbol_name_path,
-          calleeCount: callees.length,
-          callees: formattedCallees,
-        },
+        structuredContent: { success: true, callees, count: callees.length },
       };
     }
   );

@@ -1,5 +1,7 @@
 import * as z from "zod/v4";
-import type { ToolRegistrar, ToolResponse } from "./types.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SyntaxService } from "../core/services/SyntaxService.js";
+import type { ToolResponse } from "./types.js";
 import { ExportInfoSchema } from "./schemas.js";
 import type { ExportInfo } from "../core/model.js";
 
@@ -14,7 +16,7 @@ interface GetExportsOutput extends Record<string, unknown> {
   count?: number;
 }
 
-export const registerGetExports: ToolRegistrar = (server, service) => {
+export function registerGetExports(server: McpServer, service: SyntaxService): void {
   server.registerTool(
     "get_exports",
     {
@@ -52,55 +54,32 @@ Use cases:
       }
 
       const exports = result.value;
-      const formatted = formatExports(exports);
+
+      if (exports.length === 0) {
+        return {
+          content: [{ type: "text", text: "No exports found in this file." }],
+          structuredContent: { success: true, exports: [], count: 0 },
+        };
+      }
+
+      const lines: string[] = [`# Exports (${exports.length})`];
+      for (const exp of exports) {
+        const bindings = exp.bindings.map((b) => {
+          if (b.localName && b.localName !== b.name) {
+            return `${b.localName} as ${b.name}`;
+          }
+          return b.name;
+        });
+
+        const bindingStr = bindings.length > 0 ? bindings.join(", ") : "";
+        const fromStr = exp.source ? ` from "${exp.source}"` : "";
+        lines.push(`- L${exp.line}: ${exp.type}${fromStr} ${bindingStr ? `[${bindingStr}]` : ""}`);
+      }
 
       return {
-        content: [{ type: "text", text: formatted }],
-        structuredContent: {
-          success: true,
-          exports,
-          count: exports.length,
-        },
+        content: [{ type: "text", text: lines.join("\n") }],
+        structuredContent: { success: true, exports, count: exports.length },
       };
     }
   );
-};
-
-function formatExports(exports: ExportInfo[]): string {
-  if (exports.length === 0) {
-    return "No exports found";
-  }
-
-  const lines: string[] = [];
-  lines.push(`Found ${exports.length} export(s):\n`);
-
-  for (const exp of exports) {
-    const typeIcon = getTypeIcon(exp.type);
-    const bindings = exp.bindings.map((b) => {
-      let str = b.name;
-      if (b.localName && b.localName !== b.name) {
-        str = `${b.localName} as ${b.name}`;
-      }
-      if (b.kind) {
-        str += ` (${b.kind})`;
-      }
-      return str;
-    }).join(", ");
-
-    const sourceStr = exp.source ? ` from "${exp.source}"` : "";
-    lines.push(`${typeIcon} L${exp.line}: ${bindings}${sourceStr}`);
-  }
-
-  return lines.join("\n");
-}
-
-function getTypeIcon(type: ExportInfo["type"]): string {
-  const icons: Record<ExportInfo["type"], string> = {
-    default: "📤",
-    named: "📦",
-    declaration: "⚡",
-    reexport: "🔄",
-    namespace: "📁",
-  };
-  return icons[type] ?? "•";
 }

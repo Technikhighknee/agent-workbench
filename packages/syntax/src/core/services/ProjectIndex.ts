@@ -152,6 +152,13 @@ export class ProjectIndex {
   }
 
   /**
+   * Get all indexed file paths.
+   */
+  getIndexedFiles(): string[] {
+    return Array.from(this.indexedFiles.keys());
+  }
+
+  /**
    * Re-index a single file (after it's been modified).
    */
   async reindexFile(relativePath: string): Promise<Result<void, string>> {

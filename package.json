@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "npm run build --workspaces",
+    "build:core": "npm run build -w @agent-workbench/core",
     "build:syntax": "npm run build -w @agent-workbench/syntax",
-    "build:process-host": "npm run build -w @agent-workbench/process-host",
+    "build:task-runner": "npm run build -w @agent-workbench/task-runner",
     "build:history": "npm run build -w @agent-workbench/history",
     "build:project": "npm run build -w @agent-workbench/project",
     "build:types": "npm run build -w @agent-workbench/types",
@@ -25,13 +26,13 @@
   },
   "workspaces": [
     "packages/core",
-    "packages/process-host",
     "packages/syntax",
     "packages/history",
     "packages/project",
     "packages/types",
     "packages/test-runner",
-    "packages/graph"
+    "packages/graph",
+    "packages/task-runner"
   ],
   "keywords": [
     "ai-agent",

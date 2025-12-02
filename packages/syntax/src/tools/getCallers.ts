@@ -2,6 +2,7 @@ import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
 import type { ToolResponse } from "./types.js";
+import type { CallSite } from "../core/model.js";
 
 interface GetCallersInput {
   symbol_name: string;
@@ -10,14 +11,8 @@ interface GetCallersInput {
 interface GetCallersOutput extends Record<string, unknown> {
   success: boolean;
   error?: string;
-  symbolName?: string;
-  callerCount?: number;
-  callers?: Array<{
-    file: string;
-    line: number;
-    callingFunction: string;
-    context: string;
-  }>;
+  callers?: CallSite[];
+  count?: number;
 }
 
 export function registerGetCallers(server: McpServer, index: ProjectIndex): void {
@@ -40,76 +35,56 @@ Use cases:
       outputSchema: {
         success: z.boolean(),
         error: z.string().optional(),
-        symbolName: z.string().optional(),
-        callerCount: z.number().optional(),
         callers: z
           .array(
             z.object({
-              file: z.string(),
+              filePath: z.string(),
               line: z.number(),
-              callingFunction: z.string(),
+              column: z.number(),
+              fromSymbol: z.string().optional(),
               context: z.string(),
             })
           )
           .optional(),
+        count: z.number().optional(),
       },
     },
     async (input: GetCallersInput): Promise<ToolResponse<GetCallersOutput>> => {
-      const { symbol_name } = input;
-
       if (index.isEmpty()) {
         return {
           content: [{ type: "text", text: "Error: No project indexed. Call index_project first." }],
-          structuredContent: {
-            success: false,
-            error: "No project indexed. Call index_project first.",
-          },
+          structuredContent: { success: false, error: "No project indexed" },
         };
       }
 
-      const result = await index.getCallers(symbol_name);
+      const result = await index.getCallers(input.symbol_name);
 
       if (!result.ok) {
         return {
           content: [{ type: "text", text: `Error: ${result.error}` }],
-          structuredContent: {
-            success: false,
-            error: result.error,
-          },
+          structuredContent: { success: false, error: result.error },
         };
       }
 
       const callers = result.value;
-      const formattedCallers = callers.map((c) => ({
-        file: c.filePath,
-        line: c.line,
-        callingFunction: c.fromSymbol || "unknown",
-        context: c.context,
-      }));
 
-      // Format text output
-      const lines: string[] = [
-        `Found ${callers.length} caller(s) of "${symbol_name}"`,
-        "",
-      ];
+      if (callers.length === 0) {
+        return {
+          content: [{ type: "text", text: `No callers found for: ${input.symbol_name}` }],
+          structuredContent: { success: true, callers: [], count: 0 },
+        };
+      }
 
-      if (callers.length > 0) {
-        for (const caller of callers) {
-          lines.push(`  ${caller.fromSymbol || "?"} (${caller.filePath}:${caller.line})`);
-          lines.push(`    ${caller.context}`);
-        }
-      } else {
-        lines.push("  No callers found.");
+      const lines: string[] = [`# Callers of ${input.symbol_name} (${callers.length})`];
+      for (const caller of callers) {
+        const from = caller.fromSymbol ? ` in ${caller.fromSymbol}` : "";
+        lines.push(`- ${caller.filePath}:${caller.line}${from}`);
+        lines.push(`  ${caller.context}`);
       }
 
       return {
         content: [{ type: "text", text: lines.join("\n") }],
-        structuredContent: {
-          success: true,
-          symbolName: symbol_name,
-          callerCount: callers.length,
-          callers: formattedCallers,
-        },
+        structuredContent: { success: true, callers, count: callers.length },
       };
     }
   );

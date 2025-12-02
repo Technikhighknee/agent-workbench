@@ -177,24 +177,30 @@ export class TypeScriptService implements TypeService {
     file: string,
     errorsOnly?: boolean
   ): Diagnostic[] {
-    const resolvedFile = project.host.resolveFile(file);
-    if (!project.host.fileExists(resolvedFile)) {
+    try {
+      const resolvedFile = project.host.resolveFile(file);
+      if (!project.host.fileExists(resolvedFile)) {
+        return [];
+      }
+
+      const syntactic = project.service.getSyntacticDiagnostics(resolvedFile);
+      const semantic = project.service.getSemanticDiagnostics(resolvedFile);
+      const suggestion = project.service.getSuggestionDiagnostics(resolvedFile);
+
+      const allDiags = [
+        ...syntactic.map((d) => this.convertDiagnostic(d, "syntactic", project)),
+        ...semantic.map((d) => this.convertDiagnostic(d, "semantic", project)),
+        ...suggestion.map((d) => this.convertDiagnostic(d, "suggestion", project)),
+      ];
+
+      return errorsOnly
+        ? allDiags.filter((d) => d.severity === "error")
+        : allDiags;
+    } catch {
+      // TypeScript language service can throw on certain files
+      // Skip this file and continue
       return [];
     }
-
-    const syntactic = project.service.getSyntacticDiagnostics(resolvedFile);
-    const semantic = project.service.getSemanticDiagnostics(resolvedFile);
-    const suggestion = project.service.getSuggestionDiagnostics(resolvedFile);
-
-    const allDiags = [
-      ...syntactic.map((d) => this.convertDiagnostic(d, "syntactic", project)),
-      ...semantic.map((d) => this.convertDiagnostic(d, "semantic", project)),
-      ...suggestion.map((d) => this.convertDiagnostic(d, "suggestion", project)),
-    ];
-
-    return errorsOnly
-      ? allDiags.filter((d) => d.severity === "error")
-      : allDiags;
   }
 
   async getDiagnosticSummary(): Promise<Result<DiagnosticSummary, Error>> {

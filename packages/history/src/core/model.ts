@@ -184,6 +184,44 @@ export interface PushResult {
   message?: string;
 }
 
+/**
+ * A symbol that changed between two git refs.
+ */
+export interface ChangedSymbol {
+  /** Symbol name */
+  name: string;
+  /** Full qualified name (e.g., "MyClass.myMethod") */
+  qualifiedName: string;
+  /** Symbol kind: function, class, method, etc. */
+  kind: string;
+  /** File where the symbol is located */
+  file: string;
+  /** Line number (in the newer version, or last known for deleted) */
+  line: number;
+  /** Change type: added, modified, or deleted */
+  changeType: "added" | "modified" | "deleted";
+}
+
+/**
+ * Result of comparing symbols between two git refs.
+ */
+export interface ChangedSymbolsResult {
+  /** Base ref (older) */
+  fromRef: string;
+  /** Head ref (newer) */
+  toRef: string;
+  /** Symbols that were added */
+  added: ChangedSymbol[];
+  /** Symbols that were modified */
+  modified: ChangedSymbol[];
+  /** Symbols that were deleted */
+  deleted: ChangedSymbol[];
+  /** Files that were analyzed */
+  filesAnalyzed: number;
+  /** Files that couldn't be parsed */
+  parseErrors: string[];
+}
+
 // Re-export Result utilities from core
 export type { Result } from "@agent-workbench/core";
 export { ok, err } from "@agent-workbench/core";

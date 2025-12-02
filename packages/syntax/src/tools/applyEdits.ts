@@ -42,9 +42,12 @@ interface EditResult {
   success: boolean;
   error?: string;
   occurrences?: number;
+  line?: number; // Line number of first occurrence (1-indexed)
+  lines?: number[]; // All line numbers when replace_all
   preview?: {
     before: string;
     after: string;
+    context?: string; // The line containing the match
   };
 }
 
@@ -68,7 +71,7 @@ export function registerApplyEdits(
 ): void {
   server.tool(
     "apply_edits",
-    "Apply multiple edits across files atomically. All edits succeed or all fail.",
+    "Apply multiple edits across files atomically. All edits succeed or all fail with rollback.",
     ApplyEditsSchema.shape,
     async (params): Promise<{ content: Array<{ type: "text"; text: string }>; structuredContent: ApplyEditsOutput }> => {
       const { edits, dry_run } = ApplyEditsSchema.parse(params);
@@ -140,11 +143,20 @@ export function registerApplyEdits(
         const previewText = results
           .map((r) => {
             if (r.preview) {
-              return `${r.file_path}:\n  - "${truncate(r.preview.before, 50)}" → "${truncate(r.preview.after, 50)}"${r.occurrences && r.occurrences > 1 ? ` (${r.occurrences} occurrences)` : ""}`;
+              const lineInfo = r.lines
+                ? `:${r.lines.join(",")}`
+                : `:${r.line}`;
+              const occInfo = r.occurrences && r.occurrences > 1
+                ? ` (${r.occurrences}x)`
+                : "";
+              const contextInfo = r.preview.context
+                ? `\n    ${r.preview.context}`
+                : "";
+              return `${r.file_path}${lineInfo}${occInfo}\n  "${truncate(r.preview.before, 40)}" → "${truncate(r.preview.after, 40)}"${contextInfo}`;
             }
             return `${r.file_path}: OK`;
           })
-          .join("\n");
+          .join("\n\n");
 
         return {
           content: [
@@ -268,15 +280,16 @@ async function validateAndPrepareEdit(
     };
   }
 
-  // Count occurrences
-  const occurrences = countOccurrences(content, old_string);
+  // Find all occurrences with line numbers
+  const lineNumbers = findLineNumbers(content, old_string);
+  const occurrences = lineNumbers.length;
 
   // If not replace_all, ensure uniqueness
   if (!replace_all && occurrences > 1) {
     return {
       file_path,
       success: false,
-      error: `String "${truncate(old_string, 30)}" found ${occurrences} times. Use replace_all=true or provide more context for uniqueness.`,
+      error: `String "${truncate(old_string, 30)}" found ${occurrences} times (lines ${lineNumbers.join(", ")}). Use replace_all=true or provide more context for uniqueness.`,
     };
   }
 
@@ -297,13 +310,22 @@ async function validateAndPrepareEdit(
   // Store for later application
   newContents.set(file_path, newContent);
 
+  // Get context: the line containing the first match
+  const firstMatchIndex = content.indexOf(old_string);
+  const lineStart = content.lastIndexOf("\n", firstMatchIndex) + 1;
+  const lineEnd = content.indexOf("\n", firstMatchIndex);
+  const contextLine = content.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+
   return {
     file_path,
     success: true,
     occurrences,
+    line: lineNumbers[0],
+    lines: occurrences > 1 ? lineNumbers : undefined,
     preview: {
       before: old_string,
       after: new_string,
+      context: truncate(contextLine.trim(), 80),
     },
   };
 }
@@ -316,6 +338,18 @@ function countOccurrences(text: string, search: string): number {
     pos += search.length;
   }
   return count;
+}
+
+function findLineNumbers(text: string, search: string): number[] {
+  const lines: number[] = [];
+  let pos = 0;
+  while ((pos = text.indexOf(search, pos)) !== -1) {
+    // Count newlines before this position to get line number (1-indexed)
+    const lineNumber = text.slice(0, pos).split("\n").length;
+    lines.push(lineNumber);
+    pos += search.length;
+  }
+  return lines;
 }
 
 function truncate(s: string, maxLen: number): string {

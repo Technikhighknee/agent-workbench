@@ -322,3 +322,100 @@ export interface DependencyAnalysis {
   /** Whether the project has any circular dependencies */
   hasCircularDependencies: boolean;
 }
+
+// ============================================================================
+// Call Graph Types (for trace, findPaths, findDeadCode)
+// ============================================================================
+
+/**
+ * An edge in the call graph representing a call relationship.
+ */
+export interface CallEdge {
+  /** Caller symbol ID (file:namePath) */
+  from: string;
+  /** Callee symbol ID (file:namePath) */
+  to: string;
+  /** Line where the call occurs */
+  line: number;
+}
+
+/**
+ * A symbol node in the call graph.
+ */
+export interface GraphNode {
+  /** Unique ID: "file:namePath" */
+  id: string;
+  /** Symbol name */
+  name: string;
+  /** Full name path (e.g., "MyClass.myMethod") */
+  namePath: string;
+  /** Symbol kind */
+  kind: SymbolKind;
+  /** File path (relative to project root) */
+  file: string;
+  /** Start line */
+  line: number;
+  /** Whether exported from its module */
+  isExported: boolean;
+}
+
+/**
+ * Result of a trace operation.
+ */
+export interface TraceResult {
+  /** Starting symbol */
+  from: string;
+  /** Direction of trace */
+  direction: "forward" | "backward";
+  /** Maximum depth used */
+  depth: number;
+  /** Reachable symbols with their distance */
+  reachable: Array<{
+    node: GraphNode;
+    depth: number;
+  }>;
+}
+
+/**
+ * A path through the call graph.
+ */
+export interface GraphPath {
+  /** Node IDs in order from start to end */
+  nodes: string[];
+  /** Length of path (number of edges) */
+  length: number;
+}
+
+/**
+ * Result of path finding.
+ */
+export interface FindPathsResult {
+  /** Starting symbol */
+  from: string;
+  /** Target symbol */
+  to: string;
+  /** Paths found (sorted by length) */
+  paths: GraphPath[];
+}
+
+/**
+ * A potentially dead code item.
+ */
+export interface DeadCodeItem {
+  /** Symbol info */
+  node: GraphNode;
+  /** Why this is considered dead */
+  reason: string;
+}
+
+/**
+ * Result of dead code analysis.
+ */
+export interface DeadCodeResult {
+  /** Total symbols analyzed */
+  totalSymbols: number;
+  /** Number of entry points (exports) */
+  entryPoints: number;
+  /** Dead code items found */
+  deadCode: DeadCodeItem[];
+}

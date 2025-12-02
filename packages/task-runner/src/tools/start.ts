@@ -5,7 +5,7 @@
 import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TaskRunner } from "../TaskRunner.js";
-import { formatTask } from "./format.js";
+import { formatTask, formatOutput } from "./format.js";
 
 const InputSchema = {
   command: z.string().min(1).describe("Shell command to execute"),
@@ -54,7 +54,8 @@ Example with wait_for:
       };
 
       try {
-        const task = runner.spawn(command, { label, cwd });
+        // Changed from spawn() to start()
+        const task = runner.start(command, { label, cwd });
 
         let text = formatTask(task);
         text += `\n\nTask started in background.`;
@@ -76,11 +77,9 @@ Example with wait_for:
             text += `\n**Timeout waiting for pattern** (task still running)`;
           }
 
-          // Get fresh task state
-          const freshTask = runner.get(task.id);
-          if (freshTask) {
-            text = formatTask(freshTask) + text.split("\n").slice(1).join("\n");
-          }
+          // Show updated task info
+          text = formatTask(result.task) + "\n" + text.split("\n").slice(1).join("\n");
+          text += "\n\n" + formatOutput(result.output);
         }
 
         text += `\n\nUse \`task_get ${task.id}\` to check status.`;

@@ -24,13 +24,16 @@ export function formatTask(task: Task): string {
     lines.push(`**Exit code:** ${task.exitCode}`);
   }
 
-  lines.push(`**Started:** ${task.startedAt.toISOString()}`);
+  // startedAt and endedAt are now ISO strings
+  const startedAt = new Date(task.startedAt);
+  lines.push(`**Started:** ${task.startedAt}`);
 
   if (task.endedAt) {
-    lines.push(`**Ended:** ${task.endedAt.toISOString()}`);
-    lines.push(`**Duration:** ${formatDuration(task.startedAt, task.endedAt)}`);
+    const endedAt = new Date(task.endedAt);
+    lines.push(`**Ended:** ${task.endedAt}`);
+    lines.push(`**Duration:** ${formatDuration(startedAt, endedAt)}`);
   } else {
-    lines.push(`**Running for:** ${formatDuration(task.startedAt, new Date())}`);
+    lines.push(`**Running for:** ${formatDuration(startedAt, new Date())}`);
   }
 
   if (task.cwd) {
@@ -45,18 +48,18 @@ export function formatTask(task: Task): string {
 }
 
 /**
- * Format task output section.
+ * Format output section (output is passed separately, not from Task).
  */
-export function formatOutput(task: Task): string {
-  if (!task.output || task.output.trim() === "") {
+export function formatOutput(output: string | undefined): string {
+  if (!output || output.trim() === "") {
     return "### Output\n\n(no output)";
   }
 
-  const lines = task.output.split("\n");
+  const lines = output.split("\n");
   const maxLines = 100;
 
   if (lines.length <= maxLines) {
-    return `### Output\n\n\`\`\`\n${task.output}\n\`\`\``;
+    return `### Output\n\n\`\`\`\n${output}\n\`\`\``;
   }
 
   // Show first 30 and last 60 lines
@@ -90,7 +93,7 @@ function formatStatus(status: string): string {
 /**
  * Format duration between two dates.
  */
-function formatDuration(start: Date, end: Date): string {
+export function formatDuration(start: Date, end: Date): string {
   const ms = end.getTime() - start.getTime();
 
   if (ms < 1000) return `${ms}ms`;

@@ -60,7 +60,8 @@ Use cases:
             text += `\n\n**Timeout waiting for pattern** (task still running)`;
           }
 
-          text += "\n\n" + formatOutput(result.task);
+          // Output comes from WaitResult
+          text += "\n\n" + formatOutput(result.output);
 
           return {
             content: [{ type: "text" as const, text }],
@@ -77,7 +78,9 @@ Use cases:
           };
         }
 
-        const text = formatTask(task) + "\n\n" + formatOutput(task);
+        // Get output separately
+        const output = runner.getOutput(id);
+        const text = formatTask(task) + "\n\n" + formatOutput(output);
 
         return {
           content: [{ type: "text" as const, text }],

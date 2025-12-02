@@ -1,27 +1,33 @@
 /**
  * Core domain model for task-runner.
- * Minimal types - one main entity (Task) with clear states.
+ *
+ * Design principles:
+ * - Detached processes survive MCP server restarts
+ * - Output stored in log files, not database
+ * - Metadata in JSON, not SQLite
+ * - PID + start time for reliable process identification
  */
 
 /**
  * Task execution status.
  *
- * - running: Currently executing, we have the process handle
+ * - running: Process is alive (verified via PID)
  * - done: Completed successfully (exit code 0)
  * - failed: Completed with error (exit code !== 0)
  * - killed: Terminated by user request
- * - orphaned: Was running when server restarted, process lost
+ * - orphaned: Was running but process died unexpectedly
  */
 export type TaskStatus = "running" | "done" | "failed" | "killed" | "orphaned";
 
 /**
  * A task represents a shell command execution.
+ * Persisted to tasks.json for recovery across restarts.
  */
 export interface Task {
-  /** Unique identifier */
+  /** Unique identifier (nanoid) */
   readonly id: string;
 
-  /** The shell command that was/is being executed */
+  /** The shell command being executed */
   readonly command: string;
 
   /** Optional human-readable label */
@@ -31,53 +37,47 @@ export interface Task {
   readonly cwd: string | null;
 
   /** Current status */
-  readonly status: TaskStatus;
+  status: TaskStatus;
 
-  /** Process exit code (null if still running or orphaned) */
-  readonly exitCode: number | null;
+  /** Process ID (for reconnection after restart) */
+  readonly pid: number;
 
-  /** When the task started */
-  readonly startedAt: Date;
+  /** Path to log file containing output */
+  readonly logFile: string;
 
-  /** When the task ended (null if still running) */
-  readonly endedAt: Date | null;
+  /** Process exit code (null if still running) */
+  exitCode: number | null;
 
-  /** Combined stdout+stderr output (cleaned) */
-  readonly output: string;
+  /** When the task started (ISO string for JSON serialization) */
+  readonly startedAt: string;
+
+  /** When the task ended (ISO string, null if running) */
+  endedAt: string | null;
 
   /** True if output was truncated due to size limits */
-  readonly truncated: boolean;
+  truncated: boolean;
+}
+
+/**
+ * Options for starting a background task (detached).
+ */
+export interface StartOptions {
+  /** Human-readable label for the task */
+  label?: string;
+
+  /** Working directory */
+  cwd?: string;
+
+  /** Environment variables to set/override */
+  env?: Record<string, string>;
 }
 
 /**
  * Options for running a command (waits for completion).
  */
-export interface RunOptions {
-  /** Human-readable label for the task */
-  label?: string;
-
-  /** Working directory */
-  cwd?: string;
-
-  /** Environment variables to set/override */
-  env?: Record<string, string>;
-
+export interface RunOptions extends StartOptions {
   /** How long to wait before returning (ms). Default: 30000 */
   timeout?: number;
-}
-
-/**
- * Options for spawning a background task.
- */
-export interface SpawnOptions {
-  /** Human-readable label for the task */
-  label?: string;
-
-  /** Working directory */
-  cwd?: string;
-
-  /** Environment variables to set/override */
-  env?: Record<string, string>;
 }
 
 /**
@@ -87,12 +87,15 @@ export interface RunResult {
   /** The task with final state */
   readonly task: Task;
 
+  /** The task's output */
+  readonly output: string;
+
   /** True if we returned due to timeout (task may still be running) */
   readonly timedOut: boolean;
 }
 
 /**
- * Options for waiting on a pattern.
+ * Options for waiting on a pattern in output.
  */
 export interface WaitOptions {
   /** Regex pattern to wait for in output */
@@ -100,9 +103,6 @@ export interface WaitOptions {
 
   /** How long to wait (ms). Default: 30000 */
   timeout?: number;
-
-  /** How often to check (ms). Default: 100 */
-  pollInterval?: number;
 }
 
 /**
@@ -114,52 +114,38 @@ export interface WaitResult {
 
   /** The task's current state */
   readonly task: Task;
-}
 
-/**
- * Internal task state (not persisted, runtime only).
- */
-export interface ActiveTask {
-  /** The persisted task data */
-  task: Task;
-
-  /** The live process handle */
-  process: import("node:child_process").ChildProcess;
-
-  /** Pending output chunks not yet flushed to store */
-  pendingOutput: string[];
-
-  /** Flush timer handle */
-  flushTimer: NodeJS.Timeout | null;
+  /** Current output content */
+  readonly output: string;
 }
 
 /**
  * Configuration for TaskRunner.
  */
 export interface TaskRunnerConfig {
-  /** Path to SQLite database file. Default: "tasks.db" in cwd */
-  dbPath?: string;
+  /** Directory for storing data (tasks.json, logs/). Default: ".task-runner" */
+  dataDir?: string;
 
-  /** Maximum output size per task in bytes. Default: 512KB */
-  maxOutputSize?: number;
-
-  /** How often to flush output to DB (ms). Default: 500 */
-  flushInterval?: number;
-
-  /** Auto-cleanup tasks older than this (ms). Default: 24 hours */
-  cleanupAge?: number;
+  /** Maximum log file size in bytes before truncation. Default: 10MB */
+  maxLogSize?: number;
 
   /** Maximum number of completed tasks to keep. Default: 100 */
-  maxCompletedTasks?: number;
+  maxTasks?: number;
+
+  /** Auto-cleanup tasks older than this (ms). Default: 7 days */
+  maxAge?: number;
+
+  /** Cleanup interval (ms). 0 = manual only. Default: 1 hour */
+  cleanupInterval?: number;
 }
 
 /** Default configuration values */
 export const DEFAULT_CONFIG: Required<TaskRunnerConfig> = {
-  dbPath: "tasks.db",
-  maxOutputSize: 512 * 1024, // 512KB
-  flushInterval: 500,
-  cleanupAge: 24 * 60 * 60 * 1000, // 24 hours
-  maxCompletedTasks: 100,
+  dataDir: ".task-runner",
+  maxLogSize: 10 * 1024 * 1024, // 10MB
+  maxTasks: 100,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  cleanupInterval: 60 * 60 * 1000, // 1 hour
 };
 
 /** Default timeout for run operations */
@@ -168,5 +154,31 @@ export const DEFAULT_RUN_TIMEOUT = 30_000; // 30 seconds
 /** Default timeout for wait operations */
 export const DEFAULT_WAIT_TIMEOUT = 30_000; // 30 seconds
 
-/** Default poll interval for wait operations */
-export const DEFAULT_POLL_INTERVAL = 100; // 100ms
+/**
+ * Result of cleanup operation.
+ */
+export interface CleanupResult {
+  /** Number of tasks deleted */
+  deletedTasks: number;
+
+  /** Number of log files deleted */
+  deletedLogs: number;
+
+  /** Number of logs truncated */
+  truncatedLogs: number;
+}
+
+/**
+ * Internal state for an active (running) task.
+ * Not persisted - reconstructed from Task + live process.
+ */
+export interface ActiveTask {
+  /** The task metadata */
+  task: Task;
+
+  /** File descriptor for the log file */
+  logFd: number;
+
+  /** Current output size (for truncation tracking) */
+  outputSize: number;
+}

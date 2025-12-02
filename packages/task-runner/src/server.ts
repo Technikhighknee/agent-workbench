@@ -2,15 +2,16 @@
 /**
  * MCP server for task execution.
  *
- * Minimal, robust task runner with SQLite persistence.
+ * Robust task runner with detached processes and JSON persistence.
+ * Processes survive MCP server restarts.
  */
 
 import { runServer } from "@agent-workbench/core";
 import { TaskRunner } from "./TaskRunner.js";
 import { registerAllTools, type Services } from "./tools/index.js";
 
-// Database path from environment or default
-const dbPath = process.env.TASK_RUNNER_DB ?? "tasks.db";
+// Data directory from environment or default
+const dataDir = process.env.TASK_RUNNER_DATA_DIR ?? ".task-runner";
 
 runServer<Services>({
   config: {
@@ -18,15 +19,18 @@ runServer<Services>({
     version: "0.1.0",
   },
   createServices: () => ({
-    runner: new TaskRunner({ dbPath }),
+    runner: new TaskRunner({ dataDir }),
   }),
   registerTools: registerAllTools,
   onStartup: async (services) => {
+    // Initialize the runner (create directories, load tasks, acquire lock)
+    await services.runner.initialize();
+
     const running = services.runner.runningCount();
     if (running > 0) {
-      console.error(`[task-runner] Warning: Found ${running} orphaned task(s) from previous run`);
+      console.error(`[task-runner] Reconnected to ${running} running task(s)`);
     }
-    console.error(`[task-runner] Ready. Database: ${dbPath}`);
+    console.error(`[task-runner] Ready. Data directory: ${dataDir}`);
   },
   onShutdown: async (services) => {
     console.error("[task-runner] Shutting down...");

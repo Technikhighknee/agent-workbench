@@ -1,26 +1,16 @@
 /**
  * @agent-workbench/graph
- * Semantic code graph for AI agents - queryable knowledge base that replaces file reading.
+ * Semantic code graph for AI agents.
  */
 
-// Core model
-export type {
-  SymbolKind,
-  EdgeKind,
-  GraphNode,
-  GraphEdge,
-  GraphPath,
-  QueryOptions,
-  QueryResult,
-} from "./core/model.js";
-export { Result, Ok, Err, ok, err } from "./core/model.js";
+// Model
+export type { Node, Edge, Path, SymbolKind, EdgeKind } from "./model.js";
 
-// Infrastructure
-export { GraphStore } from "./infrastructure/GraphStore.js";
-export { TypeScriptAnalyzer } from "./infrastructure/TypeScriptAnalyzer.js";
-export { QueryEngine } from "./infrastructure/QueryEngine.js";
-export { GraphService } from "./infrastructure/GraphService.js";
-export type { IndexStats } from "./infrastructure/GraphService.js";
+// Store
+export { GraphStore } from "./GraphStore.js";
+
+// Analyzer
+export { Analyzer } from "./Analyzer.js";
 
 // Tools
-export { tools, getGraphService } from "./tools/index.js";
+export { registerAllTools, type Services } from "./tools/index.js";

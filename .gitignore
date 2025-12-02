@@ -145,3 +145,4 @@ vite.config.ts.timestamp-*
 *.db-shm
 *.db-wal
 *.db-journal
+.task-runner/

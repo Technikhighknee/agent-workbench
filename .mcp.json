@@ -1,74 +1,24 @@
 {
   "mcpServers": {
-    "task-runner": {
-      "command": "npx",
-      "args": ["-y", "tsx", "--watch", "packages/task-runner/src/server.ts"],
-      "agentPreferences": {
-        "description": "Run commands with SQLite persistence. Tasks survive server restarts. Clean output.",
-        "toolGroups": {
-          "run": { "tools": ["task_run"] },
-          "background": { "tools": ["task_start", "task_get", "task_kill", "task_list"] }
-        },
-        "tips": [
-          "task_run waits for completion (default 30s timeout)",
-          "task_start + wait_for pattern for dev servers",
-          "task_list shows all tasks including from previous sessions"
-        ]
-      }
-    },
-    "history": {
-      "command": "npx",
-      "args": ["-y", "tsx", "--watch", "packages/history/src/server.ts"],
-      "agentPreferences": {
-        "description": "Git operations: blame, history, commits, status, staging. Understand WHY code exists.",
-        "toolGroups": {
-          "blame": { "tools": ["blame_file"] },
-          "history": { "tools": ["file_history", "recent_changes", "diff_file"] },
-          "search": { "tools": ["search_commits", "commit_info"] },
-          "compare": { "tools": ["branch_diff", "changed_symbols"] },
-          "write": { "tools": ["git_status", "git_add", "git_commit"] }
-        },
-        "tips": [
-          "blame_file shows intent behind each line",
-          "recent_changes for 'what broke?'",
-          "branch_diff for PR scope, changed_symbols for semantic diff",
-          "git_status → git_add → git_commit for committing"
-        ]
-      }
-    },
-    "project": {
-      "command": "npx",
-      "args": ["-y", "tsx", "--watch", "packages/project/src/server.ts"],
-      "agentPreferences": {
-        "description": "Instant project orientation. Type, scripts, tech stack, structure. Auto-detects root.",
-        "toolGroups": {
-          "guide": { "tools": ["get_session_guide"] },
-          "info": { "tools": ["get_project_info", "get_scripts"] },
-          "orientation": { "tools": ["get_quickstart", "get_tech_stack", "get_structure"] }
-        },
-        "tips": [
-          "get_session_guide first to learn all MCP tools",
-          "get_quickstart for build/test commands",
-          "get_structure to understand directory layout"
-        ]
-      }
-    },
     "syntax": {
       "command": "npx",
       "args": ["-y", "tsx", "--watch", "packages/syntax/src/server.ts"],
       "agentPreferences": {
-        "description": "Edit by function name, not line numbers. Auto-indexed. TS/JS/Python/Go/Rust.",
+        "description": "Edits that never fail. Find functions by name, not text matching.",
+        "when": "Any code read/edit/refactor operation",
+        "avoidWhen": "Simple text changes in non-code files",
+        "firstAction": "list_symbols({ file_path }) - know what's there before editing",
         "toolGroups": {
-          "file": { "tools": ["list_symbols", "read_symbol", "edit_symbol", "edit_lines"] },
-          "modules": { "tools": ["get_imports", "get_exports", "add_import", "remove_unused_imports", "organize_imports", "analyze_deps"] },
-          "refactor": { "tools": ["search_symbols", "find_references", "rename_symbol", "move_file", "move_symbol", "extract_function", "inline_function"] },
-          "analysis": { "tools": ["get_callers", "get_callees", "find_unused_exports"] }
+          "read": { "tools": ["list_symbols", "read_symbol"] },
+          "edit": { "tools": ["edit_symbol", "edit_lines", "apply_edits"] },
+          "imports": { "tools": ["get_imports", "get_exports", "add_import", "remove_unused_imports", "organize_imports"] },
+          "refactor": { "tools": ["rename_symbol", "move_file", "move_symbol", "extract_function", "inline_function"] },
+          "analyze": { "tools": ["search_symbols", "find_references", "get_callers", "get_callees", "analyze_deps", "find_unused_exports", "trace", "find_paths", "find_dead_code"] }
         },
         "tips": [
-          "edit_symbol is more reliable than string matching",
-          "rename_symbol/move_file/move_symbol: use dry_run=true to preview",
-          "extract_function to reduce complexity",
-          "organize_imports to clean up after refactoring"
+          "edit_symbol finds by AST, not text - never fails on duplicate code",
+          "Always dry_run=true first for rename/move operations",
+          "After refactoring: remove_unused_imports then organize_imports"
         ]
       }
     },
@@ -76,18 +26,20 @@
       "command": "npx",
       "args": ["-y", "tsx", "--watch", "packages/types/src/server.ts"],
       "agentPreferences": {
-        "description": "TypeScript type checking. Get errors, hover info, definitions. Verify edits didn't break types.",
+        "description": "Type errors you can act on, not parse. IDE-quality intelligence.",
+        "when": "After any code edit, before committing",
+        "avoidWhen": "Non-TypeScript/JavaScript files",
+        "firstAction": "get_diagnostics() - verify your edit didn't break types",
         "toolGroups": {
-          "diagnostics": { "tools": ["get_diagnostics"] },
-          "navigation": { "tools": ["get_type_at_position", "go_to_definition", "find_type_references"] },
-          "fixes": { "tools": ["get_quick_fixes", "notify_file_changed"] },
+          "verify": { "tools": ["get_diagnostics", "notify_file_changed"] },
+          "understand": { "tools": ["get_type_at_position", "go_to_definition", "find_type_references"] },
+          "fix": { "tools": ["get_quick_fixes"] },
           "lifecycle": { "tools": ["reload"] }
         },
         "tips": [
-          "get_diagnostics after edits to verify type safety",
-          "get_type_at_position for hover info",
-          "notify_file_changed before re-checking edited files",
-          "reload to discover new tsconfig.json files"
+          "get_diagnostics after EVERY edit - catch errors immediately",
+          "notify_file_changed if diagnostics seem stale",
+          "get_type_at_position = hover info from IDE"
         ]
       }
     },
@@ -95,35 +47,78 @@
       "command": "npx",
       "args": ["-y", "tsx", "--watch", "packages/test-runner/src/server.ts"],
       "agentPreferences": {
-        "description": "Run tests with structured results. Parse failures, map to source. Jest/Vitest/Node.",
+        "description": "Know exactly what failed, where, and why. No output parsing.",
+        "when": "After code changes, before committing",
+        "avoidWhen": "Projects without test framework",
+        "firstAction": "run_tests() - structured pass/fail results",
         "toolGroups": {
           "run": { "tools": ["run_tests", "rerun_failed"] },
-          "results": { "tools": ["get_test_failures", "list_test_files"] }
+          "analyze": { "tools": ["get_test_failures", "list_test_files"] }
         },
         "tips": [
-          "run_tests for full suite, get structured results",
-          "get_test_failures for detailed failure info with source locations",
-          "rerun_failed for faster iteration on fixes"
+          "run_tests gives structured results - never parse npm test output",
+          "get_test_failures shows expected vs actual with source-mapped traces",
+          "rerun_failed for fast iteration when fixing tests"
         ]
       }
     },
-    "graph": {
+    "task-runner": {
       "command": "npx",
-      "args": ["-y", "tsx", "--watch", "packages/graph/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/task-runner/src/server.ts"],
       "agentPreferences": {
-        "description": "Semantic code graph. Call chains, paths, symbol relationships. Full source in responses.",
+        "description": "Builds that don't die after 2 minutes. Tasks survive restarts.",
+        "when": "Any npm/build command, dev servers, long-running processes",
+        "avoidWhen": "Quick commands like ls, cat, echo",
+        "firstAction": "task_run({ command }) - waits for completion, no timeout limit",
         "toolGroups": {
-          "symbols": { "tools": ["graph_get_symbol", "graph_find_symbols"] },
-          "calls": { "tools": ["graph_get_callers", "graph_get_callees"] },
-          "trace": { "tools": ["graph_trace", "graph_find_paths"] },
-          "analysis": { "tools": ["graph_find_dead_code"] },
-          "lifecycle": { "tools": ["graph_initialize", "graph_stats"] }
+          "execute": { "tools": ["task_run", "task_start"] },
+          "monitor": { "tools": ["task_get", "task_list", "task_kill"] }
         },
         "tips": [
-          "Auto-initializes on startup for cwd",
-          "graph_get_symbol returns full source, no follow-up Read needed",
-          "graph_trace forward/backward for call chains",
-          "graph_find_dead_code to identify unreachable functions"
+          "task_run waits up to 30s, then returns ID - task keeps running",
+          "task_start with wait_for pattern for dev servers",
+          "task_list shows tasks from previous sessions (SQLite persisted)"
+        ]
+      }
+    },
+    "history": {
+      "command": "npx",
+      "args": ["-y", "tsx", "--watch", "packages/history/src/server.ts"],
+      "agentPreferences": {
+        "description": "Git data you can use, not parse. Understand why code exists.",
+        "when": "Understanding code history, making commits, comparing branches",
+        "avoidWhen": "Non-git directories",
+        "firstAction": "Depends: blame_file (understand), git_status (commit), branch_diff (PR)",
+        "toolGroups": {
+          "understand": { "tools": ["blame_file", "file_history", "commit_info"] },
+          "compare": { "tools": ["diff_file", "branch_diff", "changed_symbols"] },
+          "search": { "tools": ["recent_changes", "search_commits"] },
+          "commit": { "tools": ["git_status", "git_add", "git_commit"] }
+        },
+        "tips": [
+          "blame_file shows intent behind each line - who wrote it and why",
+          "changed_symbols = semantic diff (what functions changed)",
+          "branch_diff before creating PR to see full scope"
+        ]
+      }
+    },
+    "project": {
+      "command": "npx",
+      "args": ["-y", "tsx", "--watch", "packages/project/src/server.ts"],
+      "agentPreferences": {
+        "description": "Know any codebase in 10 seconds. Scripts, tech stack, structure.",
+        "when": "Session start, new codebase, need to find commands",
+        "avoidWhen": "Already oriented in the project",
+        "firstAction": "get_session_guide() - learn which MCP tools to use",
+        "toolGroups": {
+          "start": { "tools": ["get_session_guide", "get_quickstart"] },
+          "explore": { "tools": ["get_structure", "get_tech_stack"] },
+          "info": { "tools": ["get_project_info", "get_scripts"] }
+        },
+        "tips": [
+          "get_session_guide FIRST at session start - explains all tools",
+          "get_quickstart for install/build/test/run commands",
+          "get_structure shows directory layout with descriptions"
         ]
       }
     }

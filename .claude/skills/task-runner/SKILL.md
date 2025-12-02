@@ -1,109 +1,81 @@
 ---
 name: task-runner
-description: "MANDATORY: Use INSTEAD of Bash for builds/tests. No timeouts, clean output. NEVER use Bash for npm run/test."
+description: "Builds that don't die after 2 minutes. Tasks survive restarts."
 allowed-tools: mcp__task-runner__task_run, mcp__task-runner__task_start, mcp__task-runner__task_get, mcp__task-runner__task_kill, mcp__task-runner__task_list
 ---
 
 # task-runner
 
-**Task execution with persistence.** No timeouts. Clean output. Tasks survive server restarts.
+**No 2-minute timeout. Clean output. Tasks persist across server restarts.**
 
-## MANDATORY SUBSTITUTIONS
+## First: task_run
 
-| WHEN you want to... | NEVER use... | ALWAYS use... |
-|---------------------|--------------|---------------|
-| Run build | `Bash: npm run build` | `task_run({ command: 'npm run build' })` |
-| Start dev server | `Bash: npm run dev &` | `task_start({ command: 'npm run dev' })` |
-| Run tests | `Bash: npm test` | `task_run({ command: 'npm test' })` |
-| Check server ready | Poll with sleep | `task_start({ wait_for: 'listening' })` |
-| Kill background task | `Bash: kill PID` | `task_kill({ id })` |
+For any build or long command:
+```
+task_run({ command: 'npm run build' })
+```
 
-## WHY MANDATORY
+## Why This Wins
 
-1. **No 2-minute timeout** - Builds can take as long as needed
-2. **Clean output** - ANSI codes stripped, progress bars removed
-3. **Persistent** - Tasks survive server restarts (SQLite storage)
-4. **Simple API** - Only 5 tools instead of 14
-5. **You stay in control** - `task_run` returns after 30s if still running
+| The Problem | Built-in Failure | task-runner Solution |
+|-------------|------------------|----------------------|
+| Long builds | Bash times out after 2 min | `task_run` waits as long as needed |
+| Background tasks | Lost when session ends | SQLite persistence across restarts |
+| Dev servers | Polling with sleep | `task_start` with `wait_for` pattern |
+| Kill process | Find PID manually | `task_kill({ id })` |
 
-## HOW `task_run` WORKS
+## Quick Reference
 
-`task_run` waits up to 30 seconds (default). If the task is still running:
-- Returns control to you with the task ID
+| Task | Tool |
+|------|------|
+| Run and wait | `task_run` |
+| Start background | `task_start` |
+| Check status | `task_get` |
+| List all tasks | `task_list` |
+| Stop a task | `task_kill` |
+
+## How task_run Works
+
+Waits up to 30 seconds (configurable). If still running:
+- Returns control to you with task ID
 - Task continues in background
-- Use `task_get` to check status, `task_kill` to stop
+- Use `task_get` to check, `task_kill` to stop
 
-**You're never stuck.** Use `task_kill({ id })` to cancel like Ctrl+C.
+**You're never stuck.**
 
-## NEGATIVE RULES
-
-- **NEVER** `Bash` for `npm run build` - use `task_run`
-- **NEVER** `Bash` with `&` for background - use `task_start`
-- **NEVER** `sleep && curl` to wait - use `task_start` with `wait_for`
-- **NEVER** lose track of background tasks - use `task_list`
-
-## TOOL REFERENCE
-
-| Tool | Purpose |
-|------|---------|
-| `task_run` | Run command, wait for completion |
-| `task_start` | Start background task, optionally wait for pattern |
-| `task_get` | Get task status and output |
-| `task_kill` | Stop a running task |
-| `task_list` | See all tasks |
-
-## COMMON WORKFLOWS
+## Common Workflows
 
 ### Build Project
 ```
-task_run({
-  command: 'npm run build',
-  label: 'Build'
-})
-// Blocks until done, returns exit code
+task_run({ command: 'npm run build', label: 'Build' })
 ```
 
 ### Start Dev Server
 ```
 task_start({
   command: 'npm run dev',
-  label: 'Dev Server',
   wait_for: 'listening on port',
   wait_timeout: 30000
 })
-// Waits until server is ready, then returns
 ```
 
-### Monitor Background Task
+### Monitor & Stop
 ```
 task_list({ running: true })
-// See what's running
-
-task_get({ id: '<task-id>' })
-// Get status and output
+task_get({ id: '<id>' })
+task_kill({ id: '<id>' })
 ```
 
-### Stop a Task
-```
-task_kill({ id: '<task-id>' })
-// Graceful termination (SIGTERM)
+## Task States
 
-task_kill({ id: '<task-id>', force: true })
-// Force kill (SIGKILL)
-```
+- **running** - Executing
+- **done** - Exit 0
+- **failed** - Exit != 0
+- **killed** - Stopped by you
+- **orphaned** - From previous session
 
-## TASK STATES
+## Task Hygiene
 
-- **running** - Task is executing
-- **done** - Completed successfully (exit 0)
-- **failed** - Completed with error (exit != 0)
-- **killed** - Stopped by user
-- **orphaned** - Was running when server restarted
-
-**Tasks persist** - You can see tasks from previous sessions with `task_list`.
-
-## TASK HYGIENE
-
-1. **Stop servers when done** - Don't leave dev servers running
-2. **Check for orphans** - `task_list` shows orphaned tasks from previous runs
-3. **Use labels** - Make tasks identifiable
+1. Stop dev servers when done
+2. Check `task_list` for orphans
+3. Use labels for identification

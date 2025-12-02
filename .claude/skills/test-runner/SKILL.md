@@ -1,84 +1,64 @@
 ---
 name: test-runner
-description: "MANDATORY: Use INSTEAD of Bash npm test. Structured results, source-mapped failures. NEVER parse test output manually."
+description: "Know exactly what failed, where, and why. No output parsing."
 allowed-tools: mcp__test-runner__run_tests, mcp__test-runner__get_test_failures, mcp__test-runner__list_test_files, mcp__test-runner__rerun_failed
 ---
 
 # test-runner
 
-**Structured test execution.** Pass/fail status. Source-mapped stack traces.
+**Tests that tell you WHAT failed, WHERE (with source maps), and WHY (expected vs actual).**
 
-## MANDATORY SUBSTITUTIONS
+## First: run_tests
 
-| WHEN you want to... | NEVER use... | ALWAYS use... |
-|---------------------|--------------|---------------|
-| Run all tests | `npm test` in Bash | `run_tests({})` |
-| Run specific file | `npm test -- file.test.ts` | `run_tests({ files: ['file.test.ts'] })` |
-| Run by pattern | `npm test -- -t "pattern"` | `run_tests({ testNamePattern: 'pattern' })` |
-| See failure details | Parse Bash output | `get_test_failures({})` |
-| Find test files | `Glob: **/*.test.ts` | `list_test_files({})` |
-| Retry failures | Manual re-run | `rerun_failed({})` |
+After any code change:
+```
+run_tests({})
+```
 
-## WHY MANDATORY
+## Why This Wins
 
-1. **Structured results** - Pass/fail counts, not text parsing
-2. **Source-mapped traces** - Real file locations, not compiled JS
-3. **Better failures** - Expected vs actual values
-4. **No timeout issues** - Runs until completion
+| The Problem | Built-in Failure | test-runner Solution |
+|-------------|------------------|----------------------|
+| Run tests | npm test output needs parsing | `run_tests` returns structured pass/fail |
+| Find failures | Scroll through output | `get_test_failures` gives exact locations |
+| Stack traces | Point to compiled JS | Source-mapped to your TypeScript |
+| Rerun failed | Remember which failed | `rerun_failed` handles it |
 
-## NEGATIVE RULES
+## Quick Reference
 
-- **NEVER** `Bash: npm test` - use `run_tests`
-- **NEVER** parse test output with grep - use `get_test_failures`
-- **NEVER** `Glob` for test files - use `list_test_files`
-- **NEVER** manually re-run failed tests - use `rerun_failed`
+| Task | Tool |
+|------|------|
+| Run all tests | `run_tests({})` |
+| Run specific file | `run_tests({ files: ['auth.test.ts'] })` |
+| Run by name | `run_tests({ testNamePattern: 'email' })` |
+| Get failure details | `get_test_failures({})` |
+| Retry failures only | `rerun_failed({})` |
+| Find test files | `list_test_files({})` |
 
-## TOOL REFERENCE
-
-| Tool | Purpose | Returns |
-|------|---------|---------|
-| `run_tests` | Execute tests | Pass/fail counts, failures |
-| `get_test_failures` | Failure details | Error messages, locations |
-| `list_test_files` | Find test files | Paths to test files |
-| `rerun_failed` | Retry failures | Only failed tests |
-
-## COMMON WORKFLOWS
+## Common Workflows
 
 ### After Making Changes
 ```
 run_tests({})
-// Run all tests, get structured results
 ```
 
-### Fix Failing Tests
+### Fixing Failing Tests
 ```
 run_tests({})
-// Find failures
-get_test_failures({})
-// Get detailed failure info with source locations
-// ... fix the code ...
-rerun_failed({})
-// Verify fix without running all tests
+get_test_failures({})  // Shows expected vs actual, source locations
+// ... fix code ...
+rerun_failed({})  // Verify fix without running all tests
 ```
 
 ### Run Specific Tests
 ```
-list_test_files({})
-// See available test files
 run_tests({ files: ['src/auth.test.ts'] })
-// Run just auth tests
-run_tests({ testNamePattern: 'should validate email' })
-// Run tests matching pattern
+run_tests({ testNamePattern: 'should validate' })
 ```
 
-### Debugging Test Failures
-```
-get_test_failures({})
-// Returns:
-// - Test name and file location
-// - Error message
-// - Expected vs actual values
-// - Source-mapped stack trace
-```
+## Integration
 
-**Supports:** Vitest, Jest (auto-detected)
+Run `run_tests` after using `syntax.edit_symbol` and `types.get_diagnostics` to verify behavior unchanged.
+
+## Supports
+Vitest, Jest (auto-detected)

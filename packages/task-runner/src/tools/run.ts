@@ -48,7 +48,7 @@ Default timeout: 30 seconds. Max: 10 minutes.`,
 
       try {
         const result = await runner.run(command, { label, cwd, timeout });
-        const { task, timedOut } = result;
+        const { task, output, timedOut } = result;
 
         let text = formatTask(task);
 
@@ -57,7 +57,8 @@ Default timeout: 30 seconds. Max: 10 minutes.`,
           text += `\nUse \`task_get\` to check status, \`task_kill\` to stop.`;
         }
 
-        text += "\n\n" + formatOutput(task);
+        // Output comes from RunResult, not Task
+        text += "\n\n" + formatOutput(output);
 
         return {
           content: [{ type: "text" as const, text }],

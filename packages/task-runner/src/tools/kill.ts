@@ -32,8 +32,7 @@ Use cases:
       const { id, force } = input as { id: string; force?: boolean };
 
       try {
-        const signal = force ? "SIGKILL" : "SIGTERM";
-        const killed = runner.kill(id, signal);
+        const killed = runner.kill(id, force);
 
         if (!killed) {
           // Try to get task to check if it exists
@@ -57,6 +56,7 @@ Use cases:
 
         // Get updated task
         const task = runner.get(id);
+        const signal = force ? "SIGKILL" : "SIGTERM";
         const text = task
           ? `Task killed with ${signal}.\n\n${formatTask(task)}`
           : `Task ${id} killed with ${signal}.`;

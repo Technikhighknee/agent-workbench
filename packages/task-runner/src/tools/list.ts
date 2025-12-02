@@ -6,20 +6,11 @@ import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TaskRunner } from "../TaskRunner.js";
 import type { Task } from "../model.js";
+import { formatDuration } from "./format.js";
 
 const InputSchema = {
   running: z.boolean().optional().describe("Only show running tasks (default: false)"),
 };
-
-function formatDuration(start: Date, end: Date | null): string {
-  const endTime = end ?? new Date();
-  const ms = endTime.getTime() - start.getTime();
-
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  if (ms < 3600_000) return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`;
-  return `${Math.floor(ms / 3600_000)}h ${Math.floor((ms % 3600_000) / 60_000)}m`;
-}
 
 function statusEmoji(status: string): string {
   switch (status) {
@@ -40,7 +31,10 @@ function statusEmoji(status: string): string {
 
 function formatTaskRow(task: Task): string {
   const emoji = statusEmoji(task.status);
-  const duration = formatDuration(task.startedAt, task.endedAt);
+  // Parse ISO strings to Date objects
+  const startedAt = new Date(task.startedAt);
+  const endedAt = task.endedAt ? new Date(task.endedAt) : null;
+  const duration = formatDuration(startedAt, endedAt ?? new Date());
   const label = task.label ? ` "${task.label}"` : "";
   const cmd = task.command.length > 40 ? task.command.slice(0, 37) + "..." : task.command;
 

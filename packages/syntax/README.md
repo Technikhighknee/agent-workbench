@@ -45,6 +45,12 @@ Back to [main README.md](../../)
 | `extract_function` | Extract code block into a new function (auto-detects parameters) |
 | `inline_function` | Replace a function call with the function body |
 
+### Multi-file Operations
+
+| Tool | Description |
+|------|-------------|
+| `apply_edits` | Apply multiple edits across files atomically (all succeed or all fail with rollback) |
+
 ## Features
 
 - **Auto-indexing** - Project indexed on startup, watches for file changes
@@ -57,6 +63,7 @@ Back to [main README.md](../../)
 - **Safe refactoring** - Move files/symbols with automatic import updates (dry_run support)
 - **Extract & inline** - Extract code to functions, inline function calls
 - **Dead code detection** - Find unused exports across the codebase
+- **Atomic multi-file edits** - Apply edits across multiple files with rollback on failure
 - **Dependency analysis** - Detect circular dependencies and analyze coupling
 - **Caching** - Parsed symbol trees cached with mtime invalidation
 - **Tree-sitter parsing** - Fast, accurate syntax analysis
@@ -193,6 +200,24 @@ inline_function({ file_path: "src/handler.ts", line: 23, dry_run: true });
 // Find unused exports
 find_unused_exports({});  // All files
 find_unused_exports({ file_pattern: "src/**/*.ts" });  // Specific pattern
+```
+
+### Multi-file Atomic Edits
+
+```typescript
+// Apply multiple edits across files atomically
+apply_edits({
+  edits: [
+    { file_path: "src/api.ts", old_string: "foo", new_string: "bar" },
+    { file_path: "src/types.ts", old_string: "foo", new_string: "bar" },
+    { file_path: "src/tests.ts", old_string: "foo", new_string: "bar", replace_all: true }
+  ],
+  dry_run: true  // Preview first
+});
+
+// All edits validated before any are applied
+// If one fails, none are applied (atomic)
+// On write failure, already-applied edits are rolled back
 ```
 
 ## Supported Languages

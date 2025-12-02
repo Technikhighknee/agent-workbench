@@ -18,9 +18,12 @@ These tools give you: structured data, no timeouts, source-mapped errors, semant
 ✅ ALWAYS: \`mcp__history__*\` tools
 - \`blame_file\` - who wrote each line
 - \`file_history\` - commits that touched a file
+- \`recent_changes\` - recently changed files
 - \`commit_info\` - details of a commit
+- \`search_commits\` - search commit messages
 - \`branch_diff\` - compare branches
 - \`diff_file\` - diff between commits
+- \`changed_symbols\` - what functions/classes changed between refs
 - \`git_status\` - current branch, staged/unstaged changes
 - \`git_add\` - stage files for commit
 - \`git_commit\` - create a commit with staged changes
@@ -38,26 +41,18 @@ These tools give you: structured data, no timeouts, source-mapped errors, semant
 ❌ NEVER: \`npm test\`, \`vitest\`, \`jest\`
 ✅ ALWAYS: \`mcp__test-runner__*\` tools
 - \`run_tests\` - structured results, source-mapped failures
+- \`list_test_files\` - discover test files
 - \`get_test_failures\` - detailed failure info
 - \`rerun_failed\` - retry only failures
 
 ### Build & Long-Running Processes
 ❌ NEVER: Bash for builds (timeout issues)
-✅ ALWAYS: \`mcp__process-host__*\` tools
-- \`run_process\` - waits 30s, then returns control if still running
-- \`spawn_process\` - background processes
-- \`get_logs\` - check output
-- \`wait_for_pattern\` - wait for "ready" messages
-- \`stop_process\` - cancel (like Ctrl+C)
-- \`list_processes\` - see what's running
-
-**If \`run_process\` takes too long:** it returns with the process ID and hints.
-Use \`stop_process({ id })\` to cancel, or \`get_logs({ id })\` to check progress.
-
-**Keep processes tidy:**
-- Stop dev servers when done: \`stop_process({ id })\`
-- Check for orphans: \`list_processes({ running_only: true })\`
-- Clean up old logs: \`purge_processes({ older_than_hours: 24 })\`
+✅ ALWAYS: \`mcp__task-runner__*\` tools
+- \`task_run\` - waits 30s, then returns control if still running
+- \`task_start\` - background tasks, optionally wait for pattern
+- \`task_get\` - check task status and output
+- \`task_kill\` - terminate a task
+- \`task_list\` - see all tasks (persists across server restarts)
 
 ### Reading/Editing Code
 ❌ NEVER: Read + Edit for functions/classes
@@ -65,42 +60,58 @@ Use \`stop_process({ id })\` to cancel, or \`get_logs({ id })\` to check progres
 - \`list_symbols\` - see file structure
 - \`read_symbol\` - read function by name (not line numbers)
 - \`edit_symbol\` - edit function by name (not string matching)
+- \`edit_lines\` - edit by line number when symbol edit won't work
 - \`search_symbols\` - find across codebase
 - \`find_references\` - all usages
-- \`get_callers\` / \`get_callees\` - call relationships
+- \`get_imports\` / \`get_exports\` - module boundaries
+- \`add_import\` - add/merge import statements
+- \`remove_unused_imports\` - clean up unused imports
+- \`organize_imports\` - sort and group imports
+- \`get_callers\` / \`get_callees\` - call hierarchy
+- \`analyze_deps\` - circular dependency detection
+- \`rename_symbol\` - rename across codebase
+- \`move_file\` - move file and update all imports
+- \`move_symbol\` - move function/class to another file
+- \`extract_function\` - extract code block into new function
+- \`inline_function\` - replace function call with function body
+- \`find_unused_exports\` - find dead code (unused exports)
 
-### Project Information
-❌ NEVER: Read package.json directly
-✅ ALWAYS: \`mcp__project__*\` tools
-- \`get_project_info\` - name, version, scripts
-- \`get_dependencies\` - deps with versions
-- \`get_scripts\` - available npm scripts
-- \`find_configs\` - find config files
-
-### New Codebase Orientation
+### Project Orientation
 When starting in a new codebase:
-✅ USE: \`mcp__project__*\` orientation tools
+✅ USE: \`mcp__project__*\` tools
+- \`get_session_guide\` - this guide
+- \`get_project_info\` - name, version, scripts
+- \`get_scripts\` - available npm scripts
 - \`get_quickstart\` - install, build, test, run commands
 - \`get_tech_stack\` - detect frameworks & libraries
 - \`get_structure\` - directory layout with descriptions
 
-### Code Understanding (Semantic)
-For deep code understanding:
+### Code Graph (Semantic Analysis)
+For deep code understanding and impact analysis:
 ✅ USE: \`mcp__graph__*\` tools
-- \`graph_query\` - traverse relationships (auto-initializes on first call)
+- \`graph_initialize\` - index a workspace (auto-runs on startup)
+- \`graph_get_symbol\` - get symbol with full source
+- \`graph_get_callers\` / \`graph_get_callees\` - call relationships
 - \`graph_trace\` - call chains forward/backward
 - \`graph_find_paths\` - how does A reach B?
-- \`graph_get_callers\` / \`graph_get_callees\` - call relationships
-- \`graph_initialize\` - manually re-index if needed
+- \`graph_find_symbols\` - search by pattern/kind
+- \`graph_find_dead_code\` - find unreachable functions
+- \`graph_stats\` - index statistics
 
 ## Quick Decision Guide
 
 | I want to... | Use |
 |-------------|-----|
-| **New codebase?** | |
-| How to build/test | \`mcp__project__get_quickstart\` |
-| What tech is used | \`mcp__project__get_tech_stack\` |
-| Directory layout | \`mcp__project__get_structure\` |
+| **Refactoring** | |
+| What breaks if I change X? | \`mcp__graph__graph_get_callers\` |
+| Move file safely | \`mcp__syntax__move_file\` |
+| Move function to another file | \`mcp__syntax__move_symbol\` |
+| Extract code to function | \`mcp__syntax__extract_function\` |
+| Inline a function | \`mcp__syntax__inline_function\` |
+| Find unused exports | \`mcp__syntax__find_unused_exports\` |
+| Find unreachable code | \`mcp__graph__graph_find_dead_code\` |
+| Clean up imports | \`mcp__syntax__remove_unused_imports\` |
+| Organize imports | \`mcp__syntax__organize_imports\` |
 | **Code operations** | |
 | Read a function | \`mcp__syntax__read_symbol\` |
 | Edit a function | \`mcp__syntax__edit_symbol\` |
@@ -114,27 +125,15 @@ For deep code understanding:
 | **Git** | |
 | See git history | \`mcp__history__file_history\` |
 | Who wrote this | \`mcp__history__blame_file\` |
+| What symbols changed | \`mcp__history__changed_symbols\` |
 | Current status | \`mcp__history__git_status\` |
-| Stage files | \`mcp__history__git_add\` |
-| Create commit | \`mcp__history__git_commit\` |
 | **Builds/Servers** | |
-| Build project | \`mcp__process-host__run_process\` |
-| Start dev server | \`mcp__process-host__spawn_process\` |
+| Build project | \`mcp__task-runner__task_run\` |
+| Start dev server | \`mcp__task-runner__task_start\` |
 | **Deep analysis** | |
 | Who calls X | \`mcp__graph__graph_get_callers\` |
 | Trace call chains | \`mcp__graph__graph_trace\` |
 | Path A→B | \`mcp__graph__graph_find_paths\` |
-
-## Agent Feedback
-
-Found something noteworthy about these tools? **Leave feedback!**
-
-Write observations to the \`/feedback/\` directory:
-- \`feedback/tools/\` - Tool-specific observations
-- \`feedback/skills/\` - Skill file observations
-- \`feedback/patterns/\` - Useful patterns you discovered
-
-Your feedback helps improve these tools for all agents.
 `;
 
 export function registerGetSessionGuide(server: McpServer): void {
@@ -146,7 +145,7 @@ export function registerGetSessionGuide(server: McpServer): void {
         "MANDATORY: Call this at the start of every session and after context compacting. " +
         "Learn about 60+ specialized MCP tools that replace Bash for git, TypeScript, tests, " +
         "builds, and code editing. These tools give structured results, no timeouts, and " +
-        "semantic operations. Covers: history, types, test-runner, process-host, syntax, graph packages.",
+        "semantic operations. Covers: history, types, test-runner, task-runner, syntax, graph packages.",
       inputSchema: {},
     },
     async () => {

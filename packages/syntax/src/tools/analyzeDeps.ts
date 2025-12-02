@@ -1,6 +1,7 @@
 import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
+import type { ToolResponse } from "./types.js";
 import { DependencyAnalysisSchema } from "./schemas.js";
 import type { DependencyAnalysis } from "../core/model.js";
 
@@ -9,12 +10,6 @@ interface AnalyzeDepsOutput extends Record<string, unknown> {
   error?: string;
   analysis?: DependencyAnalysis;
 }
-
-type ToolResponse<T extends Record<string, unknown>> = {
-  [key: string]: unknown;
-  content: Array<{ type: "text"; text: string }>;
-  structuredContent?: T;
-};
 
 export function registerAnalyzeDeps(server: McpServer, index: ProjectIndex): void {
   server.registerTool(
@@ -42,6 +37,13 @@ Use cases:
       },
     },
     async (): Promise<ToolResponse<AnalyzeDepsOutput>> => {
+      if (index.isEmpty()) {
+        return {
+          content: [{ type: "text", text: "Error: No project indexed. Call index_project first." }],
+          structuredContent: { success: false, error: "No project indexed" },
+        };
+      }
+
       const result = await index.analyzeDependencies();
 
       if (!result.ok) {
@@ -52,56 +54,51 @@ Use cases:
       }
 
       const analysis = result.value;
-      const formatted = formatAnalysis(analysis);
+
+      const lines: string[] = [
+        "# Dependency Analysis",
+        "",
+        `- Total files: ${analysis.totalFiles}`,
+        `- Total imports: ${analysis.totalImports}`,
+        "",
+      ];
+
+      // Most dependencies
+      if (analysis.highestDependencyCount.length > 0) {
+        lines.push("## Files with most dependencies");
+        for (const { file, count } of analysis.highestDependencyCount.slice(0, 5)) {
+          lines.push(`- ${file}: ${count} imports`);
+        }
+        lines.push("");
+      }
+
+      // Most imported
+      if (analysis.mostImported.length > 0) {
+        lines.push("## Most imported files");
+        for (const { file, count } of analysis.mostImported.slice(0, 5)) {
+          lines.push(`- ${file}: imported by ${count} files`);
+        }
+        lines.push("");
+      }
+
+      // Circular dependencies
+      if (analysis.hasCircularDependencies) {
+        lines.push(`## Circular Dependencies (${analysis.circularDependencies.length} found)`);
+        for (const cycle of analysis.circularDependencies.slice(0, 5)) {
+          lines.push(`- ${cycle.cycle.join(" -> ")}`);
+          lines.push(`  Closing import: ${cycle.closingImport.from}:${cycle.closingImport.line} -> ${cycle.closingImport.to}`);
+        }
+        if (analysis.circularDependencies.length > 5) {
+          lines.push(`... and ${analysis.circularDependencies.length - 5} more`);
+        }
+      } else {
+        lines.push("No circular dependencies detected.");
+      }
 
       return {
-        content: [{ type: "text", text: formatted }],
-        structuredContent: {
-          success: true,
-          analysis,
-        },
+        content: [{ type: "text", text: lines.join("\n") }],
+        structuredContent: { success: true, analysis },
       };
     }
   );
-}
-
-function formatAnalysis(analysis: DependencyAnalysis): string {
-  const lines: string[] = [];
-
-  lines.push("# Dependency Analysis\n");
-  lines.push(`- **Files analyzed:** ${analysis.totalFiles}`);
-  lines.push(`- **Total imports:** ${analysis.totalImports}`);
-
-  // Circular dependencies
-  if (analysis.hasCircularDependencies) {
-    lines.push(`\n## Circular Dependencies Found (${analysis.circularDependencies.length})\n`);
-    for (const cycle of analysis.circularDependencies) {
-      lines.push(`- ${cycle.cycle.join(" -> ")}`);
-      lines.push(`  (${cycle.closingImport.from}:${cycle.closingImport.line} imports ${cycle.closingImport.to})`);
-    }
-  } else {
-    lines.push("\n## No Circular Dependencies Found");
-  }
-
-  // Most dependent files
-  if (analysis.highestDependencyCount.length > 0) {
-    lines.push("\n## Files with Most Dependencies\n");
-    for (const { file, count } of analysis.highestDependencyCount.slice(0, 5)) {
-      if (count > 0) {
-        lines.push(`- ${file}: ${count} imports`);
-      }
-    }
-  }
-
-  // Most imported files
-  if (analysis.mostImported.length > 0) {
-    lines.push("\n## Most Imported Files\n");
-    for (const { file, count } of analysis.mostImported.slice(0, 5)) {
-      if (count > 0) {
-        lines.push(`- ${file}: imported by ${count} files`);
-      }
-    }
-  }
-
-  return lines.join("\n");
 }

@@ -142,3 +142,6 @@ vite.config.ts.timestamp-*
 
 # SQLite databases
 *.db
+*.db-shm
+*.db-wal
+*.db-journal

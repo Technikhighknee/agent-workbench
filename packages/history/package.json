@@ -49,6 +49,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
     "zod": "^4.1.13",
-    "@agent-workbench/core": "^0.1.0"
+    "@agent-workbench/core": "^0.1.0",
+    "@agent-workbench/syntax": "^0.3.0"
   }
 }

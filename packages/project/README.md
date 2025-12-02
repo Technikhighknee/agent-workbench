@@ -1,25 +1,27 @@
 # @agent-workbench/project
 
-Project metadata operations for AI agents. Quickly understand project structure, configs, and available commands.
+Project metadata and orientation for AI agents. Quickly understand project structure and available commands.
 
 ## Why This Package?
 
 When an AI agent starts working on a project, it needs to quickly understand:
+- **What MCP tools do I have?** → `get_session_guide` explains all available tools
+- **How do I build/test/run?** → `get_quickstart` gives actionable commands
+- **What frameworks are used?** → `get_tech_stack` detects technologies
+- **What's the directory layout?** → `get_structure` maps the codebase
 - **What kind of project is this?** → `get_project_info` detects npm/cargo/python/go
 - **What commands can I run?** → `get_scripts` lists available scripts
-- **What are the dependencies?** → `get_dependencies` shows packages
-- **Where are the configs?** → `find_configs` locates configuration files
-- **Is this a monorepo?** → `get_project_info` shows workspace packages
 
 ## Tools
 
 | Tool | Description |
 |------|-------------|
-| `get_project_info` | Get project name, type, version, scripts, dependencies |
+| `get_session_guide` | **Start here** - Learn all MCP tools and when to use them |
+| `get_quickstart` | Get install, build, test, run commands |
+| `get_tech_stack` | Detect frameworks, libraries, and build tools |
+| `get_structure` | Get directory layout with descriptions |
+| `get_project_info` | Get project name, type, version, scripts |
 | `get_scripts` | Get available scripts/commands |
-| `get_dependencies` | Get dependencies (production/dev/all) |
-| `find_configs` | Find configuration files (tsconfig, eslint, etc.) |
-| `read_config` | Read a specific config file |
 
 ## Supported Project Types
 
@@ -49,29 +51,31 @@ npm install @agent-workbench/project
 
 ## Usage Examples
 
+### First: Learn Available Tools
+```
+get_session_guide {}
+```
+Returns comprehensive guide on all MCP tools and when to use each one.
+
+### New Codebase Orientation
+```
+get_quickstart {}
+get_tech_stack {}
+get_structure {}
+```
+Get install/build/test commands, detect technologies, and understand directory layout.
+
 ### Quick Project Overview
 ```
 get_project_info {}
 ```
-Returns project type, version, available scripts, and dependency counts.
+Returns project type, version, available scripts, and workspace info.
 
 ### List Available Commands
 ```
 get_scripts {}
 ```
 Shows all runnable scripts with their actual commands.
-
-### Check Dependencies
-```
-get_dependencies { "type": "production" }
-```
-Lists production dependencies with versions.
-
-### Find Configuration
-```
-find_configs {}
-```
-Locates all config files (tsconfig.json, .eslintrc, etc.).
 
 ## Architecture
 

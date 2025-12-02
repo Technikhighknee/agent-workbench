@@ -61,4 +61,32 @@ export class NodeFileSystem implements FileSystem {
       return Err(error instanceof Error ? error : new Error(String(error)));
     }
   }
+
+  delete(filePath: string): Result<void, Error> {
+    try {
+      const resolved = this.resolvePath(filePath);
+      fs.unlinkSync(resolved);
+      return Ok(undefined);
+    } catch (error) {
+      return Err(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  rename(oldPath: string, newPath: string): Result<void, Error> {
+    try {
+      const resolvedOld = this.resolvePath(oldPath);
+      const resolvedNew = this.resolvePath(newPath);
+
+      // Ensure parent directory exists
+      const parentDir = path.dirname(resolvedNew);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+
+      fs.renameSync(resolvedOld, resolvedNew);
+      return Ok(undefined);
+    } catch (error) {
+      return Err(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
 }

@@ -28,4 +28,14 @@ export interface FileSystem {
    * Get file stats (for cache invalidation).
    */
   stats(filePath: string): Result<FileStats, Error>;
+
+  /**
+   * Delete a file.
+   */
+  delete(filePath: string): Result<void, Error>;
+
+  /**
+   * Rename/move a file.
+   */
+  rename(oldPath: string, newPath: string): Result<void, Error>;
 }

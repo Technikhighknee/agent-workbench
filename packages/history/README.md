@@ -9,9 +9,11 @@ AI agents often need to understand not just *what* code does, but *why* it exist
 - **What changed recently?** → `recent_changes` shows what's been modified
 - **When was this added?** → `file_history` shows commits touching a file
 - **Find related changes** → `search_commits` finds commits by message
+- **What symbols changed?** → `changed_symbols` shows semantic diff (functions/classes added/modified/deleted)
 
 ## Tools
 
+### Read Operations
 | Tool | Description |
 |------|-------------|
 | `blame_file` | Get git blame - who wrote each line and when |
@@ -20,6 +22,15 @@ AI agents often need to understand not just *what* code does, but *why* it exist
 | `commit_info` | Get details of a commit |
 | `search_commits` | Search commits by message |
 | `diff_file` | Get diff between commits |
+| `branch_diff` | Compare branches - files changed, stats |
+| `changed_symbols` | Get symbols (functions/classes) that changed between refs |
+
+### Write Operations
+| Tool | Description |
+|------|-------------|
+| `git_status` | Get current branch, staged/unstaged changes |
+| `git_add` | Stage files for commit |
+| `git_commit` | Create a commit with staged changes |
 
 ## Installation
 
@@ -65,6 +76,26 @@ Shows all commits that modified a file, with authors and messages.
 search_commits { "query": "authentication", "limit": 10 }
 ```
 Finds commits mentioning "authentication" in their messages.
+
+### Comparing Branches (PR Scope)
+```
+branch_diff { "base": "main", "head": "HEAD" }
+```
+Shows all files changed on the current branch vs main.
+
+### Understanding Semantic Changes
+```
+changed_symbols { "from_ref": "main", "to_ref": "HEAD" }
+```
+Shows what functions, classes, and methods were added, modified, or deleted - useful for code review.
+
+### Creating a Commit
+```
+git_status { }
+git_add { "paths": ["src/feature.ts", "src/test.ts"] }
+git_commit { "message": "feat: add new feature" }
+```
+Stage specific files and create a commit.
 
 ## Architecture
 

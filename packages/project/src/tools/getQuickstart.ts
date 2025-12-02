@@ -132,7 +132,7 @@ export const registerGetQuickstart: ToolRegistrar = (server, service) => {
       // Contextual tips about related MCP tools
       output.push("---");
       output.push("**Related MCP tools:**");
-      output.push("- Use `mcp__process-host__run_process` for builds (no timeout issues)");
+      output.push("- Use `mcp__task-runner__task_run` for builds (no timeout issues)");
       output.push("- Use `mcp__test-runner__run_tests` for structured test results");
       output.push("- Call `get_session_guide` for full MCP tool guidance");
 

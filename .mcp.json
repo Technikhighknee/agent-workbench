@@ -1,17 +1,18 @@
 {
   "mcpServers": {
-    "process-host": {
+    "task-runner": {
       "command": "npx",
-      "args": ["-y", "tsx", "--watch", "packages/process-host/src/server.ts"],
+      "args": ["-y", "tsx", "--watch", "packages/task-runner/src/server.ts"],
       "agentPreferences": {
-        "description": "No timeouts. Clean output. Run builds/tests with run_process, start servers with spawn_process.",
+        "description": "Run commands with SQLite persistence. Tasks survive server restarts. Clean output.",
         "toolGroups": {
-          "run": { "tools": ["run_process"] },
-          "background": { "tools": ["spawn_process", "get_logs", "stop_process", "wait_for_pattern"] }
+          "run": { "tools": ["task_run"] },
+          "background": { "tools": ["task_start", "task_get", "task_kill", "task_list"] }
         },
         "tips": [
-          "run_process waits indefinitely, output is cleaned",
-          "spawn_process + wait_for_pattern for dev servers"
+          "task_run waits for completion (default 30s timeout)",
+          "task_start + wait_for pattern for dev servers",
+          "task_list shows all tasks including from previous sessions"
         ]
       }
     },
@@ -19,17 +20,19 @@
       "command": "npx",
       "args": ["-y", "tsx", "--watch", "packages/history/src/server.ts"],
       "agentPreferences": {
-        "description": "Git blame, history, commits. Understand WHY code exists.",
+        "description": "Git operations: blame, history, commits, status, staging. Understand WHY code exists.",
         "toolGroups": {
           "blame": { "tools": ["blame_file"] },
           "history": { "tools": ["file_history", "recent_changes", "diff_file"] },
           "search": { "tools": ["search_commits", "commit_info"] },
-          "compare": { "tools": ["branch_diff"] }
+          "compare": { "tools": ["branch_diff", "changed_symbols"] },
+          "write": { "tools": ["git_status", "git_add", "git_commit"] }
         },
         "tips": [
           "blame_file shows intent behind each line",
           "recent_changes for 'what broke?'",
-          "branch_diff for PR scope summary"
+          "branch_diff for PR scope, changed_symbols for semantic diff",
+          "git_status → git_add → git_commit for committing"
         ]
       }
     },
@@ -37,14 +40,16 @@
       "command": "npx",
       "args": ["-y", "tsx", "--watch", "packages/project/src/server.ts"],
       "agentPreferences": {
-        "description": "Instant project orientation. Type, scripts, dependencies, configs. Auto-detects root.",
+        "description": "Instant project orientation. Type, scripts, tech stack, structure. Auto-detects root.",
         "toolGroups": {
-          "info": { "tools": ["get_project_info", "get_scripts", "get_dependencies"] },
-          "config": { "tools": ["find_configs", "read_config"] }
+          "guide": { "tools": ["get_session_guide"] },
+          "info": { "tools": ["get_project_info", "get_scripts"] },
+          "orientation": { "tools": ["get_quickstart", "get_tech_stack", "get_structure"] }
         },
         "tips": [
-          "get_project_info first in any new codebase",
-          "Works from subdirectories"
+          "get_session_guide first to learn all MCP tools",
+          "get_quickstart for build/test commands",
+          "get_structure to understand directory layout"
         ]
       }
     },
@@ -55,14 +60,15 @@
         "description": "Edit by function name, not line numbers. Auto-indexed. TS/JS/Python/Go/Rust.",
         "toolGroups": {
           "file": { "tools": ["list_symbols", "read_symbol", "edit_symbol", "edit_lines"] },
-          "modules": { "tools": ["get_imports", "get_exports", "analyze_deps"] },
-          "refactor": { "tools": ["search_symbols", "find_references", "rename_symbol"] },
-          "calls": { "tools": ["get_callers", "get_callees"] }
+          "modules": { "tools": ["get_imports", "get_exports", "add_import", "remove_unused_imports", "organize_imports", "analyze_deps"] },
+          "refactor": { "tools": ["search_symbols", "find_references", "rename_symbol", "move_file", "move_symbol", "extract_function", "inline_function"] },
+          "analysis": { "tools": ["get_callers", "get_callees", "find_unused_exports"] }
         },
         "tips": [
           "edit_symbol is more reliable than string matching",
-          "rename_symbol dry_run=true to preview",
-          "get_callers/get_callees before refactoring"
+          "rename_symbol/move_file/move_symbol: use dry_run=true to preview",
+          "extract_function to reduce complexity",
+          "organize_imports to clean up after refactoring"
         ]
       }
     },
@@ -105,18 +111,19 @@
       "command": "npx",
       "args": ["-y", "tsx", "--watch", "packages/graph/src/server.ts"],
       "agentPreferences": {
-        "description": "Semantic code graph. One query replaces 10 file reads. Full source in responses. Confidence scores.",
+        "description": "Semantic code graph. Call chains, paths, symbol relationships. Full source in responses.",
         "toolGroups": {
-          "query": { "tools": ["graph_query", "graph_find_symbols"] },
-          "symbol": { "tools": ["graph_get_symbol", "graph_get_callers", "graph_get_callees"] },
+          "symbols": { "tools": ["graph_get_symbol", "graph_find_symbols"] },
+          "calls": { "tools": ["graph_get_callers", "graph_get_callees"] },
           "trace": { "tools": ["graph_trace", "graph_find_paths"] },
+          "analysis": { "tools": ["graph_find_dead_code"] },
           "lifecycle": { "tools": ["graph_initialize", "graph_stats"] }
         },
         "tips": [
-          "graph_initialize first with workspace path",
-          "graph_query for compound queries with traversal",
+          "Auto-initializes on startup for cwd",
           "graph_get_symbol returns full source, no follow-up Read needed",
-          "graph_trace forward/backward for call chains"
+          "graph_trace forward/backward for call chains",
+          "graph_find_dead_code to identify unreachable functions"
         ]
       }
     }

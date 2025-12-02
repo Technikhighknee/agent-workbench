@@ -21,28 +21,38 @@ Together, they form a minimal "development environment" for autonomous or semi-a
 ### [@agent-workbench/syntax](packages/syntax/)
 Symbol-aware code operations for AI agents. Read and edit code by function/class name, not line numbers.
 
+**File operations:**
 - `list_symbols` - Get file structure
 - `read_symbol` / `edit_symbol` - Read/write by symbol name
 - `edit_lines` - Replace lines by number (for non-symbol edits)
 - `get_imports` / `get_exports` - Analyze module boundaries
+
+**Import management:**
+- `add_import` - Add/merge import statements
+- `remove_unused_imports` - Clean up unused imports
+- `organize_imports` - Sort and group imports
+
+**Project analysis:**
 - `search_symbols` / `find_references` - Cross-file search
 - `get_callers` / `get_callees` - Call hierarchy
 - `analyze_deps` - Circular dependency detection
+- `find_unused_exports` - Find dead code (unused exports)
+
+**Refactoring:**
 - `rename_symbol` - Safe cross-file renaming
+- `move_file` - Move file and update all imports
+- `move_symbol` - Move function/class to another file
+- `extract_function` - Extract code block into new function
+- `inline_function` - Replace function call with function body
 
-### [@agent-workbench/process-host](packages/process-host/)
-Process management with persistent tracking, log capture, and lifecycle control.
+### [@agent-workbench/task-runner](packages/task-runner/)
+Task execution with SQLite persistence. Tasks survive server restarts.
 
-- `run_process` - Run command, wait for completion
-- `spawn_process` - Start background process
-- `get_logs` / `search_logs` - Monitor output
-- `get_process` / `list_processes` - Query process state
-- `stop_process` / `restart_process` - Lifecycle control
-- `stop_all_processes` - Stop everything at once
-- `wait_for_pattern` - Block until output matches
-- `write_stdin` - Send input to running process
-- `send_signal` - Send signals (SIGHUP, SIGINT, etc.)
-- `purge_processes` / `get_stats` - Cleanup and statistics
+- `task_run` - Run command, wait for completion (default 30s timeout)
+- `task_start` - Start background task, optionally wait for pattern
+- `task_get` - Get task status and output
+- `task_kill` - Stop a running task
+- `task_list` - See all tasks (including from previous sessions)
 
 ### [@agent-workbench/history](packages/history/)
 Git operations for AI agents. Understand code evolution and create commits.
@@ -54,6 +64,7 @@ Git operations for AI agents. Understand code evolution and create commits.
 - `commit_info` / `search_commits` - Commit details and search
 - `diff_file` - Compare file between commits
 - `branch_diff` - Summary of changes vs base branch (PR scope)
+- `changed_symbols` - What functions/classes changed between refs (semantic diff)
 
 **Write operations:**
 - `git_status` - Current branch, staged/unstaged changes
@@ -61,7 +72,7 @@ Git operations for AI agents. Understand code evolution and create commits.
 - `git_commit` - Create a commit with staged changes
 
 ### [@agent-workbench/project](packages/project/)
-Project metadata and orientation. Quickly understand project structure, configs, and available commands.
+Project metadata and orientation. Quickly understand project structure and available commands.
 
 - `get_session_guide` - **Start here** - MCP tool usage guidance
 - `get_quickstart` - How to install, build, test, and run
@@ -69,20 +80,19 @@ Project metadata and orientation. Quickly understand project structure, configs,
 - `get_structure` - Directory layout with descriptions
 - `get_project_info` - Project name, type, version, scripts overview
 - `get_scripts` - Available commands to run
-- `get_dependencies` - Production and dev dependencies
-- `find_configs` / `read_config` - Configuration file discovery
 
 ### [@agent-workbench/graph](packages/graph/)
 Semantic code graph for deep code understanding. Trace call chains, find paths, understand relationships.
-**Auto-initializes on first query** using current working directory.
+**Auto-initializes on startup** for the current working directory.
 
-- `graph_get_symbol` - Get symbol with source code
+- `graph_get_symbol` - Get symbol with full source code
 - `graph_get_callers` / `graph_get_callees` - Call relationships
 - `graph_trace` - Follow call chains forward/backward
 - `graph_find_paths` - All paths between two symbols
-- `graph_find_symbols` - Search by pattern or tags
-- `graph_query` - Compound queries with traversal
-- `graph_initialize` - Manually re-index if needed
+- `graph_find_symbols` - Search by pattern or kind
+- `graph_find_dead_code` - Find functions unreachable from exports
+- `graph_stats` - Graph statistics (nodes, edges, files)
+- `graph_initialize` - Re-index a different workspace
 
 ### [@agent-workbench/types](packages/types/)
 TypeScript language service integration. Get type errors, hover info, and go-to-definition.
@@ -112,7 +122,7 @@ Key principle: **Use these MCP tools instead of Bash** for:
 - Git operations → `mcp__history__*`
 - TypeScript checking → `mcp__types__*`
 - Running tests → `mcp__test-runner__*`
-- Long builds → `mcp__process-host__*`
+- Long builds → `mcp__task-runner__*`
 - Code read/edit → `mcp__syntax__*`
 - Project info → `mcp__project__*`
 - Call graph analysis → `mcp__graph__*`

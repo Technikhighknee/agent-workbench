@@ -94,3 +94,37 @@ return resultToStructuredResponse(result, (value) => ({
 - `successResponse(text, data?)` - Success with optional structured content
 - `resultToResponse(result, formatter)` - Convert Result to response
 - `resultToStructuredResponse(result, formatter)` - Convert with structured data
+
+## Server Utilities
+
+Simplified MCP server creation with lifecycle hooks.
+
+```typescript
+import { runServer } from "@agent-workbench/core";
+
+runServer({
+  config: {
+    name: "my-server",
+    version: "1.0.0",
+  },
+  createServices: () => ({
+    myService: new MyService(),
+  }),
+  registerTools: (server, services) => {
+    server.registerTool("my_tool", { ... }, async (args) => {
+      return services.myService.doSomething(args);
+    });
+  },
+  onStartup: async (services) => {
+    await services.myService.initialize();
+  },
+  onShutdown: (services) => {
+    services.myService.dispose();
+  },
+});
+```
+
+### Server API
+- `runServer(options)` - Start an MCP server with lifecycle management
+- `bootstrapServer(options)` - Lower-level server creation for custom setups
+- `McpServer` - Re-exported MCP SDK server type

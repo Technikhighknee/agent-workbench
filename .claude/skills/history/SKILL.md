@@ -1,7 +1,7 @@
 ---
 name: history
 description: "MANDATORY: Use INSTEAD of Bash git commands. Structured git blame, history, diff. NEVER use Bash for git operations."
-allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__history__recent_changes, mcp__history__commit_info, mcp__history__search_commits, mcp__history__diff_file, mcp__history__branch_diff
+allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__history__recent_changes, mcp__history__commit_info, mcp__history__search_commits, mcp__history__diff_file, mcp__history__branch_diff, mcp__history__changed_symbols, mcp__history__git_status, mcp__history__git_add, mcp__history__git_commit
 ---
 
 # history
@@ -19,6 +19,10 @@ allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__histor
 | Search commit messages | `git log --grep` | `search_commits({ query })` |
 | See file diff | `git diff HEAD~1 file.ts` | `diff_file({ file_path, from_ref, to_ref })` |
 | Compare branches | `git diff main..feature` | `branch_diff({ base, head })` |
+| See what symbols changed | `git diff` + manual parse | `changed_symbols({ from_ref, to_ref })` |
+| Check current status | `git status` | `git_status({})` |
+| Stage files | `git add file.ts` | `git_add({ paths: ['file.ts'] })` |
+| Create commit | `git commit -m "msg"` | `git_commit({ message: 'msg' })` |
 
 ## WHY MANDATORY
 
@@ -33,6 +37,9 @@ allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__histor
 - **NEVER** `Bash: git blame` - use `blame_file`
 - **NEVER** `Bash: git diff` - use `diff_file` or `branch_diff`
 - **NEVER** `Bash: git show` - use `commit_info`
+- **NEVER** `Bash: git status` - use `git_status`
+- **NEVER** `Bash: git add` - use `git_add`
+- **NEVER** `Bash: git commit` - use `git_commit`
 - **NEVER** parse git output with grep/awk - use structured tools
 
 ## TOOL REFERENCE
@@ -46,6 +53,10 @@ allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__histor
 | `search_commits` | Find by message | Matching commits |
 | `diff_file` | What changed in file? | Unified diff |
 | `branch_diff` | Branch comparison | Files changed, stats |
+| `changed_symbols` | Semantic diff | Functions/classes added/modified/deleted |
+| `git_status` | Current state | Branch, staged/unstaged changes |
+| `git_add` | Stage files | Files added to staging |
+| `git_commit` | Create commit | Commit hash and message |
 
 ## COMMON WORKFLOWS
 
@@ -69,6 +80,8 @@ branch_diff({ base: 'main', head: 'HEAD' })
 // See all changes on branch
 diff_file({ file_path: 'src/changed.ts', from_ref: 'main' })
 // See specific file changes
+changed_symbols({ from_ref: 'main', to_ref: 'HEAD' })
+// See what functions/classes were added/modified/deleted
 ```
 
 ### Find Related Changes
@@ -77,6 +90,19 @@ search_commits({ query: 'authentication' })
 // Find commits about auth
 recent_changes({ count: 20 })
 // See what happened recently
+```
+
+### Create a Commit
+```
+git_status({})
+// See current changes
+
+git_add({ paths: ['src/feature.ts', 'src/test.ts'] })
+// Stage specific files
+// Or use paths: ['.'] for all
+
+git_commit({ message: 'feat: add new feature' })
+// Create the commit
 ```
 
 **Works with any git repository.** Auto-detects git root.

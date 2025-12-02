@@ -1,7 +1,7 @@
 ---
 name: graph
 description: "Use for deep code understanding. Semantic call graphs, path tracing, symbol relationships. Initialize first, then query."
-allowed-tools: mcp__graph__graph_initialize, mcp__graph__graph_query, mcp__graph__graph_get_symbol, mcp__graph__graph_get_callers, mcp__graph__graph_get_callees, mcp__graph__graph_trace, mcp__graph__graph_find_paths, mcp__graph__graph_find_symbols, mcp__graph__graph_stats
+allowed-tools: mcp__graph__graph_initialize, mcp__graph__graph_get_symbol, mcp__graph__graph_get_callers, mcp__graph__graph_get_callees, mcp__graph__graph_trace, mcp__graph__graph_find_paths, mcp__graph__graph_find_symbols, mcp__graph__graph_find_dead_code, mcp__graph__graph_stats
 ---
 
 # graph
@@ -14,14 +14,28 @@ Use graph tools when you need to understand **relationships between code**:
 - "How does user input reach the database?"
 - "What calls this function?"
 - "If I change X, what else is affected?"
-- "Show me all validators in the codebase"
+- "Find all functions matching a pattern"
+- "What code is never called (dead code)?"
 
-## MANDATORY WORKFLOW
+## WHEN NOT TO USE GRAPH
 
-**Always initialize first:**
+**Don't use graph for:**
+- Reading/editing code → use `mcp__syntax__*` tools instead
+- Finding a specific symbol → use `mcp__syntax__search_symbols`
+- Type checking → use `mcp__types__get_diagnostics`
+- Simple grep/file search → use `Grep` or `Glob` tools
+
+**Graph is overkill for:**
+- Single file operations
+- Quick symbol lookups
+- Code that doesn't have complex call relationships
+
+## WORKFLOW
+
+**Graph auto-initializes on startup** for the current working directory. For a different workspace:
 ```
-1. graph_initialize({ workspace_path: '.' })  // Index the codebase
-2. graph_stats({})                             // Verify indexing worked
+1. graph_initialize({ workspace_path: '/other/project' })  // Re-index
+2. graph_stats({})                                          // Verify
 3. ... now use query tools ...
 ```
 
@@ -35,8 +49,8 @@ Use graph tools when you need to understand **relationships between code**:
 | `graph_get_callees` | What does this call? | Understand function dependencies |
 | `graph_trace` | Follow call chains | Trace data/control flow |
 | `graph_find_paths` | All paths A→B | Security audits, data flow analysis |
-| `graph_find_symbols` | Search by pattern/tag | Find all handlers, validators, etc. |
-| `graph_query` | Compound queries | Complex multi-step analysis |
+| `graph_find_symbols` | Search by pattern/kind | Find all handlers, validators, etc. |
+| `graph_find_dead_code` | Find unreachable functions | Clean up dead code |
 | `graph_stats` | Index statistics | Verify initialization worked |
 
 ## COMPLEMENT TO SYNTAX
@@ -66,17 +80,23 @@ graph_find_paths({ from: 'handleRequest', to: 'executeQuery', max_depth: 10 })
 ```
 
 ### Code Discovery
-"Find all async handlers"
+"Find all handlers"
 ```
-graph_find_symbols({ tags: ['handler', 'async'] })
 graph_find_symbols({ pattern: 'handle.*', kinds: ['function'] })
+```
+
+### Dead Code Detection
+"What functions are never called?"
+```
+graph_find_dead_code({})
+graph_find_dead_code({ file_pattern: 'src/**/*.ts' })  // Limit scope
 ```
 
 ### Understanding New Code
 "What does this service do?"
 ```
 graph_get_symbol({ name: 'UserService' })
-graph_get_callees({ symbol: 'UserService.process' })
+graph_get_callees({ symbol: 'UserService' })
 ```
 
 ## Quick Examples
@@ -101,4 +121,4 @@ graph_find_paths({ from: 'parseInput', to: 'saveToDb' })
 graph_find_symbols({ pattern: 'validate.*', kinds: ['function'] })
 ```
 
-**Supports:** TypeScript, JavaScript (more languages coming)
+**Supports:** TypeScript, JavaScript, Python, Go, Rust (via tree-sitter)

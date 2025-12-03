@@ -121,6 +121,24 @@
           "get_structure shows directory layout with descriptions"
         ]
       }
+    },
+    "insight": {
+      "command": "npx",
+      "args": ["-y", "tsx", "--watch", "packages/insight/src/server.ts"],
+      "agentPreferences": {
+        "description": "Understand code in one call. Structure, relationships, history - all at once.",
+        "when": "Starting work on unfamiliar code, understanding impact before changes",
+        "avoidWhen": "Already know the code well, simple targeted edits",
+        "firstAction": "insight({ target: 'path/or/SymbolName' }) - comprehensive understanding",
+        "toolGroups": {
+          "understand": { "tools": ["insight"] }
+        },
+        "tips": [
+          "One call replaces: list_symbols + get_imports + get_exports + git_log + get_callers",
+          "Works on files, directories, or symbol names",
+          "Everything computed fresh - never stale"
+        ]
+      }
     }
   }
 }

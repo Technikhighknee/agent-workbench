@@ -12,6 +12,7 @@
     "build:project": "npm run build -w @agent-workbench/project",
     "build:types": "npm run build -w @agent-workbench/types",
     "build:test-runner": "npm run build -w @agent-workbench/test-runner",
+    "build:insight": "npm run build -w @agent-workbench/insight",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "clean": "rm -rf packages/*/dist",
     "test": "vitest run",
@@ -30,7 +31,8 @@
     "packages/project",
     "packages/types",
     "packages/test-runner",
-    "packages/task-runner"
+    "packages/task-runner",
+    "packages/insight"
   ],
   "keywords": [
     "ai-agent",

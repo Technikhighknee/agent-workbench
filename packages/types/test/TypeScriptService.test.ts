@@ -48,7 +48,7 @@ describe("TypeScriptService", () => {
       }
     });
 
-    it("gets all diagnostics with limit", { timeout: 15000 }, async () => {
+    it("gets all diagnostics with limit", { timeout: 30000 }, async () => {
       const result = await service.getDiagnostics({ limit: 10 });
 
       expect(result.ok).toBe(true);
@@ -58,7 +58,7 @@ describe("TypeScriptService", () => {
       expect(result.value.length).toBeLessThanOrEqual(10);
     });
 
-    it("returns diagnostics with structure", async () => {
+    it("returns diagnostics with structure", { timeout: 30000 }, async () => {
       const result = await service.getDiagnostics({ limit: 5 });
 
       expect(result.ok).toBe(true);

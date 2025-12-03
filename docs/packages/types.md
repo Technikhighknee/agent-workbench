@@ -2,16 +2,14 @@
 
 [← Back to packages](README.md) · [Source](../../packages/types/)
 
-MCP server for TypeScript language service integration. Get type errors, hover info, and go-to-definition.
+Check types after every edit. Fast, single-file focused.
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `check_file` | Check a single TypeScript file for type errors. |
-| `get_quick_fixes` | Get available fixes for type errors at a position. |
-| `get_type` | Get type information at a specific position in a TypeScript file. |
-| `go_to_definition` | Find where a symbol is defined. |
+- `check_file`
+- `get_type`
+- `go_to_definition`
+- `get_quick_fixes`
 
 ## MCP Configuration
 
@@ -23,3 +21,5 @@ MCP server for TypeScript language service integration. Get type errors, hover i
   }
 }
 ```
+
+See [GUIDE.md](../../packages/types/GUIDE.md) for full documentation.

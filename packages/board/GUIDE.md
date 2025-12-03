@@ -1,9 +1,7 @@
 ---
 name: board
-description: "Track work across sessions. Persistent kanban for agents."
-allowed-tools: mcp__board__board_list, mcp__board__board_add, mcp__board__board_update, mcp__board__board_move, mcp__board__board_get, mcp__board__board_delete
+tagline: "Track work across sessions. Persistent kanban for agents."
 ---
-
 
 # board
 

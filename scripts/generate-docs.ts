@@ -2,13 +2,12 @@
 /**
  * Documentation generator for agent-workbench.
  *
- * Extracts package and tool metadata from source code and generates:
- * - docs/packages/*.md - Individual package documentation
- * - docs/packages/README.md - Package index
- * - generated/packages.json - Package metadata for runtime
- * - generated/tools.json - Tool metadata for session guide
+ * Reads GUIDE.md from each package and generates:
+ * - .claude/skills/[pkg]/SKILL.md - Skill files for Claude
+ * - docs/packages/[pkg].md - Package documentation
+ * - generated/session-guide.json - Data for get_session_guide
  *
- * Run with: npx tsx scripts/generate-docs.ts
+ * Run with: npm run generate:docs
  */
 
 import * as fs from "fs";
@@ -17,151 +16,164 @@ import * as path from "path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const PACKAGES_DIR = path.join(ROOT, "packages");
 const DOCS_DIR = path.join(ROOT, "docs");
+const SKILLS_DIR = path.join(ROOT, ".claude", "skills");
 const GENERATED_DIR = path.join(ROOT, "generated");
 
-interface ToolInfo {
+interface GuideFrontmatter {
   name: string;
-  title: string;
-  description: string;
-  file: string;
+  tagline: string;
 }
 
-interface PackageInfo {
+interface PackageGuide {
   name: string;
   shortName: string;
+  tagline: string;
   description: string;
-  path: string;
+  content: string;
+  tools: string[];
   isServer: boolean;
-  tools: ToolInfo[];
 }
 
 /**
- * Extract tool info from a TypeScript file containing registerTool calls.
+ * Parse YAML-like frontmatter from markdown.
  */
-function extractToolsFromFile(filePath: string): ToolInfo[] {
-  const content = fs.readFileSync(filePath, "utf-8");
-  const tools: ToolInfo[] = [];
+function parseFrontmatter(content: string): { frontmatter: GuideFrontmatter; body: string } {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) {
+    return { frontmatter: { name: "", tagline: "" }, body: content };
+  }
 
-  // Match: registerTool("tool_name", { title: "...", description: "...", ...
-  // This regex captures tool name, then looks for title and description in the config object
-  const registerPattern =
-    /registerTool\s*\(\s*["']([^"']+)["']\s*,\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}/gs;
+  const yamlContent = match[1];
+  const body = match[2];
 
-  let match;
-  while ((match = registerPattern.exec(content)) !== null) {
-    const toolName = match[1];
-    const configBlock = match[2];
+  const frontmatter: GuideFrontmatter = { name: "", tagline: "" };
+  for (const line of yamlContent.split("\n")) {
+    const [key, ...valueParts] = line.split(":");
+    const value = valueParts.join(":").trim().replace(/^["']|["']$/g, "");
+    if (key.trim() === "name") frontmatter.name = value;
+    if (key.trim() === "tagline") frontmatter.tagline = value;
+  }
 
-    // Extract title
-    const titleMatch = configBlock.match(/title\s*:\s*["']([^"']+)["']/);
-    const title = titleMatch ? titleMatch[1] : toolName;
+  return { frontmatter, body };
+}
 
-    // Extract description - handle multiline template literals and regular strings
-    let description = "";
-    const descMatch = configBlock.match(
-      /description\s*:\s*(?:["'`]([^"'`]+)["'`]|`([^`]+)`)/s
-    );
-    if (descMatch) {
-      description = (descMatch[1] || descMatch[2] || "")
-        .replace(/\s+/g, " ")
-        .trim();
-      // Get first sentence only for cleaner output
-      const firstSentence = description.match(/^[^.!?]+[.!?]?/);
-      if (firstSentence && firstSentence[0].length < description.length) {
-        description = firstSentence[0].trim();
-      }
-      // Truncate if still too long
-      if (description.length > 150) {
-        description = description.substring(0, 147) + "...";
-      }
+/**
+ * Extract tool names from Quick Reference table in GUIDE.md.
+ */
+function extractTools(content: string): string[] {
+  const tools: string[] = [];
+
+  // Find Quick Reference section
+  const quickRefMatch = content.match(/## Quick Reference[\s\S]*?\|[\s\S]*?(?=\n##|\n$)/);
+  if (!quickRefMatch) return tools;
+
+  // Extract tool names from backticks in table
+  const toolMatches = quickRefMatch[0].matchAll(/`([a-z_]+)`/g);
+  for (const match of toolMatches) {
+    if (!tools.includes(match[1])) {
+      tools.push(match[1]);
     }
-
-    tools.push({
-      name: toolName,
-      title,
-      description,
-      file: path.basename(filePath),
-    });
   }
 
   return tools;
 }
 
 /**
- * Scan a package directory for all tools.
+ * Extract first paragraph as description.
  */
-function scanPackageTools(packagePath: string): ToolInfo[] {
-  const toolsDir = path.join(packagePath, "src", "tools");
-  if (!fs.existsSync(toolsDir)) {
-    return [];
+function extractDescription(body: string): string {
+  // Skip the title, get first non-empty paragraph
+  const lines = body.split("\n");
+  let foundTitle = false;
+  let description = "";
+
+  for (const line of lines) {
+    if (line.startsWith("# ")) {
+      foundTitle = true;
+      continue;
+    }
+    if (foundTitle && line.trim() && !line.startsWith("#")) {
+      description = line.replace(/\*\*/g, "").trim();
+      break;
+    }
   }
 
-  const tools: ToolInfo[] = [];
-  const files = fs.readdirSync(toolsDir).filter((f) => f.endsWith(".ts"));
-
-  for (const file of files) {
-    const filePath = path.join(toolsDir, file);
-    tools.push(...extractToolsFromFile(filePath));
-  }
-
-  return tools;
+  return description;
 }
 
 /**
- * Read all packages and extract metadata.
+ * Read all packages with GUIDE.md.
  */
-function scanPackages(): PackageInfo[] {
-  const packages: PackageInfo[] = [];
+function scanPackages(): PackageGuide[] {
+  const packages: PackageGuide[] = [];
   const dirs = fs.readdirSync(PACKAGES_DIR);
 
   for (const dir of dirs) {
     const packagePath = path.join(PACKAGES_DIR, dir);
+    const guidePath = path.join(packagePath, "GUIDE.md");
     const packageJsonPath = path.join(packagePath, "package.json");
 
-    if (!fs.existsSync(packageJsonPath)) continue;
+    if (!fs.existsSync(guidePath) || !fs.existsSync(packageJsonPath)) continue;
 
+    const guideContent = fs.readFileSync(guidePath, "utf-8");
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
     const serverPath = path.join(packagePath, "src", "server.ts");
     const isServer = fs.existsSync(serverPath);
 
-    const tools = scanPackageTools(packagePath);
+    const { frontmatter, body } = parseFrontmatter(guideContent);
+    const tools = extractTools(body);
+    const description = extractDescription(body);
 
     packages.push({
       name: packageJson.name,
       shortName: dir,
-      description: packageJson.description || "",
-      path: `packages/${dir}`,
-      isServer,
+      tagline: frontmatter.tagline,
+      description,
+      content: body,
       tools,
+      isServer,
     });
   }
 
-  // Sort: servers first, then by name
-  return packages.sort((a, b) => {
-    if (a.isServer !== b.isServer) return a.isServer ? -1 : 1;
-    return a.shortName.localeCompare(b.shortName);
-  });
+  return packages.sort((a, b) => a.shortName.localeCompare(b.shortName));
 }
 
 /**
- * Generate markdown documentation for a single package.
+ * Generate SKILL.md for Claude.
  */
-function generatePackageDoc(pkg: PackageInfo): string {
+function generateSkillFile(pkg: PackageGuide): string {
+  const allowedTools = pkg.tools.map(t => `mcp__${pkg.shortName}__${t}`).join(", ");
+
+  const lines: string[] = [
+    "---",
+    `name: ${pkg.shortName}`,
+    `description: "${pkg.tagline}"`,
+    `allowed-tools: ${allowedTools}`,
+    "---",
+    "",
+    pkg.content,
+  ];
+
+  return lines.join("\n");
+}
+
+/**
+ * Generate markdown doc for a package.
+ */
+function generatePackageDoc(pkg: PackageGuide): string {
   const lines: string[] = [
     `# ${pkg.shortName}`,
     "",
-    `[← Back to packages](README.md) · [Source](../../${pkg.path}/)`,
+    `[← Back to packages](README.md) · [Source](../../packages/${pkg.shortName}/)`,
     "",
     pkg.description,
     "",
   ];
 
   if (pkg.tools.length > 0) {
-    lines.push("## Tools", "", "| Tool | Description |", "|------|-------------|");
-
+    lines.push("## Tools", "");
     for (const tool of pkg.tools) {
-      const desc = tool.description || tool.title;
-      lines.push(`| \`${tool.name}\` | ${desc} |`);
+      lines.push(`- \`${tool}\``);
     }
     lines.push("");
   }
@@ -178,7 +190,8 @@ function generatePackageDoc(pkg: PackageInfo): string {
       "  }",
       "}",
       "```",
-      ""
+      "",
+      `See [GUIDE.md](../../packages/${pkg.shortName}/GUIDE.md) for full documentation.`
     );
   }
 
@@ -186,9 +199,9 @@ function generatePackageDoc(pkg: PackageInfo): string {
 }
 
 /**
- * Generate the packages index.
+ * Generate packages index.
  */
-function generatePackagesIndex(packages: PackageInfo[]): string {
+function generatePackagesIndex(packages: PackageGuide[]): string {
   const servers = packages.filter((p) => p.isServer);
   const shared = packages.filter((p) => !p.isServer);
 
@@ -204,76 +217,65 @@ function generatePackagesIndex(packages: PackageInfo[]): string {
   ];
 
   for (const pkg of servers) {
-    lines.push(
-      `| [${pkg.shortName}](${pkg.shortName}.md) | ${pkg.tools.length} | ${pkg.description} |`
-    );
+    lines.push(`| [${pkg.shortName}](${pkg.shortName}.md) | ${pkg.tools.length} | ${pkg.tagline} |`);
   }
 
   if (shared.length > 0) {
     lines.push("", "## Shared", "", "| Package | Description |", "|---------|-------------|");
     for (const pkg of shared) {
-      lines.push(`| [${pkg.shortName}](${pkg.shortName}.md) | ${pkg.description} |`);
+      lines.push(`| [${pkg.shortName}](${pkg.shortName}.md) | ${pkg.tagline} |`);
     }
   }
-
-  // Add dependency diagram
-  lines.push(
-    "",
-    "## Dependencies",
-    "",
-    "```",
-    "core ──┬── syntax ────── insight",
-    "       ├── history",
-    "       ├── project",
-    "       ├── types ─────── preview",
-    "       ├── task-runner ─ test-runner",
-    "       └── board",
-    "```"
-  );
 
   return lines.join("\n");
 }
 
 /**
- * Generate JSON data for runtime use (e.g., session guide).
+ * Generate session guide JSON for runtime use.
  */
-function generateRuntimeData(packages: PackageInfo[]): {
-  packages: Record<string, { description: string; tools: string[] }>;
-  tools: Record<string, { package: string; description: string }>;
-} {
-  const packagesData: Record<string, { description: string; tools: string[] }> = {};
-  const toolsData: Record<string, { package: string; description: string }> = {};
+function generateSessionGuide(packages: PackageGuide[]): object {
+  const guide: Record<string, {
+    tagline: string;
+    description: string;
+    tools: string[];
+  }> = {};
 
   for (const pkg of packages) {
-    if (!pkg.isServer) continue;
+    // Only include packages that are MCP servers with tools
+    if (!pkg.isServer || pkg.tools.length === 0) continue;
 
-    packagesData[pkg.shortName] = {
+    guide[pkg.shortName] = {
+      tagline: pkg.tagline,
       description: pkg.description,
-      tools: pkg.tools.map((t) => t.name),
+      tools: pkg.tools,
     };
-
-    for (const tool of pkg.tools) {
-      toolsData[tool.name] = {
-        package: pkg.shortName,
-        description: tool.description || tool.title,
-      };
-    }
   }
 
-  return { packages: packagesData, tools: toolsData };
+  return guide;
 }
 
 /**
  * Main entry point.
  */
 function main() {
-  console.log("Scanning packages...");
+  console.log("Scanning packages for GUIDE.md...");
   const packages = scanPackages();
-  console.log(`Found ${packages.length} packages with ${packages.reduce((n, p) => n + p.tools.length, 0)} tools`);
+  console.log(`Found ${packages.length} packages with GUIDE.md`);
 
   // Ensure directories exist
   fs.mkdirSync(path.join(DOCS_DIR, "packages"), { recursive: true });
   fs.mkdirSync(GENERATED_DIR, { recursive: true });
+
+  // Generate skill files (only for packages with tools)
+  for (const pkg of packages) {
+    if (!pkg.isServer || pkg.tools.length === 0) continue;
+
+    const skillDir = path.join(SKILLS_DIR, pkg.shortName);
+    fs.mkdirSync(skillDir, { recursive: true });
+    const skillPath = path.join(skillDir, "SKILL.md");
+    fs.writeFileSync(skillPath, generateSkillFile(pkg));
+    console.log(`  → .claude/skills/${pkg.shortName}/SKILL.md`);
+  }
 
   // Generate package docs
   for (const pkg of packages) {
@@ -282,23 +284,18 @@ function main() {
     console.log(`  → docs/packages/${pkg.shortName}.md`);
   }
 
-  // Generate index
+  // Generate packages index
   const indexPath = path.join(DOCS_DIR, "packages", "README.md");
   fs.writeFileSync(indexPath, generatePackagesIndex(packages));
   console.log(`  → docs/packages/README.md`);
 
-  // Generate runtime data
-  const runtimeData = generateRuntimeData(packages);
+  // Generate session guide JSON
+  const sessionGuide = generateSessionGuide(packages);
   fs.writeFileSync(
-    path.join(GENERATED_DIR, "packages.json"),
-    JSON.stringify(runtimeData.packages, null, 2)
+    path.join(GENERATED_DIR, "session-guide.json"),
+    JSON.stringify(sessionGuide, null, 2)
   );
-  fs.writeFileSync(
-    path.join(GENERATED_DIR, "tools.json"),
-    JSON.stringify(runtimeData.tools, null, 2)
-  );
-  console.log(`  → generated/packages.json`);
-  console.log(`  → generated/tools.json`);
+  console.log(`  → generated/session-guide.json`);
 
   console.log("Done!");
 }

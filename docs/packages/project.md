@@ -2,18 +2,16 @@
 
 [← Back to packages](README.md) · [Source](../../packages/project/)
 
-MCP server for project metadata operations. Understand project structure, configs, and available commands.
+Instant project orientation. Scripts, tech stack, structure.
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `get_project_info` | Get basic project information - name, type, version, available scripts. |
-| `get_quickstart` | Get actionable commands to install, build, test, and run this project. |
-| `get_scripts` | Get available scripts/commands that can be run in this project |
-| `get_session_guide` | MANDATORY: Call this at the start of every session and after context compacting. |
-| `get_structure` | Get an overview of the project |
-| `get_tech_stack` | Detect frameworks, libraries, and tools used in this project. |
+- `get_session_guide`
+- `get_quickstart`
+- `get_tech_stack`
+- `get_structure`
+- `get_project_info`
+- `get_scripts`
 
 ## MCP Configuration
 
@@ -25,3 +23,5 @@ MCP server for project metadata operations. Understand project structure, config
   }
 }
 ```
+
+See [GUIDE.md](../../packages/project/GUIDE.md) for full documentation.

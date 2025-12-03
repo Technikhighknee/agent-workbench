@@ -1,9 +1,7 @@
 ---
 name: syntax
-description: "Edits that never fail. Find functions by name, not text matching."
-allowed-tools: mcp__syntax__list_symbols, mcp__syntax__read_symbol, mcp__syntax__edit_symbol, mcp__syntax__batch_edit_symbols, mcp__syntax__search_symbols, mcp__syntax__find_references, mcp__syntax__rename_symbol, mcp__syntax__move_file, mcp__syntax__move_symbol, mcp__syntax__get_callers, mcp__syntax__get_callees, mcp__syntax__trace, mcp__syntax__find_dead_code
+tagline: "Edits that never fail. Find functions by name, not text matching."
 ---
-
 
 # syntax
 

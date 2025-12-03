@@ -1,9 +1,7 @@
 ---
 name: insight
-description: "Understand code in one call."
-allowed-tools: mcp__insight__insight, mcp__insight__suggest_refactoring
+tagline: "Understand code in one call."
 ---
-
 
 # insight
 

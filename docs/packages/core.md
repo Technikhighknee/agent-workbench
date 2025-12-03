@@ -2,7 +2,7 @@
 
 [← Back to packages](README.md) · [Source](../../packages/core/)
 
-Shared utilities for agent-workbench packages
+Not an MCP server. Shared utilities used by all packages.
 
 ## MCP Configuration
 
@@ -14,3 +14,5 @@ Shared utilities for agent-workbench packages
   }
 }
 ```
+
+See [GUIDE.md](../../packages/core/GUIDE.md) for full documentation.

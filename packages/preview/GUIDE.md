@@ -1,9 +1,7 @@
 ---
 name: preview
-description: "See what breaks BEFORE you edit."
-allowed-tools: mcp__preview__preview_edit
+tagline: "See what breaks BEFORE you edit."
 ---
-
 
 # preview
 

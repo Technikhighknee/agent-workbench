@@ -1,9 +1,7 @@
 ---
 name: task-runner
-description: "Builds that don't die. Tasks survive restarts."
-allowed-tools: mcp__task-runner__task_run, mcp__task-runner__task_start, mcp__task-runner__task_get, mcp__task-runner__task_kill, mcp__task-runner__task_list
+tagline: "Builds that don't die. Tasks survive restarts."
 ---
-
 
 # task-runner
 

@@ -1,9 +1,7 @@
 ---
 name: test-runner
-description: "Know exactly what failed, where, and why."
-allowed-tools: mcp__test-runner__run_tests, mcp__test-runner__get_test_failures, mcp__test-runner__rerun_failed, mcp__test-runner__find_tests_for, mcp__test-runner__run_related_tests, mcp__test-runner__list_test_files
+tagline: "Know exactly what failed, where, and why."
 ---
-
 
 # test-runner
 

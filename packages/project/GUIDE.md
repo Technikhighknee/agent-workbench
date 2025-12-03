@@ -1,9 +1,7 @@
 ---
 name: project
-description: "Know any codebase in 10 seconds."
-allowed-tools: mcp__project__get_session_guide, mcp__project__get_quickstart, mcp__project__get_tech_stack, mcp__project__get_structure, mcp__project__get_project_info, mcp__project__get_scripts
+tagline: "Know any codebase in 10 seconds."
 ---
-
 
 # project
 

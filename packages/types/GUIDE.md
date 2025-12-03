@@ -1,9 +1,7 @@
 ---
 name: types
-description: "Fast type checking. Never hangs, always answers in <5s."
-allowed-tools: mcp__types__check_file, mcp__types__get_type, mcp__types__go_to_definition, mcp__types__get_quick_fixes
+tagline: "Fast type checking. Never hangs, always answers in <5s."
 ---
-
 
 # types
 

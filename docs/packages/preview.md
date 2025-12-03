@@ -2,13 +2,11 @@
 
 [← Back to packages](README.md) · [Source](../../packages/preview/)
 
-Impact preview and consequence analysis for AI agents
+Impact prediction. Type errors, affected callers, required tests.
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `preview_edit` | Preview the consequences of an edit BEFORE making it. |
+- `preview_edit`
 
 ## MCP Configuration
 
@@ -20,3 +18,5 @@ Impact preview and consequence analysis for AI agents
   }
 }
 ```
+
+See [GUIDE.md](../../packages/preview/GUIDE.md) for full documentation.

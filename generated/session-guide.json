@@ -1,0 +1,110 @@
+{
+  "board": {
+    "tagline": "Track work across sessions. Persistent kanban for agents.",
+    "description": "Remember what you're working on. Tasks persist across sessions.",
+    "tools": [
+      "board_list",
+      "board_add",
+      "board_update",
+      "board_move",
+      "board_get",
+      "board_delete"
+    ]
+  },
+  "history": {
+    "tagline": "Understand WHY code exists. Git blame, history, and commits.",
+    "description": "Stop guessing why code was written. The commit message probably explains it.",
+    "tools": [
+      "blame_file",
+      "file_history",
+      "recent_changes",
+      "commit_info",
+      "search_commits",
+      "diff_file",
+      "branch_diff",
+      "changed_symbols",
+      "git_status",
+      "git_add",
+      "git_commit"
+    ]
+  },
+  "insight": {
+    "tagline": "Understand code in one call.",
+    "description": "Comprehensive understanding. Structure, relationships, history - all at once.",
+    "tools": [
+      "insight",
+      "suggest_refactoring"
+    ]
+  },
+  "preview": {
+    "tagline": "See what breaks BEFORE you edit.",
+    "description": "Impact prediction. Type errors, affected callers, required tests.",
+    "tools": [
+      "preview_edit"
+    ]
+  },
+  "project": {
+    "tagline": "Know any codebase in 10 seconds.",
+    "description": "Instant project orientation. Scripts, tech stack, structure.",
+    "tools": [
+      "get_session_guide",
+      "get_quickstart",
+      "get_tech_stack",
+      "get_structure",
+      "get_project_info",
+      "get_scripts"
+    ]
+  },
+  "syntax": {
+    "tagline": "Edits that never fail. Find functions by name, not text matching.",
+    "description": "Edit code by function name, not text matching. The Edit tool fails when text isn't unique. This never does.",
+    "tools": [
+      "list_symbols",
+      "read_symbol",
+      "edit_symbol",
+      "batch_edit_symbols",
+      "search_symbols",
+      "find_references",
+      "rename_symbol",
+      "move_file",
+      "move_symbol",
+      "get_callers",
+      "get_callees",
+      "trace",
+      "find_dead_code"
+    ]
+  },
+  "task-runner": {
+    "tagline": "Builds that don't die. Tasks survive restarts.",
+    "description": "Run long commands without timeouts. SQLite persistence survives restarts.",
+    "tools": [
+      "task_run",
+      "task_start",
+      "task_get",
+      "task_kill",
+      "task_list"
+    ]
+  },
+  "test-runner": {
+    "tagline": "Know exactly what failed, where, and why.",
+    "description": "Structured test results. No output parsing needed.",
+    "tools": [
+      "run_tests",
+      "get_test_failures",
+      "rerun_failed",
+      "find_tests_for",
+      "run_related_tests",
+      "list_test_files"
+    ]
+  },
+  "types": {
+    "tagline": "Fast type checking. Never hangs, always answers in <5s.",
+    "description": "Check types after every edit. Fast, single-file focused.",
+    "tools": [
+      "check_file",
+      "get_type",
+      "go_to_definition",
+      "get_quick_fixes"
+    ]
+  }
+}

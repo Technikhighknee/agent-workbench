@@ -1,9 +1,7 @@
 ---
 name: history
-description: "Understand WHY code exists. Git blame, history, and commits."
-allowed-tools: mcp__history__blame_file, mcp__history__file_history, mcp__history__recent_changes, mcp__history__commit_info, mcp__history__search_commits, mcp__history__diff_file, mcp__history__branch_diff, mcp__history__changed_symbols, mcp__history__git_status, mcp__history__git_add, mcp__history__git_commit
+tagline: "Understand WHY code exists. Git blame, history, and commits."
 ---
-
 
 # history
 

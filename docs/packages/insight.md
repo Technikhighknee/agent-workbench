@@ -2,14 +2,12 @@
 
 [← Back to packages](README.md) · [Source](../../packages/insight/)
 
-MCP server for comprehensive code understanding. One call to understand a file, module, or symbol.
+Comprehensive understanding. Structure, relationships, history - all at once.
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `insight` | Get comprehensive understanding of a file, directory, or symbol. |
-| `suggest_refactoring` | Analyze code and suggest refactoring opportunities. |
+- `insight`
+- `suggest_refactoring`
 
 ## MCP Configuration
 
@@ -21,3 +19,5 @@ MCP server for comprehensive code understanding. One call to understand a file, 
   }
 }
 ```
+
+See [GUIDE.md](../../packages/insight/GUIDE.md) for full documentation.

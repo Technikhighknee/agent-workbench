@@ -2,18 +2,16 @@
 
 [← Back to packages](README.md) · [Source](../../packages/board/)
 
-A simple task board for AI agents - Trello-like MCP tools for managing work
+Remember what you're working on. Tasks persist across sessions.
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `board_add` | Create a new card. |
-| `board_delete` | Remove card from board. |
-| `board_get` | Get full card details by ID. |
-| `board_list` | List cards with optional filtering. |
-| `board_move` | Move card to different list. |
-| `board_update` | Update card properties. |
+- `board_list`
+- `board_add`
+- `board_update`
+- `board_move`
+- `board_get`
+- `board_delete`
 
 ## MCP Configuration
 
@@ -25,3 +23,5 @@ A simple task board for AI agents - Trello-like MCP tools for managing work
   }
 }
 ```
+
+See [GUIDE.md](../../packages/board/GUIDE.md) for full documentation.

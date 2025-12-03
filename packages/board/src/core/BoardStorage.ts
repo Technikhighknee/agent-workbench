@@ -3,7 +3,7 @@
  * Stores board data in .board/board.json in the project root.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Board } from "./model.js";
 import { createEmptyBoard } from "./model.js";
@@ -55,7 +55,6 @@ export function saveBoard(projectPath: string, board: Board): void {
   writeFileSync(tempPath, content, "utf-8");
 
   // Rename atomically
-  const { renameSync } = require("node:fs");
   renameSync(tempPath, boardPath);
 }
 

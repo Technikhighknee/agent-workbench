@@ -2,8 +2,9 @@
  * find_paths - Find all paths between two symbols in the call graph.
  */
 
-import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import * as z from "zod/v4";
+
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
 import type { ToolResponse } from "./types.js";
 

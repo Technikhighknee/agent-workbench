@@ -3,7 +3,8 @@
  * Extracts import information from parsed AST nodes.
  */
 import type Parser from "tree-sitter";
-import type { ImportInfo, ImportBinding, ImportType } from "../../core/model.js";
+
+import type { ImportBinding, ImportInfo, ImportType } from "../../core/model.js";
 
 /**
  * Find all import statements in a node tree.

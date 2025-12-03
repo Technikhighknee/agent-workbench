@@ -2,12 +2,13 @@
  * organize_imports tool - Sort and group imports in a file.
  */
 
-import * as z from "zod/v4";
-import { glob } from "glob";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { glob } from "glob";
+import * as z from "zod/v4";
+
+import type { ImportInfo } from "../core/model.js";
 import type { SyntaxService } from "../core/services/SyntaxService.js";
 import type { ToolResponse } from "./types.js";
-import type { ImportInfo } from "../core/model.js";
 
 interface OrganizeImportsInput {
   file_path?: string;
@@ -189,7 +190,6 @@ function organizeImportStatements(
   for (const [source, sourceImports] of bySource) {
     const isExternal = !source.startsWith('.') && !source.startsWith('/');
     const isSideEffect = sourceImports.every(i => i.type === 'side_effect');
-    const hasTypeOnly = sourceImports.some(i => i.raw.includes('import type'));
 
     if (isSideEffect) {
       combined.push({
@@ -202,46 +202,73 @@ function organizeImportStatements(
       continue;
     }
 
-    // Collect all bindings
-    // Default imports have type 'default' and only one binding
+    // Collect all bindings with their type info
     const defaultImportInfo = sourceImports.find(i => i.type === 'default');
-    const defaultImport = defaultImportInfo?.bindings[0]?.name;
+    const defaultBinding = defaultImportInfo?.bindings[0];
 
-    const namespaceImport = sourceImports
-      .find(i => i.type === 'namespace')
-      ?.bindings[0]?.name;
+    const namespaceImportInfo = sourceImports.find(i => i.type === 'namespace');
+    const namespaceBinding = namespaceImportInfo?.bindings[0];
 
-    // Named imports come from imports with type 'named' or 'type'
-    const namedImports = sourceImports
+    // Collect named bindings with isType flag preserved
+    const namedBindings = sourceImports
       .filter(i => i.type !== 'default' && i.type !== 'namespace' && i.type !== 'side_effect')
       .flatMap(i => i.bindings)
-      .map(b => {
-        if (b.originalName && b.originalName !== b.name) {
-          return `${b.originalName} as ${b.name}`;
-        }
-        return b.name;
-      })
-      .filter((v, i, a) => a.indexOf(v) === i) // dedupe
-      .sort();
+      .filter((b, i, arr) => arr.findIndex(x => x.name === b.name) === i); // dedupe by name
 
-    // Build statement
+    // Separate type-only and value bindings
+    const typeBindings = namedBindings.filter(b => b.isType);
+    const valueBindings = namedBindings.filter(b => !b.isType);
+
+    // Check if all imports are type-only
+    const allTypeOnly = valueBindings.length === 0 &&
+      (!defaultBinding || defaultBinding.isType) &&
+      (!namespaceBinding || namespaceBinding.isType);
+
+    // Build statement with inline type syntax when mixing types and values
+    const formatBinding = (b: { name: string; originalName?: string; isType?: boolean }, forceType = false) => {
+      const typePrefix = (b.isType || forceType) && !allTypeOnly ? 'type ' : '';
+      if (b.originalName && b.originalName !== b.name) {
+        return `${typePrefix}${b.originalName} as ${b.name}`;
+      }
+      return `${typePrefix}${b.name}`;
+    };
+
     let statement: string;
-    const typePrefix = hasTypeOnly ? 'type ' : '';
+    const importKeyword = allTypeOnly ? 'import type' : 'import';
 
-    if (namespaceImport) {
-      statement = `import ${typePrefix}* as ${namespaceImport} from "${source}";`;
+    if (namespaceBinding) {
+      statement = `${importKeyword} * as ${namespaceBinding.name} from "${source}";`;
     } else {
       const parts: string[] = [];
-      if (defaultImport) parts.push(defaultImport);
-      if (namedImports.length > 0) parts.push(`{ ${namedImports.join(', ')} }`);
-      statement = `import ${typePrefix}${parts.join(', ')} from "${source}";`;
+
+      // Default import first
+      if (defaultBinding) {
+        parts.push(formatBinding(defaultBinding));
+      }
+
+      // Named imports - combine and sort (values first, then types)
+      const allNamed = [...valueBindings, ...typeBindings]
+        .map(b => formatBinding(b))
+        .sort((a, b) => {
+          // Sort type imports after value imports
+          const aIsType = a.startsWith('type ');
+          const bIsType = b.startsWith('type ');
+          if (aIsType !== bIsType) return aIsType ? 1 : -1;
+          return a.localeCompare(b);
+        });
+
+      if (allNamed.length > 0) {
+        parts.push(`{ ${allNamed.join(', ')} }`);
+      }
+
+      statement = `${importKeyword} ${parts.join(', ')} from "${source}";`;
     }
 
     combined.push({
       source,
       statement,
       isExternal,
-      isType: hasTypeOnly,
+      isType: allTypeOnly,
       isSideEffect: false,
     });
   }

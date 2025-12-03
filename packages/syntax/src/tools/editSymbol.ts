@@ -1,7 +1,8 @@
 import * as z from "zod/v4";
-import type { ToolRegistrar, ToolResponse } from "./types.js";
-import { EditResultSchema } from "./schemas.js";
+
 import type { EditResult } from "../core/model.js";
+import { EditResultSchema } from "./schemas.js";
+import type { ToolRegistrar, ToolResponse } from "./types.js";
 
 interface EditSymbolInput {
   file_path: string;

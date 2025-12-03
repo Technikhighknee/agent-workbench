@@ -1,6 +1,7 @@
 import type { Result } from "@agent-workbench/core";
+
+import { CallInfo, ExportInfo, ImportInfo, Language, Span } from "../model.js";
 import { SymbolTree } from "../symbolTree.js";
-import { Language, Span, ImportInfo, ExportInfo, CallInfo } from "../model.js";
 
 export interface ParseError {
   message: string;

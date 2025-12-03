@@ -2,12 +2,13 @@
  * remove_unused_imports tool - Find and remove imports that aren't used in the file.
  */
 
-import * as z from "zod/v4";
-import { glob } from "glob";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { glob } from "glob";
+import * as z from "zod/v4";
+
+import type { ImportInfo } from "../core/model.js";
 import type { SyntaxService } from "../core/services/SyntaxService.js";
 import type { ToolResponse } from "./types.js";
-import type { ImportInfo } from "../core/model.js";
 
 interface RemoveUnusedImportsInput {
   file_path?: string;

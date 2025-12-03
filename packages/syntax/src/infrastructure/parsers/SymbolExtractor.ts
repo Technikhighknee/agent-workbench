@@ -3,7 +3,8 @@
  * Extracts classes, functions, interfaces, etc. from source code.
  */
 import type Parser from "tree-sitter";
-import type { Symbol, SymbolKind, Span } from "../../core/model.js";
+
+import type { Span, Symbol, SymbolKind } from "../../core/model.js";
 import type { ParseError } from "../../core/ports/Parser.js";
 
 /**

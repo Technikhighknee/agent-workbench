@@ -1,17 +1,11 @@
+import { Err, Ok, Result } from "@agent-workbench/core";
 import Parser from "tree-sitter";
-import { Parser as ParserPort, ParseResult } from "../../core/ports/Parser.js";
-import { type Result, Ok, Err } from "@agent-workbench/core";
-import {
-  Language,
-  LANGUAGES,
-  detectLanguage,
-  CallInfo,
-  ImportInfo,
-  ExportInfo,
-} from "../../core/model.js";
-import { findImportStatements } from "./ImportExtractor.js";
+
+import { CallInfo, ExportInfo, ImportInfo, LANGUAGES, Language, detectLanguage } from "../../core/model.js";
+import { ParseResult, Parser as ParserPort } from "../../core/ports/Parser.js";
 import { findExportStatements } from "./ExportExtractor.js";
-import { extractSymbols, extractErrors } from "./SymbolExtractor.js";
+import { findImportStatements } from "./ImportExtractor.js";
+import { extractErrors, extractSymbols } from "./SymbolExtractor.js";
 
 // Tree-sitter language type (uses any in the typings)
 type TreeSitterLanguage = unknown;

@@ -3,12 +3,13 @@
  * The opposite of extract_function.
  */
 
-import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import * as z from "zod/v4";
+
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
 import type { SyntaxService } from "../core/services/SyntaxService.js";
-import type { ToolResponse } from "./types.js";
 import { findByNamePath } from "../core/symbolTree.js";
+import type { ToolResponse } from "./types.js";
 
 interface InlineFunctionInput {
   file_path: string;

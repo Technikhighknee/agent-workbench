@@ -1,15 +1,16 @@
-import { type Result, Ok, Err } from "@agent-workbench/core";
-import { FileSystem } from "../ports/FileSystem.js";
-import { SymbolTree, flattenSymbols } from "../symbolTree.js";
+import { Err, Ok, Result } from "@agent-workbench/core";
+
 import {
   CallEdge,
-  GraphNode,
-  TraceResult,
-  GraphPath,
-  FindPathsResult,
   DeadCodeItem,
   DeadCodeResult,
+  FindPathsResult,
+  GraphNode,
+  GraphPath,
+  TraceResult,
 } from "../model.js";
+import { FileSystem } from "../ports/FileSystem.js";
+import { flattenSymbols, SymbolTree } from "../symbolTree.js";
 
 /**
  * Call graph data structure.

@@ -1,7 +1,8 @@
+import { Err, Ok, Result } from "@agent-workbench/core";
 import fs from "node:fs";
 import path from "node:path";
+
 import { ProjectScanner } from "../../core/ports/ProjectScanner.js";
-import { type Result, Ok, Err } from "@agent-workbench/core";
 
 // Common directories to always ignore
 const ALWAYS_IGNORE = new Set([

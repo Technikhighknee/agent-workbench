@@ -1,7 +1,8 @@
 import * as z from "zod/v4";
-import type { ToolRegistrar, ToolResponse } from "./types.js";
-import { SymbolContentSchema } from "./schemas.js";
+
 import type { SymbolContent } from "../core/model.js";
+import { SymbolContentSchema } from "./schemas.js";
+import type { ToolRegistrar, ToolResponse } from "./types.js";
 
 interface ReadSymbolInput {
   file_path: string;

@@ -1,8 +1,9 @@
-import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import * as z from "zod/v4";
+
+import type { CallSite } from "../core/model.js";
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
 import type { ToolResponse } from "./types.js";
-import type { CallSite } from "../core/model.js";
 
 interface GetCallersInput {
   symbol_name: string;

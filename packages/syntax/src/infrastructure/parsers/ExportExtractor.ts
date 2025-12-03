@@ -3,7 +3,8 @@
  * Extracts export information from parsed AST nodes.
  */
 import type Parser from "tree-sitter";
-import type { ExportInfo, ExportBinding, ExportType, SymbolKind } from "../../core/model.js";
+
+import type { ExportBinding, ExportInfo, ExportType, SymbolKind } from "../../core/model.js";
 
 /**
  * Find all export statements in a node tree.

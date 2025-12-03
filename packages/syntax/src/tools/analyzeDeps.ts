@@ -1,9 +1,10 @@
-import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ProjectIndex } from "../core/services/ProjectIndex.js";
-import type { ToolResponse } from "./types.js";
-import { DependencyAnalysisSchema } from "./schemas.js";
+import * as z from "zod/v4";
+
 import type { DependencyAnalysis } from "../core/model.js";
+import type { ProjectIndex } from "../core/services/ProjectIndex.js";
+import { DependencyAnalysisSchema } from "./schemas.js";
+import type { ToolResponse } from "./types.js";
 
 interface AnalyzeDepsOutput extends Record<string, unknown> {
   success: boolean;

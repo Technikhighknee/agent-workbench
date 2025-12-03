@@ -221,10 +221,26 @@ export class TestRunnerServiceImpl implements TestRunnerService {
       path.join(dirName, "__tests__", `${baseName}.test.ts`),
       path.join(dirName, "__tests__", `${baseName}.spec.ts`),
       path.join(dirName, "__tests__", `${baseName}.ts`),
-      // test/ directory sibling
+      // test/ directory sibling (mirroring structure)
       path.join(dirName.replace(/\/src(\/|$)/, "/test$1"), `${baseName}.test.ts`),
       path.join(dirName.replace(/\/src(\/|$)/, "/tests$1"), `${baseName}.test.ts`),
     ];
+
+    // Strategy 1b: Package-level test directory (common in monorepos)
+    // Find the package root by looking for package.json or the first directory after src
+    const srcIndex = absoluteSource.indexOf("/src/");
+    if (srcIndex !== -1) {
+      const packageRoot = absoluteSource.substring(0, srcIndex);
+      // Add package-level test patterns
+      namingPatterns.push(
+        path.join(packageRoot, "test", `${baseName}.test.ts`),
+        path.join(packageRoot, "test", `${baseName}.spec.ts`),
+        path.join(packageRoot, "tests", `${baseName}.test.ts`),
+        path.join(packageRoot, "tests", `${baseName}.spec.ts`),
+        path.join(packageRoot, "__tests__", `${baseName}.test.ts`),
+        path.join(packageRoot, "__tests__", `${baseName}.spec.ts`)
+      );
+    }
 
     for (const testPath of namingPatterns) {
       try {

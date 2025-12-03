@@ -429,7 +429,29 @@ export class PreviewService {
       }
     }
 
-    // Strategy 2: Test file in same directory or test subdirectory
+    // Strategy 2: Package-level test directory (packages/foo/test/Bar.test.ts)
+    // Find package root by looking for /src/ in path
+    const srcIndex = relativePath.indexOf("/src/");
+    if (srcIndex !== -1) {
+      const packagePath = relativePath.substring(0, srcIndex);
+      const packageTestPatterns = [
+        join(packagePath, "test", `${fileName}.test.ts`),
+        join(packagePath, "test", `${fileName}.spec.ts`),
+        join(packagePath, "tests", `${fileName}.test.ts`),
+        join(packagePath, "__tests__", `${fileName}.test.ts`),
+      ];
+
+      for (const pattern of packageTestPatterns) {
+        if (this.testFileCache.has(pattern) && !tests.some(t => t.file === pattern)) {
+          tests.push({
+            file: pattern,
+            reason: "Package test directory",
+          });
+        }
+      }
+    }
+
+    // Strategy 3: Test file in same directory or test subdirectory
     const allTests = Array.from(this.testFileCache.keys());
     for (const testFile of allTests) {
       if (tests.length >= maxTests) break;
@@ -445,9 +467,6 @@ export class PreviewService {
         }
       }
     }
-
-    // Strategy 3: Test imports the file (would need import analysis)
-    // For now, skip this as it requires parsing
 
     return Ok(tests.slice(0, maxTests));
   }

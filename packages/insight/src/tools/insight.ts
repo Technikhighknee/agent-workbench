@@ -46,10 +46,12 @@ Examples:
       },
     },
     async (input: InsightInput) => {
-      const result = await service.getInsight(input.target, {
-        includeCode: input.includeCode,
-        maxChanges: input.maxChanges,
-      });
+      // Filter out undefined values so defaults aren't overridden
+      const options: Record<string, unknown> = {};
+      if (input.includeCode !== undefined) options.includeCode = input.includeCode;
+      if (input.maxChanges !== undefined) options.maxChanges = input.maxChanges;
+
+      const result = await service.getInsight(input.target, options);
 
       if (!result.ok) {
         return { content: [{ type: "text", text: `Error: ${result.error}` }] };

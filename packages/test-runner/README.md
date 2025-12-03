@@ -18,6 +18,8 @@ AI agents need to verify code changes work correctly:
 | `get_test_failures` | Get detailed failure info with source locations |
 | `list_test_files` | Discover test files in the project |
 | `rerun_failed` | Re-run only tests that failed |
+| `find_tests_for` | Find test files related to a source file (by naming convention & imports) |
+| `run_related_tests` | Run tests for a specific source file automatically |
 
 ## Installation
 

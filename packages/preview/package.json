@@ -1,0 +1,38 @@
+{
+  "name": "@agent-workbench/preview",
+  "version": "0.1.0",
+  "description": "Impact preview and consequence analysis for AI agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-workbench/core": "*",
+    "@agent-workbench/syntax": "*",
+    "@agent-workbench/types": "*",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.8.2"
+  },
+  "files": [
+    "dist"
+  ]
+}

@@ -50,6 +50,7 @@ Back to [main README.md](../../)
 | Tool | Description |
 |------|-------------|
 | `apply_edits` | Apply multiple edits across files atomically (all succeed or all fail with rollback) |
+| `batch_edit_symbols` | Edit multiple symbols across files atomically with validation before apply |
 
 ## Features
 

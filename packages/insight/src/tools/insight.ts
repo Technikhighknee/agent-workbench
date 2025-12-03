@@ -5,12 +5,20 @@
  * and get back everything you need to understand it.
  */
 
+import { z } from "zod";
 import type { ToolRegistrar } from "./types.js";
 import type {
   FileInsight,
   DirectoryInsight,
   SymbolInsight,
 } from "../model.js";
+
+// Input type
+interface InsightInput {
+  target: string;
+  includeCode?: boolean;
+  maxChanges?: number;
+}
 
 export const registerInsight: ToolRegistrar = (server, service) => {
   server.registerTool(
@@ -32,29 +40,15 @@ Examples:
 - insight({ target: "src/utils" }) - understand a directory
 - insight({ target: "TaskRunner" }) - understand a class/function`,
       inputSchema: {
-        type: "object",
-        properties: {
-          target: {
-            type: "string",
-            description:
-              "File path, directory path, or symbol name to understand",
-          },
-          includeCode: {
-            type: "boolean",
-            description: "Include source code in output (default: true)",
-          },
-          maxChanges: {
-            type: "number",
-            description: "Max recent changes to include (default: 5)",
-          },
-        },
-        required: ["target"],
+        target: z.string().describe("File path, directory path, or symbol name to understand"),
+        includeCode: z.boolean().optional().describe("Include source code in output (default: true)"),
+        maxChanges: z.number().optional().describe("Max recent changes to include (default: 5)"),
       },
     },
-    async ({ target, includeCode, maxChanges }) => {
-      const result = await service.getInsight(target as string, {
-        includeCode: includeCode as boolean | undefined,
-        maxChanges: maxChanges as number | undefined,
+    async (input: InsightInput) => {
+      const result = await service.getInsight(input.target, {
+        includeCode: input.includeCode,
+        maxChanges: input.maxChanges,
       });
 
       if (!result.ok) {

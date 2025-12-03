@@ -4,10 +4,10 @@
 
 import { Err, Ok, Result } from "@agent-workbench/core";
 
+import { escapeRegex } from "../model.js";
 import type { CallSite } from "../model.js";
 import type { FileSystem } from "../ports/FileSystem.js";
 import { flattenSymbols, SymbolTree } from "../symbolTree.js";
-import { escapeRegex } from "./ReferenceSearch.js";
 
 export interface CallerCalleeContext {
   indexedFiles: Map<string, SymbolTree>;

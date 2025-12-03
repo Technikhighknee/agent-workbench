@@ -419,3 +419,23 @@ export interface DeadCodeResult {
   /** Dead code items found */
   deadCode: DeadCodeItem[];
 }
+
+/**
+ * An indexed symbol with file location information.
+ * Used by ProjectIndex and related services.
+ */
+export interface IndexedSymbol {
+  name: string;
+  namePath: string;
+  kind: SymbolKind;
+  filePath: string;
+  line: number;
+  endLine: number;
+}
+
+/**
+ * Escape special regex characters in a string.
+ */
+export function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

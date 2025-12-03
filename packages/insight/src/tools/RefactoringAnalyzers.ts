@@ -2,7 +2,7 @@
  * Refactoring analyzers for file, directory, and symbol insights.
  */
 
-import type { RefactoringSuggestion } from "./suggestRefactoring.js";
+import type { RefactoringSuggestion } from "./types.js";
 
 /**
  * Analyze a file insight for refactoring opportunities.

@@ -9,6 +9,7 @@ import {
   DeadCodeResult,
   DependencyAnalysis,
   FindPathsResult,
+  IndexedSymbol,
   LANGUAGES,
   SymbolKind,
   SymbolReference,
@@ -25,14 +26,8 @@ import { getCallers, getCallees } from "./CallerCalleeSearch.js";
 import { analyzeDependencies } from "./DependencyAnalyzer.js";
 import { findReferences } from "./ReferenceSearch.js";
 
-export interface IndexedSymbol {
-  name: string;
-  namePath: string;
-  kind: SymbolKind;
-  filePath: string;
-  line: number;
-  endLine: number;
-}
+// Re-export for backwards compatibility
+export type { IndexedSymbol } from "../model.js";
 
 export interface SearchSymbolsParams {
   pattern: string;

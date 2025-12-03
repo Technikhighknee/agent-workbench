@@ -24,6 +24,7 @@ import { registerAddImport } from "./addImport.js";
 import { registerRemoveUnusedImports } from "./removeUnusedImports.js";
 import { registerOrganizeImports } from "./organizeImports.js";
 import { registerApplyEdits } from "./applyEdits.js";
+import { registerBatchEditSymbols } from "./batchEditSymbols.js";
 import { registerTrace } from "./trace.js";
 import { registerFindPaths } from "./findPaths.js";
 import { registerFindDeadCode } from "./findDeadCode.js";
@@ -69,6 +70,7 @@ export function registerAllTools(server: McpServer, services: Services): void {
 
   // Multi-file operations (SyntaxService only)
   registerApplyEdits(server, services.syntax);
+  registerBatchEditSymbols(server, services.syntax);
 
   // Call graph operations (ProjectIndex)
   registerTrace(server, services.index);

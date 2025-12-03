@@ -10,13 +10,43 @@
  */
 
 import { Err, Ok, Result } from "@agent-workbench/core";
-import { InMemoryCache, NodeFileSystem, NodeProjectScanner, ProjectIndex, SyntaxService, TreeSitterParser, flattenSymbols } from "@agent-workbench/syntax";
-import { execSync } from "node:child_process";
+import {
+  flattenSymbols,
+  InMemoryCache,
+  NodeFileSystem,
+  NodeProjectScanner,
+  ProjectIndex,
+  SyntaxService,
+  TreeSitterParser,
+} from "@agent-workbench/syntax";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
-import { collectFileNotes, collectSymbolNotes, extractSignature, generateDirectorySummary, generateFileSummary, generateSymbolSummary } from "./InsightUtils.js";
-import { DEFAULT_OPTIONS, type CallRelation, type ComplexityMetrics, type Dependency, type DirectoryInsight, type FileInsight, type Insight, type InsightOptions, type RecentChange, type SymbolInsight, type SymbolRef } from "./model.js";
+import {
+  collectFileNotes,
+  collectSymbolNotes,
+  extractSignature,
+  generateDirectorySummary,
+  generateFileSummary,
+  generateSymbolSummary,
+} from "./InsightUtils.js";
+import {
+  getRecentChangesForDirectory,
+  getRecentChangesForFile,
+  getRecentChangesForSymbol,
+} from "./GitHistory.js";
+import {
+  DEFAULT_OPTIONS,
+  type CallRelation,
+  type ComplexityMetrics,
+  type Dependency,
+  type DirectoryInsight,
+  type FileInsight,
+  type Insight,
+  type InsightOptions,
+  type SymbolInsight,
+  type SymbolRef,
+} from "./model.js";
 
 export class InsightService {
   private readonly syntax: SyntaxService;
@@ -29,20 +59,15 @@ export class InsightService {
   constructor(rootPath: string) {
     this.rootPath = rootPath;
 
-    // Create infrastructure
     this.parser = new TreeSitterParser();
     this.fs = new NodeFileSystem();
     const cache = new InMemoryCache();
     const scanner = new NodeProjectScanner();
 
-    // Create services
     this.syntax = new SyntaxService(this.parser, this.fs, cache);
     this.index = new ProjectIndex(this.parser, this.fs, cache, scanner);
   }
 
-  /**
-   * Initialize the service (indexes the project).
-   */
   async initialize(): Promise<Result<void, string>> {
     if (this.initialized) return Ok(undefined);
 
@@ -55,23 +80,17 @@ export class InsightService {
     return Ok(undefined);
   }
 
-  /**
-   * Get comprehensive insight about a target.
-   * Target can be a file path, directory path, or symbol name.
-   */
   async getInsight(
     target: string,
     options: InsightOptions = {}
   ): Promise<Result<Insight, string>> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
 
-    // Ensure initialized
     if (!this.initialized) {
       const initResult = await this.initialize();
       if (!initResult.ok) return initResult;
     }
 
-    // Resolve the target
     const resolved = this.resolveTarget(target);
 
     switch (resolved.type) {
@@ -82,20 +101,15 @@ export class InsightService {
       case "symbol":
         return this.getSymbolInsight(resolved.name!, opts);
       case "unknown":
-        // Try as symbol anyway - getSymbolInsight has better error messages with suggestions
         return this.getSymbolInsight(target, opts);
     }
   }
 
-  /**
-   * Resolve a target string to a specific type.
-   */
   private resolveTarget(target: string): {
     type: "file" | "directory" | "symbol" | "unknown";
     path?: string;
     name?: string;
   } {
-    // Try as absolute path first
     if (target.startsWith("/")) {
       if (existsSync(target)) {
         const stat = statSync(target);
@@ -105,7 +119,6 @@ export class InsightService {
       }
     }
 
-    // Try as relative path
     const fullPath = join(this.rootPath, target);
     if (existsSync(fullPath)) {
       const stat = statSync(fullPath);
@@ -114,13 +127,11 @@ export class InsightService {
         : { type: "file", path: fullPath };
     }
 
-    // Try as symbol name
     const symbols = this.index.searchSymbols({ pattern: `^${target}$` });
     if (symbols.length > 0) {
       return { type: "symbol", name: target };
     }
 
-    // Try partial match
     const partialSymbols = this.index.searchSymbols({ pattern: target });
     if (partialSymbols.length > 0) {
       return { type: "symbol", name: partialSymbols[0].name };
@@ -129,16 +140,12 @@ export class InsightService {
     return { type: "unknown" };
   }
 
-  /**
-   * Get insight about a file.
-   */
   private async getFileInsight(
     filePath: string,
     opts: Required<InsightOptions>
   ): Promise<Result<FileInsight, string>> {
     const relativePath = relative(this.rootPath, filePath);
 
-    // Read and parse file
     const sourceResult = this.fs.read(filePath);
     if (!sourceResult.ok) {
       return Err(sourceResult.error.message);
@@ -152,7 +159,6 @@ export class InsightService {
     const tree = parseResult.value.tree;
     const symbols = flattenSymbols(tree);
 
-    // Get imports and exports
     const importsResult = await this.syntax.getImports(filePath);
     const exportsResult = await this.syntax.getExports(filePath);
 
@@ -168,27 +174,24 @@ export class InsightService {
       ? exportsResult.value.flatMap((exp) => exp.bindings.map((b) => b.name))
       : [];
 
-    // Find who imports this file
     const importedBy = this.findImportersOf(relativePath);
-
-    // Extract import sources
     const importsFrom = imports
       .map((imp) => imp.source)
       .filter((s) => s.startsWith("."));
 
-    // Get recent changes
-    const recentChanges = this.getRecentChangesForFile(
+    const recentChanges = getRecentChangesForFile(
+      this.rootPath,
       filePath,
       opts.maxChanges
     );
 
-    // Calculate metrics
     const lines = sourceResult.value.split("\n").length;
-    const complexity = lines > 500 || symbols.length > 30
-      ? "high"
-      : lines > 150 || symbols.length > 15
-      ? "medium"
-      : "low";
+    const complexity =
+      lines > 500 || symbols.length > 30
+        ? "high"
+        : lines > 150 || symbols.length > 15
+        ? "medium"
+        : "low";
 
     const metrics: ComplexityMetrics = {
       lines,
@@ -198,11 +201,8 @@ export class InsightService {
       complexity,
     };
 
-    // Generate summary
-    const summary = this.generateFileSummary(tree.language, symbols, exports);
-
-    // Collect notes
-    const notes = this.collectFileNotes(metrics);
+    const summary = generateFileSummary(tree.language, symbols, exports);
+    const notes = collectFileNotes(metrics);
 
     return Ok({
       type: "file",
@@ -229,39 +229,47 @@ export class InsightService {
     });
   }
 
-  /**
-   * Get insight about a directory.
-   */
   private async getDirectoryInsight(
     dirPath: string,
     opts: Required<InsightOptions>
   ): Promise<Result<DirectoryInsight, string>> {
     const relativePath = relative(this.rootPath, dirPath);
 
-    // List direct subdirectories (for structure display)
     const entries = readdirSync(dirPath, { withFileTypes: true });
     const subdirectories = entries
-      .filter((e) => e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules" && e.name !== "dist")
+      .filter(
+        (e) =>
+          e.isDirectory() &&
+          !e.name.startsWith(".") &&
+          e.name !== "node_modules" &&
+          e.name !== "dist"
+      )
       .map((e) => e.name);
 
-    // Recursively collect ALL source files (excluding test files for main metrics)
     const allFiles = this.collectFilesRecursively(dirPath);
-    const sourceFiles = allFiles.filter((f) => !f.relativePath.includes("test/") && !f.relativePath.endsWith(".test.ts") && !f.relativePath.endsWith(".spec.ts"));
-    const testFiles = allFiles.filter((f) => f.relativePath.includes("test/") || f.relativePath.endsWith(".test.ts") || f.relativePath.endsWith(".spec.ts"));
+    const sourceFiles = allFiles.filter(
+      (f) =>
+        !f.relativePath.includes("test/") &&
+        !f.relativePath.endsWith(".test.ts") &&
+        !f.relativePath.endsWith(".spec.ts")
+    );
+    const testFiles = allFiles.filter(
+      (f) =>
+        f.relativePath.includes("test/") ||
+        f.relativePath.endsWith(".test.ts") ||
+        f.relativePath.endsWith(".spec.ts")
+    );
     const fileNames = allFiles.map((f) => f.relativePath);
 
-    // Find entry points - check root and src/ directory
     const entryPointNames = ["index.ts", "index.js", "mod.ts", "main.ts"];
     const entryPoints: string[] = [];
-    
-    // Check root level
+
     for (const name of entryPointNames) {
       if (entries.some((e) => e.isFile() && e.name === name)) {
         entryPoints.push(name);
       }
     }
-    
-    // Check src/ subdirectory if exists
+
     if (subdirectories.includes("src")) {
       const srcPath = join(dirPath, "src");
       try {
@@ -271,10 +279,11 @@ export class InsightService {
             entryPoints.push(`src/${name}`);
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
-    // Collect key symbols from source files (not test files)
     const keySymbols: SymbolRef[] = [];
     const allImports: Set<string> = new Set();
     const internalDeps: Set<string> = new Set();
@@ -285,7 +294,10 @@ export class InsightService {
       const sourceResult = this.fs.read(file.absolutePath);
       if (!sourceResult.ok) continue;
 
-      const parseResult = await this.parser.parse(sourceResult.value, file.absolutePath);
+      const parseResult = await this.parser.parse(
+        sourceResult.value,
+        file.absolutePath
+      );
       if (!parseResult.ok) continue;
 
       const tree = parseResult.value.tree;
@@ -293,12 +305,13 @@ export class InsightService {
       totalLines += sourceResult.value.split("\n").length;
       totalSymbols += symbols.length;
 
-      // Get exported symbols as key symbols
       const exportsResult = await this.syntax.getExports(file.absolutePath);
       if (exportsResult.ok) {
         for (const exp of exportsResult.value) {
           for (const binding of exp.bindings) {
-            const sym = symbols.find(({ symbol }) => symbol.name === binding.name);
+            const sym = symbols.find(
+              ({ symbol }) => symbol.name === binding.name
+            );
             if (sym) {
               keySymbols.push({
                 name: sym.symbol.name,
@@ -311,15 +324,16 @@ export class InsightService {
         }
       }
 
-      // Track imports
       const importsResult = await this.syntax.getImports(file.absolutePath);
       if (importsResult.ok) {
         for (const imp of importsResult.value) {
           if (!imp.source.startsWith(".")) {
             allImports.add(imp.source);
           } else {
-            // Resolve internal dependency
-            const resolved = this.resolveImportPath(dirname(file.absolutePath), imp.source);
+            const resolved = this.resolveImportPath(
+              dirname(file.absolutePath),
+              imp.source
+            );
             if (resolved) {
               const relDir = dirname(relative(this.rootPath, resolved));
               if (relDir !== relativePath && !relDir.startsWith(relativePath)) {
@@ -331,17 +345,16 @@ export class InsightService {
       }
     }
 
-    // Find who depends on this directory
     const dependents = this.findDependentsOf(relativePath);
 
-    // Get recent changes
-    const recentChanges = this.getRecentChangesForDirectory(
+    const recentChanges = getRecentChangesForDirectory(
+      this.rootPath,
       dirPath,
       opts.maxChanges
     );
 
-    // Calculate aggregate metrics (source files only)
-    const complexity = totalLines > 1000 ? "high" : totalLines > 300 ? "medium" : "low";
+    const complexity =
+      totalLines > 1000 ? "high" : totalLines > 300 ? "medium" : "low";
     const metrics: ComplexityMetrics = {
       lines: totalLines,
       symbols: totalSymbols,
@@ -350,14 +363,12 @@ export class InsightService {
       complexity,
     };
 
-    // Generate summary
-    const summary = this.generateDirectorySummary(
+    const summary = generateDirectorySummary(
       relativePath,
       sourceFiles.length,
       keySymbols
     );
 
-    // Collect notes
     const notes: string[] = [];
     if (entryPoints.length === 0 && sourceFiles.length > 0) {
       notes.push("No index/entry point file found");
@@ -365,9 +376,13 @@ export class InsightService {
     if (metrics.complexity === "high") {
       notes.push("High complexity - consider refactoring");
     }
-    const nestedSourceCount = sourceFiles.filter((f) => f.relativePath.includes("/")).length;
+    const nestedSourceCount = sourceFiles.filter((f) =>
+      f.relativePath.includes("/")
+    ).length;
     if (subdirectories.length > 0 && nestedSourceCount > 0) {
-      notes.push(`Includes ${subdirectories.length} subdirectories with ${nestedSourceCount} nested source files`);
+      notes.push(
+        `Includes ${subdirectories.length} subdirectories with ${nestedSourceCount} nested source files`
+      );
     }
     if (testFiles.length > 0) {
       notes.push(`${testFiles.length} test file(s) not included in metrics`);
@@ -381,7 +396,7 @@ export class InsightService {
         files: fileNames,
         subdirectories,
         entryPoints,
-        keySymbols: keySymbols.slice(0, 20), // Limit to top 20
+        keySymbols: keySymbols.slice(0, 20),
       },
       relationships: {
         externalDeps: Array.from(allImports),
@@ -394,35 +409,39 @@ export class InsightService {
     });
   }
 
-  /**
-   * Get insight about a symbol.
-   */
   private async getSymbolInsight(
     symbolName: string,
     opts: Required<InsightOptions>
   ): Promise<Result<SymbolInsight, string>> {
-    // Find the symbol (exact match)
     const symbols = this.index.searchSymbols({ pattern: `^${symbolName}$` });
     if (symbols.length === 0) {
-      // Try partial match to give helpful suggestions
       const partial = this.index.searchSymbols({ pattern: symbolName });
       if (partial.length > 0) {
-        const suggestions = partial.slice(0, 5).map((s) => `  - ${s.name} (${s.kind}) in ${s.filePath}`).join("\n");
-        return Err(`Symbol "${symbolName}" not found exactly, but found similar:\n${suggestions}\n\nTry one of these names or use the file path.`);
+        const suggestions = partial
+          .slice(0, 5)
+          .map((s) => `  - ${s.name} (${s.kind}) in ${s.filePath}`)
+          .join("\n");
+        return Err(
+          `Symbol "${symbolName}" not found exactly, but found similar:\n${suggestions}\n\nTry one of these names or use the file path.`
+        );
       }
-      return Err(`Symbol not found: "${symbolName}". The symbol may not be exported, or the file hasn't been indexed. Try using a file path instead.`);
+      return Err(
+        `Symbol not found: "${symbolName}". The symbol may not be exported, or the file hasn't been indexed. Try using a file path instead.`
+      );
     }
 
-    // If multiple matches, return disambiguation info
     if (symbols.length > 1) {
-      const matches = symbols.map((s) => `- ${s.name} (${s.kind}) in ${s.filePath}:${s.line}`).join("\n");
-      return Err(`Multiple symbols named "${symbolName}" found. Be more specific:\n${matches}\n\nTry using the file path instead, e.g., insight({ target: "${symbols[0].filePath}" })`);
+      const matches = symbols
+        .map((s) => `- ${s.name} (${s.kind}) in ${s.filePath}:${s.line}`)
+        .join("\n");
+      return Err(
+        `Multiple symbols named "${symbolName}" found. Be more specific:\n${matches}\n\nTry using the file path instead, e.g., insight({ target: "${symbols[0].filePath}" })`
+      );
     }
 
     const symbol = symbols[0];
     const filePath = join(this.rootPath, symbol.filePath);
 
-    // Read the symbol's code
     const readResult = await this.syntax.readSymbol({
       filePath,
       namePath: symbol.namePath,
@@ -434,7 +453,6 @@ export class InsightService {
 
     const code = readResult.value.body;
 
-    // Get callers and callees if requested
     let calls: CallRelation[] = [];
     let calledBy: CallRelation[] = [];
 
@@ -458,7 +476,6 @@ export class InsightService {
 
       const callersResult = await this.index.getCallers(symbol.name);
       if (callersResult.ok) {
-        // Deduplicate callers by fromSymbol + file (same function may call multiple times)
         const seen = new Set<string>();
         calledBy = callersResult.value
           .filter((c) => {
@@ -480,24 +497,18 @@ export class InsightService {
       }
     }
 
-    // Find related symbols (same file, similar names)
     const related = this.findRelatedSymbols(symbol);
 
-    // Get recent changes
-    const recentChanges = this.getRecentChangesForSymbol(
+    const recentChanges = getRecentChangesForSymbol(
+      this.rootPath,
       filePath,
       symbol.line,
       opts.maxChanges
     );
 
-    // Generate summary
-    const summary = this.generateSymbolSummary(symbol, code);
-
-    // Extract signature for functions
-    const signature = this.extractSignature(code, symbol.kind);
-
-    // Collect notes
-    const notes = this.collectSymbolNotes(symbol, calls, calledBy);
+    const summary = generateSymbolSummary(symbol, code);
+    const signature = extractSignature(code, symbol.kind);
+    const notes = collectSymbolNotes(symbol, calls, calledBy);
 
     return Ok({
       type: "symbol",
@@ -519,17 +530,12 @@ export class InsightService {
     });
   }
 
-  // ============================================================================
   // Helper methods
-  // ============================================================================
 
   private isSourceFile(name: string): boolean {
     return /\.(ts|tsx|js|jsx|py|go|rs)$/.test(name);
   }
 
-  /**
-   * Recursively collect all source files in a directory
-   */
   private collectFilesRecursively(
     dirPath: string,
     basePath: string = dirPath
@@ -539,7 +545,7 @@ export class InsightService {
 
     for (const entry of entries) {
       const fullPath = join(dirPath, entry.name);
-      
+
       if (entry.isFile() && this.isSourceFile(entry.name)) {
         results.push({
           relativePath: relative(basePath, fullPath),
@@ -558,7 +564,10 @@ export class InsightService {
     return results;
   }
 
-  private resolveImportPath(fromDir: string, importSource: string): string | null {
+  private resolveImportPath(
+    fromDir: string,
+    importSource: string
+  ): string | null {
     if (!importSource.startsWith(".")) return null;
 
     const resolved = join(fromDir, importSource);
@@ -584,7 +593,6 @@ export class InsightService {
     for (const file of this.index.getIndexedFiles()) {
       if (file === relativePath) continue;
 
-      // This is a simplified check - ideally we'd parse imports
       const fileDir = dirname(file);
       if (fileDir === dirName || fileDir.startsWith(dirName)) {
         importers.push(file);
@@ -629,101 +637,5 @@ export class InsightService {
     }
 
     return related;
-  }
-
-  private getRecentChangesForFile(
-    filePath: string,
-    maxChanges: number
-  ): RecentChange[] {
-    try {
-      const relativePath = relative(this.rootPath, filePath);
-      const output = execSync(
-        `git log -${maxChanges} --format="%h|||%an|||%s|||%cr" -- "${relativePath}"`,
-        { cwd: this.rootPath, encoding: "utf-8" }
-      );
-
-      return output
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => {
-          const [hash, author, message, date] = line.split("|||");
-          return { hash, author, message, date };
-        });
-    } catch {
-      return [];
-    }
-  }
-
-  private getRecentChangesForDirectory(
-    dirPath: string,
-    maxChanges: number
-  ): RecentChange[] {
-    try {
-      const relativePath = relative(this.rootPath, dirPath);
-      const output = execSync(
-        `git log -${maxChanges} --format="%h|||%an|||%s|||%cr" -- "${relativePath}"`,
-        { cwd: this.rootPath, encoding: "utf-8" }
-      );
-
-      return output
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => {
-          const [hash, author, message, date] = line.split("|||");
-          return { hash, author, message, date };
-        });
-    } catch {
-      return [];
-    }
-  }
-
-  private getRecentChangesForSymbol(
-    filePath: string,
-    _line: number, // TODO: Could filter by line range in future
-    maxChanges: number
-  ): RecentChange[] {
-    // Fall back to file history for simplicity
-    return this.getRecentChangesForFile(filePath, maxChanges);
-  }
-
-  private generateFileSummary(
-    language: string,
-    symbols: Array<{ symbol: { name: string; kind: string } }>,
-    exports: string[]
-  ): string {
-    return generateFileSummary(language, symbols, exports);
-  }
-
-  private generateDirectorySummary(
-    relativePath: string,
-    fileCount: number,
-    keySymbols: SymbolRef[]
-  ): string {
-    return generateDirectorySummary(relativePath, fileCount, keySymbols);
-  }
-
-  private generateSymbolSummary(
-    symbol: { name: string; kind: string },
-    code: string
-  ): string {
-    return generateSymbolSummary(symbol, code);
-  }
-
-  private extractSignature(code: string, kind: string): string | undefined {
-    return extractSignature(code, kind);
-  }
-
-  private collectFileNotes(metrics: ComplexityMetrics): string[] {
-    return collectFileNotes(metrics);
-  }
-
-  private collectSymbolNotes(
-    symbol: { name: string; kind: string },
-    calls: CallRelation[],
-    calledBy: CallRelation[]
-  ): string[] {
-    return collectSymbolNotes(symbol, calls, calledBy);
   }
 }

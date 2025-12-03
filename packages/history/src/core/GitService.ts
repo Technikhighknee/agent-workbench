@@ -21,11 +21,7 @@ import {
   type ChangedSymbol,
   type ChangedSymbolsResult,
 } from "./model.js";
-import {
-  TreeSitterParser,
-  flattenSymbols,
-  detectLanguage,
-} from "@agent-workbench/syntax";
+import { analyzeChangedSymbols, parseDiffOutput } from "./SymbolDiffAnalyzer.js";
 
 export class GitService {
   constructor(private readonly rootPath: string) {}
@@ -806,6 +802,10 @@ export class GitService {
    * Get symbols that changed between two git refs.
    * Useful for understanding what functions/classes were added, modified, or deleted.
    */
+  /**
+   * Get symbols that changed between two git refs.
+   * Useful for understanding what functions/classes were added, modified, or deleted.
+   */
   async changedSymbols(
     fromRef: string = "HEAD~1",
     toRef: string = "HEAD",
@@ -825,178 +825,11 @@ export class GitService {
       return err(diffResult.error);
     }
 
-    const parser = new TreeSitterParser();
-    const supportedLanguages = new Set(parser.supportedLanguages());
-
-    const added: ChangedSymbol[] = [];
-    const modified: ChangedSymbol[] = [];
-    const deleted: ChangedSymbol[] = [];
-    const parseErrors: string[] = [];
-    let filesAnalyzed = 0;
-
-    // Parse the diff output
-    const changedFiles: Array<{ path: string; status: string; oldPath?: string }> = [];
-    const lines = diffResult.value.trim().split("\n").filter(Boolean);
-
-    for (const line of lines) {
-      const parts = line.split("\t");
-      if (parts.length >= 2) {
-        const status = parts[0];
-        const filePath = parts[1];
-        const oldPath = parts.length > 2 ? parts[1] : undefined;
-
-        // Only process files we can parse
-        const lang = detectLanguage(filePath);
-        if (lang && supportedLanguages.has(lang.id)) {
-          changedFiles.push({
-            path: parts.length > 2 ? parts[2] : filePath,
-            status: status[0], // A, M, D, R, etc.
-            oldPath,
-          });
-        }
-      }
-    }
-
-    // Process each changed file
-    for (const file of changedFiles) {
-      filesAnalyzed++;
-
-      try {
-        if (file.status === "A") {
-          // Added file - all symbols are new
-          const content = await this.getFileAtRef(toRef, file.path);
-          if (!content.ok) continue;
-
-          const parseResult = await parser.parse(content.value, file.path);
-          if (!parseResult.ok) {
-            parseErrors.push(file.path);
-            continue;
-          }
-
-          const symbols = flattenSymbols(parseResult.value.tree);
-          for (const { symbol, namePath } of symbols) {
-            added.push({
-              name: symbol.name,
-              qualifiedName: namePath,
-              kind: symbol.kind,
-              file: file.path,
-              line: symbol.span.start.line,
-              changeType: "added",
-            });
-          }
-        } else if (file.status === "D") {
-          // Deleted file - all symbols are deleted
-          const content = await this.getFileAtRef(fromRef, file.path);
-          if (!content.ok) continue;
-
-          const parseResult = await parser.parse(content.value, file.path);
-          if (!parseResult.ok) {
-            parseErrors.push(file.path);
-            continue;
-          }
-
-          const symbols = flattenSymbols(parseResult.value.tree);
-          for (const { symbol, namePath } of symbols) {
-            deleted.push({
-              name: symbol.name,
-              qualifiedName: namePath,
-              kind: symbol.kind,
-              file: file.path,
-              line: symbol.span.start.line,
-              changeType: "deleted",
-            });
-          }
-        } else {
-          // Modified file - compare symbols
-          const [oldContent, newContent] = await Promise.all([
-            this.getFileAtRef(fromRef, file.oldPath || file.path),
-            this.getFileAtRef(toRef, file.path),
-          ]);
-
-          if (!oldContent.ok || !newContent.ok) continue;
-
-          const [oldParse, newParse] = await Promise.all([
-            parser.parse(oldContent.value, file.path),
-            parser.parse(newContent.value, file.path),
-          ]);
-
-          if (!oldParse.ok || !newParse.ok) {
-            parseErrors.push(file.path);
-            continue;
-          }
-
-          const oldSymbols = flattenSymbols(oldParse.value.tree);
-          const newSymbols = flattenSymbols(newParse.value.tree);
-
-          // Build maps for comparison
-          const oldMap = new Map(
-            oldSymbols.map(({ symbol, namePath }) => [
-              namePath,
-              { symbol, body: oldContent.value.slice(symbol.span.start.offset, symbol.span.end.offset) },
-            ])
-          );
-          const newMap = new Map(
-            newSymbols.map(({ symbol, namePath }) => [
-              namePath,
-              { symbol, body: newContent.value.slice(symbol.span.start.offset, symbol.span.end.offset) },
-            ])
-          );
-
-          // Find added symbols
-          for (const { symbol, namePath } of newSymbols) {
-            if (!oldMap.has(namePath)) {
-              added.push({
-                name: symbol.name,
-                qualifiedName: namePath,
-                kind: symbol.kind,
-                file: file.path,
-                line: symbol.span.start.line,
-                changeType: "added",
-              });
-            }
-          }
-
-          // Find deleted and modified symbols
-          for (const { symbol, namePath } of oldSymbols) {
-            const newEntry = newMap.get(namePath);
-            if (!newEntry) {
-              deleted.push({
-                name: symbol.name,
-                qualifiedName: namePath,
-                kind: symbol.kind,
-                file: file.path,
-                line: symbol.span.start.line,
-                changeType: "deleted",
-              });
-            } else {
-              // Compare bodies to detect modifications
-              const oldBody = oldContent.value.slice(symbol.span.start.offset, symbol.span.end.offset);
-              if (oldBody !== newEntry.body) {
-                modified.push({
-                  name: symbol.name,
-                  qualifiedName: namePath,
-                  kind: symbol.kind,
-                  file: file.path,
-                  line: newEntry.symbol.span.start.line,
-                  changeType: "modified",
-                });
-              }
-            }
-          }
-        }
-      } catch (error) {
-        parseErrors.push(file.path);
-      }
-    }
-
-    return ok({
-      fromRef,
-      toRef,
-      added,
-      modified,
-      deleted,
-      filesAnalyzed,
-      parseErrors,
+    const changedFiles = parseDiffOutput(diffResult.value);
+    const result = await analyzeChangedSymbols(changedFiles, fromRef, toRef, {
+      getFileAtRef: (ref, path) => this.getFileAtRef(ref, path),
     });
+
+    return ok(result);
   }
 }

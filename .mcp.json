@@ -163,6 +163,27 @@
           "Combines type checking + caller analysis + test discovery in one call"
         ]
       }
+    },
+    "board": {
+      "command": "npx",
+      "args": ["-y", "tsx", "--watch", "packages/board/src/server.ts"],
+      "agentPreferences": {
+        "description": "Task board for agents. Track work, manage cards across lists.",
+        "when": "Managing complex tasks, tracking progress, organizing work",
+        "avoidWhen": "Simple single-step tasks, non-persistent work",
+        "firstAction": "board_list() - see current board state",
+        "toolGroups": {
+          "view": { "tools": ["board_list", "board_get"] },
+          "manage": { "tools": ["board_add", "board_update", "board_move", "board_delete"] }
+        },
+        "tips": [
+          "All output is JSON - structured for agent consumption, not human-readable",
+          "Default lists: backlog, todo, in_progress, blocked, done",
+          "Cards have priority: low, medium, high, critical",
+          "board_move is shorthand for board_update with just list change",
+          "Data persists in .board/board.json"
+        ]
+      }
     }
   }
 }

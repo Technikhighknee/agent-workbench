@@ -49,12 +49,18 @@ Returns everything you need:
 
 ### For a Symbol
 - Kind, file, line
-- Full code
+- Code (truncated for large symbols >50 lines)
 - Function signature
-- What it calls
+- **Methods section for classes** (constructors and methods)
+- What it calls (filtered - excludes noisy built-ins like push, map, slice)
 - What calls it
 - Related symbols in same file
 - Recent changes
+
+### Smart Handling
+- **Ambiguous names**: Shows disambiguation when multiple symbols match
+- **Better errors**: Suggests similar symbols when exact match not found
+- **Large code**: Truncated with line count to prevent context overflow
 
 ## Examples
 

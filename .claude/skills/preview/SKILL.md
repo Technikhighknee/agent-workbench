@@ -26,9 +26,10 @@ Without preview:
 
 ```
 preview_edit({
-  file_path: 'src/api.ts',
-  symbol_name: 'fetchUser',
-  new_code: 'async function fetchUser(id: string, options?: RequestOptions): Promise<User> { ... }'
+  file: 'src/api.ts',
+  edit_type: 'symbol',
+  symbol: 'fetchUser',
+  new_content: 'async function fetchUser(id: string, options?: RequestOptions): Promise<User> { ... }'
 })
 ```
 
@@ -37,6 +38,15 @@ Returns:
 - **Affected callers** - Who calls this function?
 - **Related tests** - What tests should you run?
 - **Impact summary** - How risky is this change?
+
+## Edit Types
+
+| edit_type | Required | Description |
+|-----------|----------|-------------|
+| `symbol` | `symbol`, `new_content` | Replace by symbol name |
+| `text` | `old_text`, `new_content` | Text replacement |
+| `create` | `new_content` | Create new file |
+| `delete` | - | Delete file |
 
 ## Why This Wins
 
@@ -53,11 +63,12 @@ Returns:
 ```
 // Changing a widely-used function? Preview first.
 preview_edit({
-  file_path: 'src/core/utils.ts',
-  symbol_name: 'formatDate',
-  new_code: '...',
+  file: 'src/core/utils.ts',
+  edit_type: 'symbol',
+  symbol: 'formatDate',
+  new_content: '...',
   check_types: true,
-  find_callers: true
+  analyze_callers: true
 })
 ```
 
@@ -65,9 +76,10 @@ preview_edit({
 ```
 // Adding a required parameter? See who breaks.
 preview_edit({
-  file_path: 'src/api.ts',
-  symbol_name: 'createUser',
-  new_code: 'async function createUser(data: UserData, options: CreateOptions) { ... }'
+  file: 'src/api.ts',
+  edit_type: 'symbol',
+  symbol: 'createUser',
+  new_content: 'async function createUser(data: UserData, options: CreateOptions) { ... }'
 })
 ```
 
@@ -75,9 +87,10 @@ preview_edit({
 ```
 // Want to simplify a function? Know the impact.
 preview_edit({
-  file_path: 'src/handlers.ts',
-  symbol_name: 'processRequest',
-  new_code: '...',
+  file: 'src/handlers.ts',
+  edit_type: 'symbol',
+  symbol: 'processRequest',
+  new_content: '...',
   find_tests: true
 })
 ```
@@ -107,9 +120,9 @@ preview_edit({
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| check_types | true | Run TypeScript type checking |
-| find_callers | true | Find all code that calls this symbol |
-| find_tests | true | Discover related test files |
+| `check_types` | true | Run TypeScript type checking |
+| `analyze_callers` | true | Find all code that calls this symbol |
+| `find_tests` | true | Discover related test files |
 
 ## The Workflow
 
@@ -124,13 +137,13 @@ preview_edit({
 Use with other tools:
 - After preview → `syntax.edit_symbol` to make the change
 - After preview → `test-runner.run_related_tests` to verify
-- After preview → `types.get_diagnostics` to confirm no errors
+- After preview → `types.check_file` to confirm no errors
 
 ## Not a Replacement
 
 Preview shows you consequences. You still need to:
 - `syntax.edit_symbol` - actually make the change
-- `types.get_diagnostics` - verify after editing
+- `types.check_file` - verify after editing
 - `test-runner.run_tests` - run the tests
 
 **Preview is your pre-flight check. The other tools are the flight.**

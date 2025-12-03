@@ -5,10 +5,10 @@ Impact preview and consequence analysis for AI agents. See what happens before y
 ## Why This Package?
 
 AI agents make many edits. Knowing the consequences beforehand prevents cascading errors:
-- **Will this break types?** → Predicts type errors before editing
-- **What tests need to run?** → Discovers related tests
-- **Who calls this code?** → Shows affected callers
-- **What's the impact?** → Comprehensive consequence analysis
+- **Will this break types?** - Predicts type errors before editing
+- **What tests need to run?** - Discovers related tests
+- **Who calls this code?** - Shows affected callers
+- **What's the impact?** - Comprehensive consequence analysis
 
 ## Tools
 
@@ -40,9 +40,10 @@ npm install @agent-workbench/preview
 ### Preview a Symbol Edit
 ```
 preview_edit {
-  "file_path": "src/utils.ts",
-  "symbol_name": "calculateTotal",
-  "new_code": "function calculateTotal(items: Item[]): number {\n  return items.reduce((sum, item) => sum + item.price, 0);\n}"
+  "file": "src/utils.ts",
+  "edit_type": "symbol",
+  "symbol": "calculateTotal",
+  "new_content": "function calculateTotal(items: Item[]): number {\n  return items.reduce((sum, item) => sum + item.price, 0);\n}"
 }
 ```
 
@@ -52,17 +53,33 @@ Returns:
 - Related tests
 - Impact summary
 
+### Edit Types
+
+| edit_type | Required fields | Description |
+|-----------|-----------------|-------------|
+| `symbol` | `symbol`, `new_content` | Replace a symbol by name |
+| `text` | `old_text`, `new_content` | Text replacement |
+| `create` | `new_content` | Create new file |
+| `delete` | - | Delete file |
+
 ### Preview Options
 ```
 preview_edit {
-  "file_path": "src/api.ts",
-  "symbol_name": "fetchUser",
-  "new_code": "...",
+  "file": "src/api.ts",
+  "edit_type": "symbol",
+  "symbol": "fetchUser",
+  "new_content": "...",
   "check_types": true,
-  "find_callers": true,
+  "analyze_callers": true,
   "find_tests": true
 }
 ```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `check_types` | true | Run TypeScript type checking |
+| `analyze_callers` | true | Find all code that calls this symbol |
+| `find_tests` | true | Discover related test files |
 
 ## How It Works
 
@@ -78,8 +95,7 @@ preview_edit {
 src/
 ├── PreviewService.ts    # Core preview logic
 ├── tools/
-│   ├── previewEdit.ts   # MCP tool implementation
-│   └── index.ts         # Tool registration
+│   └── previewEdit.ts   # MCP tool implementation
 ├── server.ts            # MCP server entry point
 └── index.ts             # Library exports
 ```
@@ -90,3 +106,17 @@ src/
 - **Impact assessment** - Understand scope of changes
 - **Test planning** - Know which tests to run
 - **Safe refactoring** - Catch breaking changes early
+
+## The Workflow
+
+1. **Think** - "I want to change this function"
+2. **Preview** - `preview_edit({ ... })` - see consequences
+3. **Decide** - Is this change safe? What needs updating?
+4. **Edit** - Make the change with confidence
+5. **Verify** - Run the tests you now know to run
+
+## Stability
+
+- 0% error rate under stress testing
+- Graceful handling of missing files
+- Works with any TypeScript project

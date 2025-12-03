@@ -94,7 +94,7 @@ organize_imports({ file_path: 'src/handler.ts' })
 
 ## After Editing
 
-1. `types.get_diagnostics()` - verify no type errors
+1. `types.check_file()` - verify no type errors
 2. `test-runner.run_tests()` - verify behavior unchanged
 
 ## Supports

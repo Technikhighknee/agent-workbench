@@ -1,24 +1,14 @@
-import { type Result, Ok, Err } from "@agent-workbench/core";
-import { Parser, ParseResult } from "../ports/Parser.js";
-import { FileSystem } from "../ports/FileSystem.js";
-import { SymbolCache } from "../ports/Cache.js";
-import { ProjectScanner } from "../ports/ProjectScanner.js";
-import { FileWatcher } from "../ports/FileWatcher.js";
-import { SymbolTree, flattenSymbols } from "../symbolTree.js";
-import {
-  SymbolKind,
-  LANGUAGES,
-  SymbolReference,
-  CallSite,
-  DependencyAnalysis,
-  CircularDependency,
-  ImportInfo,
-  TraceResult,
-  FindPathsResult,
-  DeadCodeResult,
-} from "../model.js";
-import { CallGraphService } from "./CallGraphService.js";
+import { Err, Ok, Result } from "@agent-workbench/core";
 import path from "path";
+
+import { CallSite, CircularDependency, DeadCodeResult, DependencyAnalysis, FindPathsResult, ImportInfo, LANGUAGES, SymbolKind, SymbolReference, TraceResult } from "../model.js";
+import { SymbolCache } from "../ports/Cache.js";
+import { FileSystem } from "../ports/FileSystem.js";
+import { FileWatcher } from "../ports/FileWatcher.js";
+import { ParseResult, Parser } from "../ports/Parser.js";
+import { ProjectScanner } from "../ports/ProjectScanner.js";
+import { SymbolTree, flattenSymbols } from "../symbolTree.js";
+import { CallGraphService } from "./CallGraphService.js";
 
 export interface IndexedSymbol {
   name: string;

@@ -1,5 +1,5 @@
 import Parser from "tree-sitter";
-import { Parser as ParserPort, ParseResult, ParseError } from "../../core/ports/Parser.js";
+import { Parser as ParserPort, ParseResult } from "../../core/ports/Parser.js";
 import { type Result, Ok, Err } from "@agent-workbench/core";
 import {
   Language,

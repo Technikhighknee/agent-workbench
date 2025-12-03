@@ -9,33 +9,14 @@
  * Everything is computed fresh from current code - nothing stored.
  */
 
-import { type Result, Ok, Err } from "@agent-workbench/core";
-import {
-  SyntaxService,
-  ProjectIndex,
-  TreeSitterParser,
-  NodeFileSystem,
-  InMemoryCache,
-  NodeProjectScanner,
-  flattenSymbols,
-} from "@agent-workbench/syntax";
-import { existsSync, statSync, readdirSync } from "node:fs";
-import { join, relative, dirname, basename } from "node:path";
+import { Err, Ok, Result } from "@agent-workbench/core";
+import { InMemoryCache, NodeFileSystem, NodeProjectScanner, ProjectIndex, SyntaxService, TreeSitterParser, flattenSymbols } from "@agent-workbench/syntax";
 import { execSync } from "node:child_process";
-import type {
-  Insight,
-  FileInsight,
-  DirectoryInsight,
-  SymbolInsight,
-  InsightOptions,
-  SymbolRef,
-  Dependency,
-  CallRelation,
-  RecentChange,
-  ComplexityMetrics,
-} from "./model.js";
-import { DEFAULT_OPTIONS } from "./model.js";
-import { generateFileSummary, generateDirectorySummary, generateSymbolSummary, extractSignature, collectFileNotes, collectSymbolNotes } from "./InsightUtils.js";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+
+import { collectFileNotes, collectSymbolNotes, extractSignature, generateDirectorySummary, generateFileSummary, generateSymbolSummary } from "./InsightUtils.js";
+import { DEFAULT_OPTIONS, type CallRelation, type ComplexityMetrics, type Dependency, type DirectoryInsight, type FileInsight, type Insight, type InsightOptions, type RecentChange, type SymbolInsight, type SymbolRef } from "./model.js";
 
 export class InsightService {
   private readonly syntax: SyntaxService;

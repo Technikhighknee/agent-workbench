@@ -8,9 +8,9 @@
  * 4. No state - don't cache anything that could get stale
  */
 
-import ts from "typescript";
-import path from "path";
 import fs from "fs";
+import path from "path";
+import ts from "typescript";
 
 // ============================================================================
 // Types

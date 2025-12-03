@@ -13,7 +13,7 @@
 
 import { Result, Ok, Err } from "@agent-workbench/core";
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join, relative, dirname, basename } from "node:path";
 
 /**

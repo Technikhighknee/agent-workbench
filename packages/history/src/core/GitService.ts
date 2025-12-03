@@ -5,22 +5,8 @@
 
 import { spawn } from "node:child_process";
 import * as path from "node:path";
-import {
-  type Result,
-  ok,
-  err,
-  type BlameResult,
-  type BlameLine,
-  type Commit,
-  type ChangedFile,
-  type RecentChanges,
-  type GitStatus,
-  type StatusFile,
-  type AddResult,
-  type CommitResult,
-  type ChangedSymbol,
-  type ChangedSymbolsResult,
-} from "./model.js";
+
+import { AddResult, BlameLine, BlameResult, ChangedFile, ChangedSymbol, ChangedSymbolsResult, Commit, CommitResult, GitStatus, RecentChanges, Result, StatusFile, err, ok } from "./model.js";
 import { analyzeChangedSymbols, parseDiffOutput } from "./SymbolDiffAnalyzer.js";
 
 export class GitService {

@@ -1,9 +1,10 @@
-import { type Result, Ok, Err } from "@agent-workbench/core";
-import { Parser, ParseResult } from "../ports/Parser.js";
-import { FileSystem } from "../ports/FileSystem.js";
+import { Err, Ok, Result } from "@agent-workbench/core";
+
+import { EditResult, ExportInfo, ImportInfo, SymbolContent, SymbolInfo, SymbolKind } from "../model.js";
 import { SymbolCache } from "../ports/Cache.js";
+import { FileSystem } from "../ports/FileSystem.js";
+import { ParseResult, Parser } from "../ports/Parser.js";
 import { findByNamePath, toSymbolInfoList } from "../symbolTree.js";
-import { SymbolInfo, SymbolContent, EditResult, SymbolKind, ImportInfo, ExportInfo } from "../model.js";
 
 export interface ListSymbolsParams {
   filePath: string;

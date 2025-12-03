@@ -270,8 +270,11 @@ function formatSymbolInsight(insight: SymbolInsight): string {
     lines.push("");
   }
 
-  // Code
-  if (insight.code) {
+  // Code (skip if identical to signature - avoids redundancy for short type aliases)
+  const normalizeWs = (s: string) => s.replace(/\s+/g, ' ').trim();
+  const codeNorm = normalizeWs(insight.code || '');
+  const sigNorm = normalizeWs(insight.signature || '');
+  if (insight.code && codeNorm !== sigNorm) {
     lines.push("## Code");
     lines.push("```typescript");
     lines.push(insight.code);

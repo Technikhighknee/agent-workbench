@@ -100,7 +100,8 @@ export class InsightService {
       case "symbol":
         return this.getSymbolInsight(resolved.name!, opts);
       case "unknown":
-        return Err(`Could not resolve target: ${target}`);
+        // Try as symbol anyway - getSymbolInsight has better error messages with suggestions
+        return this.getSymbolInsight(target, opts);
     }
   }
 
@@ -418,10 +419,16 @@ export class InsightService {
     symbolName: string,
     opts: Required<InsightOptions>
   ): Promise<Result<SymbolInsight, string>> {
-    // Find the symbol
+    // Find the symbol (exact match)
     const symbols = this.index.searchSymbols({ pattern: `^${symbolName}$` });
     if (symbols.length === 0) {
-      return Err(`Symbol not found: ${symbolName}`);
+      // Try partial match to give helpful suggestions
+      const partial = this.index.searchSymbols({ pattern: symbolName });
+      if (partial.length > 0) {
+        const suggestions = partial.slice(0, 5).map((s) => `  - ${s.name} (${s.kind}) in ${s.filePath}`).join("\n");
+        return Err(`Symbol "${symbolName}" not found exactly, but found similar:\n${suggestions}\n\nTry one of these names or use the file path.`);
+      }
+      return Err(`Symbol not found: "${symbolName}". The symbol may not be exported, or the file hasn't been indexed. Try using a file path instead.`);
     }
 
     // If multiple matches, return disambiguation info

@@ -1,7 +1,7 @@
 ---
 name: insight
 description: "Understand code in one call. Structure, relationships, history - all at once."
-allowed-tools: mcp__insight__insight
+allowed-tools: mcp__insight__insight, mcp__insight__suggest_refactoring
 ---
 
 # insight
@@ -95,6 +95,49 @@ insight({ target: 'handleRequest' })
 - Before making changes (understand impact)
 - Reviewing what a module does
 - Getting oriented in a new codebase
+
+---
+
+## suggest_refactoring
+
+**Find tech debt and improvement opportunities before you start working.**
+
+```
+suggest_refactoring({ target: 'src/api.ts' })
+```
+
+Returns prioritized suggestions:
+- **High Priority** - Should fix now (long functions, high coupling)
+- **Medium Priority** - Worth addressing (large files, many symbols)
+- **Low Priority** - Nice to have (naming, minor cleanup)
+
+### What It Detects
+
+| Issue | Detection | Suggestion |
+|-------|-----------|------------|
+| Long functions (>50 lines) | Code analysis | Extract smaller functions |
+| Large files (>500 lines) | Metrics | Split into modules |
+| High coupling (>15 imports) | Import analysis | Reduce dependencies |
+| Unused functions | Call graph | Remove dead code |
+| Complex symbols (many callees) | Call analysis | Simplify |
+| Poor naming | Pattern matching | Rename suggestions |
+
+### Focus Your Analysis
+
+```
+suggest_refactoring({ target: 'src/', focus: 'coupling' })
+suggest_refactoring({ target: 'src/', focus: 'complexity' })
+suggest_refactoring({ target: 'src/', focus: 'unused' })
+```
+
+Focus options: `all`, `complexity`, `coupling`, `unused`, `tests`, `naming`
+
+### When to Use suggest_refactoring
+
+- **Before major changes** - understand existing tech debt
+- **Code review** - get automated quality feedback
+- **Planning refactoring** - prioritize what to fix
+- **Learning a codebase** - find the problem areas
 
 ## Derived, Not Stored
 

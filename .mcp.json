@@ -10,13 +10,14 @@
         "firstAction": "list_symbols({ file_path }) - know what's there before editing",
         "toolGroups": {
           "read": { "tools": ["list_symbols", "read_symbol"] },
-          "edit": { "tools": ["edit_symbol", "edit_lines", "apply_edits"] },
+          "edit": { "tools": ["edit_symbol", "edit_lines", "apply_edits", "batch_edit_symbols"] },
           "imports": { "tools": ["get_imports", "get_exports", "add_import", "remove_unused_imports", "organize_imports"] },
           "refactor": { "tools": ["rename_symbol", "move_file", "move_symbol", "extract_function", "inline_function"] },
           "analyze": { "tools": ["search_symbols", "find_references", "get_callers", "get_callees", "analyze_deps", "find_unused_exports", "trace", "find_paths", "find_dead_code"] }
         },
         "tips": [
           "edit_symbol finds by AST, not text - never fails on duplicate code",
+          "batch_edit_symbols for multi-file changes - validates ALL before applying ANY",
           "Always dry_run=true first for rename/move operations",
           "After refactoring: remove_unused_imports then organize_imports"
         ]
@@ -52,11 +53,14 @@
         "avoidWhen": "Projects without test framework",
         "firstAction": "run_tests() - structured pass/fail results",
         "toolGroups": {
-          "run": { "tools": ["run_tests", "rerun_failed"] },
-          "analyze": { "tools": ["get_test_failures", "list_test_files"] }
+          "run": { "tools": ["run_tests", "rerun_failed", "run_related_tests"] },
+          "discover": { "tools": ["list_test_files", "find_tests_for"] },
+          "analyze": { "tools": ["get_test_failures"] }
         },
         "tips": [
           "run_tests gives structured results - never parse npm test output",
+          "find_tests_for BEFORE editing - know what tests cover your code",
+          "run_related_tests AFTER editing - fast verification without running all tests",
           "get_test_failures shows expected vs actual with source-mapped traces",
           "rerun_failed for fast iteration when fixing tests"
         ]
@@ -131,12 +135,32 @@
         "avoidWhen": "Already know the code well, simple targeted edits",
         "firstAction": "insight({ target: 'path/or/SymbolName' }) - comprehensive understanding",
         "toolGroups": {
-          "understand": { "tools": ["insight"] }
+          "understand": { "tools": ["insight"] },
+          "improve": { "tools": ["suggest_refactoring"] }
         },
         "tips": [
           "One call replaces: list_symbols + get_imports + get_exports + git_log + get_callers",
           "Works on files, directories, or symbol names",
+          "suggest_refactoring BEFORE major changes - find tech debt and improvement opportunities",
           "Everything computed fresh - never stale"
+        ]
+      }
+    },
+    "preview": {
+      "command": "npx",
+      "args": ["-y", "tsx", "--watch", "packages/preview/src/server.ts"],
+      "agentPreferences": {
+        "description": "See what breaks BEFORE you edit. Type errors, affected callers, required tests.",
+        "when": "Before making risky changes, refactoring critical code",
+        "avoidWhen": "Simple edits where impact is obvious",
+        "firstAction": "preview_edit({ file_path, symbol_name, new_code }) - see consequences first",
+        "toolGroups": {
+          "preview": { "tools": ["preview_edit"] }
+        },
+        "tips": [
+          "preview_edit shows type errors, callers, and tests BEFORE you commit to changes",
+          "Use for refactoring - know what breaks without actually breaking it",
+          "Combines type checking + caller analysis + test discovery in one call"
         ]
       }
     }

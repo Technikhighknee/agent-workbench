@@ -1,7 +1,7 @@
 ---
 name: test-runner
 description: "Know exactly what failed, where, and why. No output parsing."
-allowed-tools: mcp__test-runner__run_tests, mcp__test-runner__get_test_failures, mcp__test-runner__list_test_files, mcp__test-runner__rerun_failed
+allowed-tools: mcp__test-runner__run_tests, mcp__test-runner__get_test_failures, mcp__test-runner__list_test_files, mcp__test-runner__rerun_failed, mcp__test-runner__find_tests_for, mcp__test-runner__run_related_tests
 ---
 
 # test-runner
@@ -31,11 +31,28 @@ run_tests({})
 | Run all tests | `run_tests({})` |
 | Run specific file | `run_tests({ files: ['auth.test.ts'] })` |
 | Run by name | `run_tests({ testNamePattern: 'email' })` |
+| **Find tests for a source file** | `find_tests_for({ source_file: 'src/api.ts' })` |
+| **Run tests for a source file** | `run_related_tests({ source_file: 'src/api.ts' })` |
 | Get failure details | `get_test_failures({})` |
 | Retry failures only | `rerun_failed({})` |
 | Find test files | `list_test_files({})` |
 
 ## Common Workflows
+
+### Smart Edit-Test Cycle (Recommended)
+```
+// BEFORE editing - know what tests exist
+find_tests_for({ source_file: 'src/api.ts' })
+
+// ... make your changes ...
+
+// AFTER editing - run only the relevant tests (fast!)
+run_related_tests({ source_file: 'src/api.ts' })
+```
+**Why this workflow?**
+- `find_tests_for` tells you what's covered BEFORE you edit
+- `run_related_tests` is faster than `run_tests({})` - only runs relevant tests
+- Multiple discovery strategies: naming convention, import analysis, co-location
 
 ### After Making Changes
 ```
@@ -54,6 +71,12 @@ rerun_failed({})  // Verify fix without running all tests
 ```
 run_tests({ files: ['src/auth.test.ts'] })
 run_tests({ testNamePattern: 'should validate' })
+```
+
+### Targeted Testing After Edits
+```
+// Edited server.ts? Find and run its tests:
+run_related_tests({ source_file: 'src/server.ts' })
 ```
 
 ## Integration

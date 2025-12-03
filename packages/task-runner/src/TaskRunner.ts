@@ -14,7 +14,7 @@
  * - Bounded Resources: Configurable limits, auto-cleanup
  */
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -33,7 +33,6 @@ import { nanoid } from "nanoid";
 
 import type {
   Task,
-  TaskStatus,
   StartOptions,
   RunOptions,
   RunResult,

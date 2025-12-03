@@ -330,16 +330,6 @@ async function validateAndPrepareEdit(
   };
 }
 
-function countOccurrences(text: string, search: string): number {
-  let count = 0;
-  let pos = 0;
-  while ((pos = text.indexOf(search, pos)) !== -1) {
-    count++;
-    pos += search.length;
-  }
-  return count;
-}
-
 function findLineNumbers(text: string, search: string): number[] {
   const lines: number[] = [];
   let pos = 0;

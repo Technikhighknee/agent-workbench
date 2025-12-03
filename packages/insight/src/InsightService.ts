@@ -228,7 +228,7 @@ export class InsightService {
       language: tree.language,
       summary,
       structure: {
-        symbols: symbols.map(({ symbol, namePath }) => ({
+        symbols: symbols.map(({ symbol }) => ({
           name: symbol.name,
           kind: symbol.kind,
           file: relativePath,
@@ -597,7 +597,6 @@ export class InsightService {
 
   private findImportersOf(relativePath: string): string[] {
     const importers: string[] = [];
-    const fileName = basename(relativePath, ".ts").replace(/\.js$/, "");
     const dirName = dirname(relativePath);
 
     for (const file of this.index.getIndexedFiles()) {
@@ -700,7 +699,7 @@ export class InsightService {
 
   private getRecentChangesForSymbol(
     filePath: string,
-    line: number,
+    _line: number, // TODO: Could filter by line range in future
     maxChanges: number
   ): RecentChange[] {
     // Fall back to file history for simplicity

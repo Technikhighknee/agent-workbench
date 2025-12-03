@@ -8,9 +8,10 @@
  * 4. dry_run support for preview
  */
 
-import { z } from "zod";
+import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SyntaxService } from "../core/services/SyntaxService.js";
+import type { ToolResponse } from "./types.js";
 
 const EditSchema = z.object({
   file_path: z.string().describe("Absolute path to the file"),
@@ -23,19 +24,12 @@ const EditSchema = z.object({
     .describe("Replace all occurrences (default: false, requires unique match)"),
 });
 
-const ApplyEditsSchema = z.object({
-  edits: z
-    .array(EditSchema)
-    .min(1)
-    .describe("Array of edits to apply atomically"),
-  dry_run: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe("Preview changes without applying (default: false)"),
-});
-
 type Edit = z.infer<typeof EditSchema>;
+
+interface ApplyEditsInput {
+  edits: Edit[];
+  dry_run?: boolean;
+}
 
 interface EditResult {
   file_path: string;
@@ -69,12 +63,50 @@ export function registerApplyEdits(
   server: McpServer,
   syntax: SyntaxService
 ): void {
-  server.tool(
+  server.registerTool(
     "apply_edits",
-    "Apply multiple edits across files atomically. All edits succeed or all fail with rollback.",
-    ApplyEditsSchema.shape,
-    async (params: z.infer<typeof ApplyEditsSchema>): Promise<{ content: Array<{ type: "text"; text: string }>; structuredContent: ApplyEditsOutput }> => {
-      const { edits, dry_run } = ApplyEditsSchema.parse(params);
+    {
+      title: "Apply multiple edits atomically",
+      description: "Apply multiple edits across files atomically. All edits succeed or all fail with rollback.",
+      inputSchema: {
+        edits: z
+          .array(EditSchema)
+          .min(1)
+          .describe("Array of edits to apply atomically"),
+        dry_run: z
+          .boolean()
+          .optional()
+          .default(false)
+          .describe("Preview changes without applying (default: false)"),
+      },
+      outputSchema: {
+        success: z.boolean(),
+        applied: z.boolean(),
+        dry_run: z.boolean(),
+        results: z.array(z.object({
+          file_path: z.string(),
+          success: z.boolean(),
+          error: z.string().optional(),
+          occurrences: z.number().optional(),
+          line: z.number().optional(),
+          lines: z.array(z.number()).optional(),
+          preview: z.object({
+            before: z.string(),
+            after: z.string(),
+            context: z.string().optional(),
+          }).optional(),
+        })),
+        summary: z.object({
+          total: z.number(),
+          files_affected: z.number(),
+          successful: z.number(),
+          failed: z.number(),
+        }),
+        error: z.string().optional(),
+      },
+    },
+    async (input: ApplyEditsInput): Promise<ToolResponse<ApplyEditsOutput>> => {
+      const { edits, dry_run = false } = input;
 
       const results: EditResult[] = [];
       const originalContents = new Map<string, string>();

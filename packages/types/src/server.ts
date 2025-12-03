@@ -27,8 +27,15 @@ function startFileWatcher(types: TypeService, rootPath: string): FSWatcher | nul
       // Only watch TypeScript files
       if (!filename.endsWith(".ts") && !filename.endsWith(".tsx")) return;
 
-      // Skip node_modules and dist
-      if (filename.includes("node_modules") || filename.includes("/dist/")) return;
+      // Skip node_modules, dist, and hidden directories
+      if (
+        filename.includes("node_modules") ||
+        filename.includes("/dist/") ||
+        filename.includes("/.") ||
+        filename.startsWith(".")
+      ) {
+        return;
+      }
 
       // Debounce notifications
       const existing = pendingNotifications.get(filename);
@@ -40,9 +47,13 @@ function startFileWatcher(types: TypeService, rootPath: string): FSWatcher | nul
         filename,
         setTimeout(() => {
           pendingNotifications.delete(filename);
-          const fullPath = `${rootPath}/${filename}`;
-          types.notifyFileChanged(fullPath);
-          console.error(`[types] Auto-refreshed: ${filename}`);
+          try {
+            const fullPath = `${rootPath}/${filename}`;
+            types.notifyFileChanged(fullPath);
+            console.error(`[types] Auto-refreshed: ${filename}`);
+          } catch (err) {
+            console.error(`[types] Error refreshing ${filename}:`, err);
+          }
         }, DEBOUNCE_MS)
       );
     });

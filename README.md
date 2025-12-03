@@ -50,6 +50,7 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 
 **Multi-file operations:**
 - `apply_edits` - Apply multiple edits atomically with rollback on failure
+- `batch_edit_symbols` - Edit multiple symbols across files atomically (validates all before applying)
 
 ### [@agent-workbench/task-runner](packages/task-runner/)
 Task execution with SQLite persistence. Tasks survive server restarts.
@@ -106,6 +107,8 @@ Run tests and get structured results. Framework-agnostic with source-mapped fail
 - `get_test_failures` - Detailed failure info with source locations
 - `list_test_files` - Discover test files by pattern
 - `rerun_failed` - Re-execute only failing tests
+- `find_tests_for` - Find tests related to a source file (naming, imports, co-location)
+- `run_related_tests` - Run tests for a specific source file
 
 ### [@agent-workbench/insight](packages/insight/)
 Comprehensive code understanding in one call. Structure, relationships, and history together.
@@ -114,8 +117,20 @@ Comprehensive code understanding in one call. Structure, relationships, and hist
   - **File**: Language, metrics, symbols, imports/exports, who imports it, git history
   - **Directory**: Entry points, all files (recursive), key symbols, dependencies, git history
   - **Symbol**: Code, signature, callers/callees, related symbols, git history
+- `suggest_refactoring` - Analyze code and suggest improvements
+  - Detects: long functions, large files, high coupling, unused code
+  - Returns prioritized suggestions with actionable advice
 
 Replaces multiple tool calls (list_symbols + get_imports + get_exports + file_history + find_references) with a single comprehensive view.
+
+### [@agent-workbench/preview](packages/preview/)
+Impact preview before making changes. See consequences without applying edits.
+
+- `preview_edit` - Preview what happens if you make a change
+  - **Type errors**: Predicted errors from the change
+  - **Affected callers**: Code that calls the modified symbol
+  - **Related tests**: Tests to run after the change
+  - **Impact summary**: Risk assessment and suggestions
 
 ## For AI Agents
 
@@ -123,11 +138,13 @@ Replaces multiple tool calls (list_symbols + get_imports + get_exports + file_hi
 
 Key principle: **Use these MCP tools instead of Bash** for:
 - Understanding code → `mcp__insight__insight` (comprehensive, one call)
+- Code quality analysis → `mcp__insight__suggest_refactoring`
+- Preview changes → `mcp__preview__preview_edit` (see consequences before editing)
 - Git operations → `mcp__history__*`
 - TypeScript checking → `mcp__types__*`
-- Running tests → `mcp__test-runner__*`
+- Running tests → `mcp__test-runner__*` (including `find_tests_for`, `run_related_tests`)
 - Long builds → `mcp__task-runner__*`
-- Code read/edit → `mcp__syntax__*`
+- Code read/edit → `mcp__syntax__*` (including `batch_edit_symbols` for atomic multi-file edits)
 - Project info → `mcp__project__*`
 
 Each package has a skill file in `.claude/skills/` with detailed usage patterns.

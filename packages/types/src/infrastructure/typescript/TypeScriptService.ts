@@ -1,9 +1,18 @@
+/**
+ * TypeScript Language Service Implementation.
+ *
+ * Design principles:
+ * 1. Never hang - all operations have timeouts
+ * 2. Fast for single files - optimize the common case
+ * 3. Lazy loading - don't load files until needed
+ * 4. Graceful degradation - return partial results on timeout
+ * 5. Position fidelity - all positions are 1-indexed
+ */
+
 import ts from "typescript";
 import path from "path";
-import fs from "fs";
 
 import { type Result, Ok, Err } from "@agent-workbench/core";
-import { TypeScriptLanguageServiceHost } from "./TypeScriptLanguageServiceHost.js";
 import type {
   TypeService,
   GetDiagnosticsOptions,
@@ -13,66 +22,36 @@ import type {
 } from "../../core/ports/TypeService.js";
 import type {
   Diagnostic,
-  DiagnosticSeverity,
-  DiagnosticCategory,
   DiagnosticSummary,
   TypeInfo,
   Definition,
   CodeAction,
   ProjectInfo,
-  SymbolKind,
-  RelatedDiagnosticInfo,
-  FileEdit,
-  TextChange,
 } from "../../core/model.js";
+import { TypeScriptProjectManager, type TypeScriptProject } from "./TypeScriptProjectManager.js";
+import {
+  convertDiagnostic,
+  convertDefinition,
+  convertReferenceEntry,
+  convertSymbolKind,
+  convertCodeAction,
+} from "./converters/index.js";
 
-/**
- * A single TypeScript project (one tsconfig.json).
- */
-interface TypeScriptProject {
-  configPath: string;
-  rootDir: string;
-  service: ts.LanguageService;
-  host: TypeScriptLanguageServiceHost;
-  fileNames: string[];
-}
+/** Default timeout for operations in milliseconds */
+const DEFAULT_TIMEOUT = 10000;
 
-/**
- * TypeScript language service implementation with multi-project support.
- *
- * Design principles:
- * 1. Multi-project - each tsconfig.json owns its directory
- * 2. Lazy initialization - don't parse until needed
- * 3. Incremental updates - file changes don't rebuild world
- * 4. Error isolation - TS service crashes don't take down server
- * 5. Position fidelity - all positions are 1-indexed for consistency
- */
-/**
- * TypeScript language service implementation with multi-project support.
- *
- * Design principles:
- * 1. Never hang - all operations have timeouts
- * 2. Fast for single files - optimize the common case
- * 3. Lazy loading - don't load files until needed
- * 4. Graceful degradation - return partial results on timeout
- * 5. Position fidelity - all positions are 1-indexed for consistency
- */
+/** Timeout for single-file operations */
+const SINGLE_FILE_TIMEOUT = 5000;
+
+/** Max files to check in project-wide diagnostics */
+const MAX_FILES_TO_CHECK = 500;
+
 export class TypeScriptService implements TypeService {
-  private projects: Map<string, TypeScriptProject> = new Map();
-  private workspaceRoot: string = "";
-  private initialized: boolean = false;
-
-  /** Default timeout for operations in milliseconds */
-  private static readonly DEFAULT_TIMEOUT = 10000; // 10 seconds
-  
-  /** Timeout for single-file operations (should be fast) */
-  private static readonly SINGLE_FILE_TIMEOUT = 5000; // 5 seconds
-  
-  /** Max files to check in project-wide diagnostics */
-  private static readonly MAX_FILES_TO_CHECK = 500;
+  private projectManager = new TypeScriptProjectManager();
+  private initialized = false;
 
   /**
-   * Run an operation with a timeout. Returns Err if timeout is exceeded.
+   * Run an operation with a timeout.
    */
   private async withTimeout<T>(
     operation: () => T | Promise<T>,
@@ -107,61 +86,39 @@ export class TypeScriptService implements TypeService {
     });
   }
 
-  /**
-   * Initialize the TypeScript language service for a workspace.
-   * Discovers all tsconfig.json files and creates a project for each.
-   */
   async initialize(workspacePath: string): Promise<Result<ProjectInfo, Error>> {
-    try {
-      this.workspaceRoot = path.resolve(workspacePath);
-      this.projects.clear();
-
-      // Discover all tsconfig.json files
-      const configPaths = this.discoverTsConfigs(this.workspaceRoot);
-
-      if (configPaths.length === 0) {
-        return Err(new Error(`No tsconfig.json found in ${workspacePath} or its subdirectories`));
-      }
-
-      // Initialize each project (lazy - doesn't load all files)
-      let totalFiles = 0;
-      for (const configPath of configPaths) {
-        const projectResult = this.initializeProject(configPath);
-        if (projectResult.ok) {
-          totalFiles += projectResult.value.fileNames.length;
-        }
-        // Continue even if some projects fail - partial initialization is fine
-      }
-
-      this.initialized = true;
-
-      // Return aggregate info
-      const firstProject = this.projects.values().next().value;
-      return Ok({
-        configPath: configPaths.length === 1
-          ? configPaths[0]
-          : `${configPaths.length} projects`,
-        rootDir: this.workspaceRoot,
-        fileCount: totalFiles,
-        compilerOptions: firstProject ? {
-          target: ts.ScriptTarget[firstProject.host.getCompilationSettings().target ?? ts.ScriptTarget.ES5],
-          strict: firstProject.host.getCompilationSettings().strict,
-        } : {},
-      });
-    } catch (error) {
-      return Err(error instanceof Error ? error : new Error(String(error)));
+    const result = this.projectManager.initialize(workspacePath);
+    if (!result.ok) {
+      return result;
     }
+
+    this.initialized = true;
+    const projects = this.projectManager.getProjects();
+    const firstProject = projects.values().next().value;
+
+    return Ok({
+      configPath: projects.size === 1
+        ? firstProject?.configPath ?? "unknown"
+        : `${projects.size} projects`,
+      rootDir: this.projectManager.getWorkspaceRoot(),
+      fileCount: result.value,
+      compilerOptions: firstProject ? {
+        target: ts.ScriptTarget[firstProject.host.getCompilationSettings().target ?? ts.ScriptTarget.ES5],
+        strict: firstProject.host.getCompilationSettings().strict,
+      } : {},
+    });
   }
 
   async reload(): Promise<Result<ProjectInfo, Error>> {
-    if (!this.workspaceRoot) {
-      return Err(new Error("Service not initialized. Call initialize() first."));
+    const root = this.projectManager.getWorkspaceRoot();
+    if (!root) {
+      return Err(new Error("Service not initialized"));
     }
-    return this.initialize(this.workspaceRoot);
+    return this.initialize(root);
   }
 
   isInitialized(): boolean {
-    return this.initialized && this.projects.size > 0;
+    return this.initialized && this.projectManager.getProjects().size > 0;
   }
 
   getProjectInfo(): Result<ProjectInfo, Error> {
@@ -170,91 +127,70 @@ export class TypeScriptService implements TypeService {
     }
 
     let totalFiles = 0;
-    for (const project of this.projects.values()) {
+    for (const project of this.projectManager.getProjects().values()) {
       totalFiles += project.fileNames.length;
     }
 
     return Ok({
-      configPath: `${this.projects.size} project(s)`,
-      rootDir: this.workspaceRoot,
+      configPath: `${this.projectManager.getProjects().size} project(s)`,
+      rootDir: this.projectManager.getWorkspaceRoot(),
       fileCount: totalFiles,
       compilerOptions: {},
     });
   }
 
-  /**
-   * Get diagnostics for a file or the entire workspace.
-   * 
-   * For single files: fast path with 5s timeout
-   * For workspace: checks up to MAX_FILES_TO_CHECK with 10s timeout
-   */
   async getDiagnostics(options?: GetDiagnosticsOptions): Promise<Result<Diagnostic[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
     }
 
-    // Single file - fast path
     if (options?.file) {
       return this.getDiagnosticsForSingleFile(options.file, options.errorsOnly);
     }
 
-    // Project-wide - chunked with timeout
     return this.getDiagnosticsForWorkspace(options?.limit, options?.errorsOnly);
   }
 
-  /**
-   * Fast path for single file diagnostics with timeout.
-   */
   private async getDiagnosticsForSingleFile(
     file: string,
     errorsOnly?: boolean
   ): Promise<Result<Diagnostic[], Error>> {
-    const project = this.findProjectForFile(file);
+    const project = this.projectManager.findProjectForFile(file);
     if (!project) {
       return Err(new Error(`File not in any TypeScript project: ${file}`));
     }
 
     return this.withTimeout(
       () => this.getDiagnosticsForFile(project, file, errorsOnly),
-      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      SINGLE_FILE_TIMEOUT,
       `getDiagnostics(${path.basename(file)})`
     );
   }
 
-  /**
-   * Get diagnostics for entire workspace with chunking and timeout.
-   */
   private async getDiagnosticsForWorkspace(
     limit?: number,
     errorsOnly?: boolean
   ): Promise<Result<Diagnostic[], Error>> {
     const startTime = Date.now();
-    const timeoutMs = TypeScriptService.DEFAULT_TIMEOUT;
-    const maxFiles = limit ? Math.min(limit * 2, TypeScriptService.MAX_FILES_TO_CHECK) : TypeScriptService.MAX_FILES_TO_CHECK;
-    
+    const maxFiles = limit
+      ? Math.min(limit * 2, MAX_FILES_TO_CHECK)
+      : MAX_FILES_TO_CHECK;
+
     const diagnostics: Diagnostic[] = [];
     let filesChecked = 0;
 
     try {
-      for (const project of this.projects.values()) {
+      for (const project of this.projectManager.getProjects().values()) {
         for (const file of project.fileNames) {
-          // Check timeout
-          if (Date.now() - startTime > timeoutMs) {
-            // Return what we have so far
-            diagnostics.sort((a, b) => {
-              if (a.file !== b.file) return a.file.localeCompare(b.file);
-              return a.line - b.line;
-            });
-            return Ok(limit ? diagnostics.slice(0, limit) : diagnostics);
+          if (Date.now() - startTime > DEFAULT_TIMEOUT) {
+            break;
           }
 
-          // Check file limit
           if (filesChecked >= maxFiles) {
             break;
           }
 
-          // Skip node_modules, dist, etc.
-          if (file.includes('node_modules') || file.includes('/dist/') || file.includes('/.')) {
+          if (file.includes("node_modules") || file.includes("/dist/") || file.includes("/.")) {
             continue;
           }
 
@@ -263,12 +199,10 @@ export class TypeScriptService implements TypeService {
             diagnostics.push(...fileDiags);
             filesChecked++;
 
-            // Early termination if we have enough errors
             if (limit && diagnostics.length >= limit) {
               break;
             }
           } catch {
-            // Skip files that cause errors
             filesChecked++;
           }
         }
@@ -278,7 +212,6 @@ export class TypeScriptService implements TypeService {
         }
       }
 
-      // Sort by file, then line
       diagnostics.sort((a, b) => {
         if (a.file !== b.file) return a.file.localeCompare(b.file);
         return a.line - b.line;
@@ -303,25 +236,23 @@ export class TypeScriptService implements TypeService {
 
       const syntactic = project.service.getSyntacticDiagnostics(resolvedFile);
       const semantic = project.service.getSemanticDiagnostics(resolvedFile);
-      
-      // Skip suggestion diagnostics for performance (they're not critical)
+
+      const ctx = { host: project.host };
       const allDiags = [
-        ...syntactic.map((d) => this.convertDiagnostic(d, "syntactic", project)),
-        ...semantic.map((d) => this.convertDiagnostic(d, "semantic", project)),
+        ...syntactic.map((d) => convertDiagnostic(d, "syntactic", ctx)),
+        ...semantic.map((d) => convertDiagnostic(d, "semantic", ctx)),
       ];
 
       return errorsOnly
         ? allDiags.filter((d) => d.severity === "error")
         : allDiags;
     } catch {
-      // TypeScript language service can throw on certain files
-      // Skip this file and continue
       return [];
     }
   }
 
   async getDiagnosticSummary(): Promise<Result<DiagnosticSummary, Error>> {
-    const diagsResult = await this.getDiagnostics({ limit: 1000 }); // Cap at 1000 for summary
+    const diagsResult = await this.getDiagnostics({ limit: 1000 });
     if (!diagsResult.ok) {
       return diagsResult;
     }
@@ -330,7 +261,7 @@ export class TypeScriptService implements TypeService {
     const filesWithDiagnostics = new Set(diags.map((d) => d.file)).size;
 
     let totalFiles = 0;
-    for (const project of this.projects.values()) {
+    for (const project of this.projectManager.getProjects().values()) {
       totalFiles += project.fileNames.length;
     }
 
@@ -344,9 +275,6 @@ export class TypeScriptService implements TypeService {
     });
   }
 
-  /**
-   * Get type information at a position.
-   */
   async getTypeAtPosition(options: GetTypeOptions): Promise<Result<TypeInfo, Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
@@ -354,13 +282,13 @@ export class TypeScriptService implements TypeService {
 
     return this.withTimeout(
       () => this.getTypeAtPositionSync(options),
-      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      SINGLE_FILE_TIMEOUT,
       `getTypeAtPosition(${path.basename(options.file)})`
     );
   }
 
   private getTypeAtPositionSync(options: GetTypeOptions): TypeInfo {
-    const project = this.findProjectForFile(options.file);
+    const project = this.projectManager.findProjectForFile(options.file);
     if (!project) {
       throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
@@ -387,15 +315,12 @@ export class TypeScriptService implements TypeService {
     return {
       type: typeString,
       name: quickInfo.displayParts?.[0]?.text ?? "",
-      kind: this.convertSymbolKind(quickInfo.kind),
+      kind: convertSymbolKind(quickInfo.kind),
       documentation: documentation || undefined,
       tags: tags?.length ? tags : undefined,
     };
   }
 
-  /**
-   * Get definition locations for a symbol.
-   */
   async getDefinition(options: GetDefinitionOptions): Promise<Result<Definition[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
@@ -403,13 +328,13 @@ export class TypeScriptService implements TypeService {
 
     return this.withTimeout(
       () => this.getDefinitionSync(options),
-      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      SINGLE_FILE_TIMEOUT,
       `getDefinition(${path.basename(options.file)})`
     );
   }
 
   private getDefinitionSync(options: GetDefinitionOptions): Definition[] {
-    const project = this.findProjectForFile(options.file);
+    const project = this.projectManager.findProjectForFile(options.file);
     if (!project) {
       throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
@@ -426,12 +351,10 @@ export class TypeScriptService implements TypeService {
       return [];
     }
 
-    return definitions.map((def) => this.convertDefinition(def, project));
+    const ctx = { host: project.host };
+    return definitions.map((def) => convertDefinition(def, ctx));
   }
 
-  /**
-   * Find all references to a symbol.
-   */
   async findReferences(options: GetDefinitionOptions): Promise<Result<Definition[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
@@ -439,13 +362,13 @@ export class TypeScriptService implements TypeService {
 
     return this.withTimeout(
       () => this.findReferencesSync(options),
-      TypeScriptService.DEFAULT_TIMEOUT, // References can take longer
+      DEFAULT_TIMEOUT,
       `findReferences(${path.basename(options.file)})`
     );
   }
 
   private findReferencesSync(options: GetDefinitionOptions): Definition[] {
-    const project = this.findProjectForFile(options.file);
+    const project = this.projectManager.findProjectForFile(options.file);
     if (!project) {
       throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
@@ -462,19 +385,17 @@ export class TypeScriptService implements TypeService {
       return [];
     }
 
+    const ctx = { host: project.host };
     const definitions: Definition[] = [];
     for (const refEntry of references) {
       for (const ref of refEntry.references) {
-        definitions.push(this.convertReferenceEntry(ref, project));
+        definitions.push(convertReferenceEntry(ref, ctx));
       }
     }
 
     return definitions;
   }
 
-  /**
-   * Get code actions at a position or for a selection.
-   */
   async getCodeActions(options: GetCodeActionsOptions): Promise<Result<CodeAction[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
@@ -482,13 +403,13 @@ export class TypeScriptService implements TypeService {
 
     return this.withTimeout(
       () => this.getCodeActionsSync(options),
-      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      SINGLE_FILE_TIMEOUT,
       `getCodeActions(${path.basename(options.file)})`
     );
   }
 
   private getCodeActionsSync(options: GetCodeActionsOptions): CodeAction[] {
-    const project = this.findProjectForFile(options.file);
+    const project = this.projectManager.findProjectForFile(options.file);
     if (!project) {
       throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
@@ -521,14 +442,12 @@ export class TypeScriptService implements TypeService {
       {}
     );
 
-    return codeActions.map((action) => this.convertCodeAction(action, project));
+    const ctx = { host: project.host };
+    return codeActions.map((action) => convertCodeAction(action, ctx));
   }
 
-  /**
-   * Notify the service that a file has changed.
-   */
   notifyFileChanged(file: string, content?: string): void {
-    const project = this.findProjectForFile(file);
+    const project = this.projectManager.findProjectForFile(file);
     if (!project) return;
 
     const resolvedFile = project.host.resolveFile(file);
@@ -536,390 +455,7 @@ export class TypeScriptService implements TypeService {
   }
 
   dispose(): void {
-    for (const project of this.projects.values()) {
-      project.service.dispose();
-    }
-    this.projects.clear();
+    this.projectManager.dispose();
     this.initialized = false;
-  }
-
-  // --- Private helpers ---
-
-  /**
-   * Discover all tsconfig.json files in the workspace.
-   */
-  private discoverTsConfigs(rootPath: string): string[] {
-    const configs: string[] = [];
-
-    // Check root first
-    const rootConfig = path.join(rootPath, "tsconfig.json");
-    if (fs.existsSync(rootConfig)) {
-      configs.push(rootConfig);
-    }
-
-    // Check common monorepo patterns
-    const patterns = [
-      "packages/*/tsconfig.json",
-      "apps/*/tsconfig.json",
-      "libs/*/tsconfig.json",
-      "src/*/tsconfig.json",
-    ];
-
-    for (const pattern of patterns) {
-      const parts = pattern.split("/");
-      const baseDir = path.join(rootPath, parts[0]);
-
-      if (fs.existsSync(baseDir) && fs.statSync(baseDir).isDirectory()) {
-        try {
-          const subdirs = fs.readdirSync(baseDir);
-          for (const subdir of subdirs) {
-            const configPath = path.join(baseDir, subdir, "tsconfig.json");
-            if (fs.existsSync(configPath)) {
-              configs.push(configPath);
-            }
-          }
-        } catch {
-          // Ignore errors reading directories
-        }
-      }
-    }
-
-    return configs;
-  }
-
-  /**
-   * Initialize a single TypeScript project.
-   */
-  private initializeProject(configPath: string): Result<TypeScriptProject, Error> {
-    const configResult = this.parseConfig(configPath);
-    if (!configResult.ok) {
-      return configResult;
-    }
-
-    const { options, fileNames } = configResult.value;
-    const rootDir = path.dirname(configPath);
-
-    // Create host with lazy loading (don't preload all files)
-    const host = new TypeScriptLanguageServiceHost(fileNames, options, rootDir, false);
-    const service = ts.createLanguageService(host, ts.createDocumentRegistry());
-
-    const project: TypeScriptProject = {
-      configPath,
-      rootDir,
-      service,
-      host,
-      fileNames,
-    };
-
-    this.projects.set(rootDir, project);
-    return Ok(project);
-  }
-
-  /**
-   * Find which project a file belongs to.
-   */
-  private findProjectForFile(filePath: string): TypeScriptProject | null {
-    const absolutePath = path.isAbsolute(filePath)
-      ? filePath
-      : path.resolve(this.workspaceRoot, filePath);
-
-    // Find the project whose rootDir is an ancestor of this file
-    let bestMatch: TypeScriptProject | null = null;
-    let bestMatchLength = 0;
-
-    for (const project of this.projects.values()) {
-      if (absolutePath.startsWith(project.rootDir + path.sep) ||
-          absolutePath.startsWith(project.rootDir + "/")) {
-        // Prefer the most specific match (longest rootDir)
-        if (project.rootDir.length > bestMatchLength) {
-          bestMatch = project;
-          bestMatchLength = project.rootDir.length;
-        }
-      }
-    }
-
-    return bestMatch;
-  }
-
-  private parseConfig(configPath: string): Result<ts.ParsedCommandLine, Error> {
-    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-    if (configFile.error) {
-      return Err(new Error(ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n")));
-    }
-
-    const parsed = ts.parseJsonConfigFileContent(
-      configFile.config,
-      ts.sys,
-      path.dirname(configPath)
-    );
-
-    if (parsed.errors.length > 0) {
-      const messages = parsed.errors
-        .map((e) => ts.flattenDiagnosticMessageText(e.messageText, "\n"))
-        .join("\n");
-      return Err(new Error(messages));
-    }
-
-    return Ok(parsed);
-  }
-
-  private convertDiagnostic(
-    diag: ts.Diagnostic,
-    category: DiagnosticCategory,
-    project: TypeScriptProject
-  ): Diagnostic {
-    const file = diag.file?.fileName ?? "unknown";
-    const { line, column, endLine, endColumn } = this.getLineAndColumn(diag);
-
-    return {
-      file: project.host.relativePath(file),
-      line,
-      column,
-      endLine,
-      endColumn,
-      message: ts.flattenDiagnosticMessageText(diag.messageText, "\n"),
-      code: `TS${diag.code}`,
-      severity: this.convertSeverity(diag.category),
-      category,
-      source: "typescript",
-      relatedInfo: diag.relatedInformation?.map((info) =>
-        this.convertRelatedInfo(info, project)
-      ),
-    };
-  }
-
-  private getLineAndColumn(diag: ts.Diagnostic): {
-    line: number;
-    column: number;
-    endLine: number;
-    endColumn: number;
-  } {
-    if (!diag.file || diag.start === undefined) {
-      return { line: 1, column: 1, endLine: 1, endColumn: 1 };
-    }
-
-    const start = diag.file.getLineAndCharacterOfPosition(diag.start);
-    const end = diag.file.getLineAndCharacterOfPosition(
-      diag.start + (diag.length ?? 0)
-    );
-
-    return {
-      line: start.line + 1,
-      column: start.character + 1,
-      endLine: end.line + 1,
-      endColumn: end.character + 1,
-    };
-  }
-
-  private convertSeverity(category: ts.DiagnosticCategory): DiagnosticSeverity {
-    switch (category) {
-      case ts.DiagnosticCategory.Error:
-        return "error";
-      case ts.DiagnosticCategory.Warning:
-        return "warning";
-      case ts.DiagnosticCategory.Suggestion:
-        return "hint";
-      case ts.DiagnosticCategory.Message:
-        return "info";
-      default:
-        return "info";
-    }
-  }
-
-  private convertRelatedInfo(
-    info: ts.DiagnosticRelatedInformation,
-    project: TypeScriptProject
-  ): RelatedDiagnosticInfo {
-    const file = info.file?.fileName ?? "unknown";
-    let line = 1, column = 1;
-
-    if (info.file && info.start !== undefined) {
-      const pos = info.file.getLineAndCharacterOfPosition(info.start);
-      line = pos.line + 1;
-      column = pos.character + 1;
-    }
-
-    return {
-      file: project.host.relativePath(file),
-      line,
-      column,
-      message: ts.flattenDiagnosticMessageText(info.messageText, "\n"),
-    };
-  }
-
-  private convertSymbolKind(kind: ts.ScriptElementKind): SymbolKind {
-    switch (kind) {
-      case ts.ScriptElementKind.variableElement:
-      case ts.ScriptElementKind.localVariableElement:
-      case ts.ScriptElementKind.letElement:
-      case ts.ScriptElementKind.constElement:
-        return "variable";
-      case ts.ScriptElementKind.functionElement:
-      case ts.ScriptElementKind.localFunctionElement:
-        return "function";
-      case ts.ScriptElementKind.classElement:
-        return "class";
-      case ts.ScriptElementKind.interfaceElement:
-        return "interface";
-      case ts.ScriptElementKind.typeElement:
-        return "type";
-      case ts.ScriptElementKind.enumElement:
-        return "enum";
-      case ts.ScriptElementKind.enumMemberElement:
-        return "enum_member";
-      case ts.ScriptElementKind.memberVariableElement:
-      case ts.ScriptElementKind.memberGetAccessorElement:
-      case ts.ScriptElementKind.memberSetAccessorElement:
-        return "property";
-      case ts.ScriptElementKind.memberFunctionElement:
-        return "method";
-      case ts.ScriptElementKind.parameterElement:
-        return "parameter";
-      case ts.ScriptElementKind.typeParameterElement:
-        return "type_parameter";
-      case ts.ScriptElementKind.moduleElement:
-        return "module";
-      case ts.ScriptElementKind.keyword:
-        return "keyword";
-      default:
-        return "unknown";
-    }
-  }
-
-  private convertDefinition(def: ts.DefinitionInfo, project: TypeScriptProject): Definition {
-    const { line, column, endLine, endColumn } = this.getDefinitionPosition(def, project);
-    const preview = this.getPreview(def, project);
-
-    return {
-      // Use absolute path for consistency with other MCP tools
-      file: def.fileName,
-      line,
-      column,
-      endLine,
-      endColumn,
-      name: def.name,
-      kind: this.convertSymbolKind(def.kind),
-      preview,
-      containerName: def.containerName || undefined,
-    };
-  }
-
-  private convertReferenceEntry(ref: ts.ReferenceEntry, project: TypeScriptProject): Definition {
-    const file = ref.fileName;
-    const sourceFile = project.host.getSourceFile(file);
-
-    let line = 1, column = 1, endLine = 1, endColumn = 1;
-    let name = "";
-    let kind: string = "unknown";
-
-    if (sourceFile) {
-      const start = sourceFile.getLineAndCharacterOfPosition(ref.textSpan.start);
-      const end = sourceFile.getLineAndCharacterOfPosition(
-        ref.textSpan.start + ref.textSpan.length
-      );
-      line = start.line + 1;
-      column = start.character + 1;
-      endLine = end.line + 1;
-      endColumn = end.character + 1;
-
-      // Extract the actual text of the reference
-      name = sourceFile.text.slice(ref.textSpan.start, ref.textSpan.start + ref.textSpan.length);
-
-      // Determine the kind based on the reference type
-      // ReferenceEntry has isWriteAccess but not isDefinition
-      if (ref.isWriteAccess) {
-        kind = "variable"; // Write access implies variable assignment
-      } else {
-        kind = "unknown"; // Read access - could be any reference
-      }
-    }
-
-    return {
-      // Use absolute path for consistency with other MCP tools
-      file,
-      line,
-      column,
-      endLine,
-      endColumn,
-      name,
-      kind: kind as SymbolKind,
-    };
-  }
-
-  private getDefinitionPosition(def: ts.DefinitionInfo, project: TypeScriptProject): {
-    line: number;
-    column: number;
-    endLine: number;
-    endColumn: number;
-  } {
-    const sourceFile = project.host.getSourceFile(def.fileName);
-    if (!sourceFile) {
-      return { line: 1, column: 1, endLine: 1, endColumn: 1 };
-    }
-
-    const start = sourceFile.getLineAndCharacterOfPosition(def.textSpan.start);
-    const end = sourceFile.getLineAndCharacterOfPosition(
-      def.textSpan.start + def.textSpan.length
-    );
-
-    return {
-      line: start.line + 1,
-      column: start.character + 1,
-      endLine: end.line + 1,
-      endColumn: end.character + 1,
-    };
-  }
-
-  private getPreview(def: ts.DefinitionInfo, project: TypeScriptProject): string | undefined {
-    const sourceFile = project.host.getSourceFile(def.fileName);
-    if (!sourceFile) return undefined;
-
-    const start = sourceFile.getLineAndCharacterOfPosition(def.textSpan.start);
-    const lines = sourceFile.text.split("\n");
-    const line = lines[start.line];
-
-    return line?.trim().slice(0, 100);
-  }
-
-  private convertCodeAction(action: ts.CodeFixAction, project: TypeScriptProject): CodeAction {
-    const edits: FileEdit[] = action.changes.map((change) => ({
-      file: project.host.relativePath(change.fileName),
-      changes: change.textChanges.map((tc) =>
-        this.convertTextChange(change.fileName, tc, project)
-      ),
-    }));
-
-    return {
-      title: action.description,
-      kind: "quickfix",
-      isPreferred: action.fixId !== undefined,
-      edits,
-    };
-  }
-
-  private convertTextChange(
-    fileName: string,
-    change: ts.TextChange,
-    project: TypeScriptProject
-  ): TextChange {
-    const sourceFile = project.host.getSourceFile(fileName);
-    if (!sourceFile) {
-      return {
-        start: { line: 1, column: 1 },
-        end: { line: 1, column: 1 },
-        newText: change.newText,
-      };
-    }
-
-    const start = sourceFile.getLineAndCharacterOfPosition(change.span.start);
-    const end = sourceFile.getLineAndCharacterOfPosition(
-      change.span.start + change.span.length
-    );
-
-    return {
-      start: { line: start.line + 1, column: start.character + 1 },
-      end: { line: end.line + 1, column: end.character + 1 },
-      newText: change.newText,
-    };
   }
 }

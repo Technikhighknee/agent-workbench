@@ -270,22 +270,62 @@ function formatSymbolInsight(insight: SymbolInsight): string {
     lines.push("");
   }
 
+  // For classes, show methods from related symbols before code
+  if (insight.kind === "class") {
+    const methods = insight.relationships.related.filter(r => r.kind === "method" || r.kind === "constructor");
+    if (methods.length > 0) {
+      lines.push("## Methods");
+      for (const method of methods) {
+        lines.push(`- \`${method.name}\` (${method.kind})`);
+      }
+      lines.push("");
+    }
+  }
+
   // Code (skip if identical to signature - avoids redundancy for short type aliases)
   const normalizeWs = (s: string) => s.replace(/\s+/g, ' ').trim();
   const codeNorm = normalizeWs(insight.code || '');
   const sigNorm = normalizeWs(insight.signature || '');
   if (insight.code && codeNorm !== sigNorm) {
+    const codeLines = insight.code.split("\n");
+    const MAX_LINES = 50;
+    
     lines.push("## Code");
     lines.push("```typescript");
-    lines.push(insight.code);
+    
+    if (codeLines.length > MAX_LINES) {
+      // Show truncated code with note
+      lines.push(codeLines.slice(0, 30).join("\n"));
+      lines.push(`\n// ... ${codeLines.length - 30} more lines (${codeLines.length} total)`);
+    } else {
+      lines.push(insight.code);
+    }
+    
     lines.push("```");
     lines.push("");
   }
 
-  // Relationships - calls
-  if (insight.relationships.calls.length > 0) {
+  // Filter noisy built-in methods from calls
+  const NOISY_CALLS = new Set([
+    "push", "pop", "shift", "unshift", "slice", "splice", "concat",
+    "map", "filter", "reduce", "forEach", "find", "findIndex", "some", "every",
+    "join", "split", "substring", "substr", "trim", "replace", "match",
+    "toString", "valueOf", "hasOwnProperty",
+    "log", "warn", "error", "info", "debug",
+    "then", "catch", "finally",
+    "get", "set", "has", "delete", "clear",
+    "add", "keys", "values", "entries",
+    "parse", "stringify",
+    "describe", "string", "number", "boolean", "object", "array"
+  ]);
+
+  // Relationships - calls (filtered)
+  const filteredCalls = insight.relationships.calls.filter(
+    c => !NOISY_CALLS.has(c.symbol.name)
+  );
+  if (filteredCalls.length > 0) {
     lines.push("## Calls");
-    for (const call of insight.relationships.calls) {
+    for (const call of filteredCalls) {
       lines.push(`- \`${call.symbol.name}\` at line ${call.line}`);
     }
     lines.push("");
@@ -300,10 +340,14 @@ function formatSymbolInsight(insight: SymbolInsight): string {
     lines.push("");
   }
 
-  // Related symbols
-  if (insight.relationships.related.length > 0) {
+  // Related symbols (exclude methods already shown for classes)
+  const related = insight.kind === "class"
+    ? insight.relationships.related.filter(r => r.kind !== "method" && r.kind !== "constructor")
+    : insight.relationships.related;
+  
+  if (related.length > 0) {
     lines.push("## Related Symbols");
-    for (const rel of insight.relationships.related.slice(0, 10)) {
+    for (const rel of related.slice(0, 10)) {
       lines.push(`- \`${rel.name}\` (${rel.kind})`);
     }
     lines.push("");

@@ -17,43 +17,12 @@ interface PreviewEditInput {
   find_tests?: boolean;
 }
 
-interface PreviewEditOutput extends Record<string, unknown> {
-  success: boolean;
-  error?: string;
-  would_succeed?: boolean;
-  type_errors?: Array<{
-    file: string;
-    line: number;
-    column: number;
-    message: string;
-    code: string;
-    severity: string;
-  }>;
-  affected_callers?: Array<{
-    file: string;
-    symbol: string;
-    line: number;
-    reason: string;
-  }>;
-  related_tests?: Array<{
-    file: string;
-    reason: string;
-  }>;
-  suggestions?: string[];
-  summary?: string;
-}
-
-type ToolResponse<T> = {
-  [key: string]: unknown;
-  content: Array<{ type: "text"; text: string }>;
-  structuredContent?: T;
-};
-
 export function registerPreviewEdit(
   server: McpServer,
   service: PreviewService
 ): void {
-  server.registerTool(
+  // Cast to avoid deep type instantiation with complex schema
+  (server as { registerTool: Function }).registerTool(
     "preview_edit",
     {
       title: "Preview edit impact",
@@ -74,37 +43,12 @@ Example: Before changing a function signature, preview to see which callers woul
         symbol: z.string().optional().describe("For symbol edits: the symbol name path"),
         old_text: z.string().optional().describe("For text edits: the text to replace"),
         new_content: z.string().optional().describe("The new content"),
-        check_types: z.boolean().optional().default(true).describe("Check for type errors"),
-        analyze_callers: z.boolean().optional().default(true).describe("Find affected callers"),
-        find_tests: z.boolean().optional().default(true).describe("Find related tests"),
-      },
-      outputSchema: {
-        success: z.boolean(),
-        error: z.string().optional(),
-        would_succeed: z.boolean().optional(),
-        type_errors: z.array(z.object({
-          file: z.string(),
-          line: z.number(),
-          column: z.number(),
-          message: z.string(),
-          code: z.string(),
-          severity: z.string(),
-        })).optional(),
-        affected_callers: z.array(z.object({
-          file: z.string(),
-          symbol: z.string(),
-          line: z.number(),
-          reason: z.string(),
-        })).optional(),
-        related_tests: z.array(z.object({
-          file: z.string(),
-          reason: z.string(),
-        })).optional(),
-        suggestions: z.array(z.string()).optional(),
-        summary: z.string().optional(),
+        check_types: z.boolean().optional().describe("Check for type errors (default: true)"),
+        analyze_callers: z.boolean().optional().describe("Find affected callers (default: true)"),
+        find_tests: z.boolean().optional().describe("Find related tests (default: true)"),
       },
     },
-    async (input: PreviewEditInput): Promise<ToolResponse<PreviewEditOutput>> => {
+    (async (input: PreviewEditInput) => {
       const edit: ProposedEdit = {
         file: input.file,
         type: input.edit_type,
@@ -114,15 +58,14 @@ Example: Before changing a function signature, preview to see which callers woul
       };
 
       const result = await service.previewEdit(edit, {
-        checkTypes: input.check_types,
-        analyzeCallers: input.analyze_callers,
-        findTests: input.find_tests,
+        checkTypes: input.check_types ?? true,
+        analyzeCallers: input.analyze_callers ?? true,
+        findTests: input.find_tests ?? true,
       });
 
       if (!result.ok) {
         return {
-          content: [{ type: "text", text: `Error: ${result.error}` }],
-          structuredContent: { success: false, error: result.error },
+          content: [{ type: "text" as const, text: `Error: ${result.error}` }],
         };
       }
 
@@ -176,17 +119,8 @@ Example: Before changing a function signature, preview to see which callers woul
       lines.push(`**Summary:** ${preview.summary}`);
 
       return {
-        content: [{ type: "text", text: lines.join("\n") }],
-        structuredContent: {
-          success: true,
-          would_succeed: preview.wouldSucceed,
-          type_errors: preview.typeErrors,
-          affected_callers: preview.affectedCallers,
-          related_tests: preview.relatedTests,
-          suggestions: preview.suggestions,
-          summary: preview.summary,
-        },
+        content: [{ type: "text" as const, text: lines.join("\n") }],
       };
-    }
+    }) as Parameters<typeof server.registerTool>[2]
   );
 }

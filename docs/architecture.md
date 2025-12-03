@@ -1,6 +1,8 @@
 # Architecture
 
-This document explains the design decisions and patterns used throughout agent-workbench.
+[← Back to docs](README.md)
+
+Design decisions and patterns used throughout agent-workbench.
 
 ## Monorepo Structure
 

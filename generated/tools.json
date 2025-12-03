@@ -1,0 +1,266 @@
+{
+  "board_add": {
+    "package": "board",
+    "description": "Create a new card."
+  },
+  "board_delete": {
+    "package": "board",
+    "description": "Remove card from board."
+  },
+  "board_get": {
+    "package": "board",
+    "description": "Get full card details by ID."
+  },
+  "board_list": {
+    "package": "board",
+    "description": "List cards with optional filtering."
+  },
+  "board_move": {
+    "package": "board",
+    "description": "Move card to different list."
+  },
+  "board_update": {
+    "package": "board",
+    "description": "Update card properties."
+  },
+  "blame_file": {
+    "package": "history",
+    "description": "Get git blame for a file - shows who wrote each line and when."
+  },
+  "branch_diff": {
+    "package": "history",
+    "description": "Get summary of changes between branches - files changed, additions/deletions, commits ahead/behind."
+  },
+  "changed_symbols": {
+    "package": "history",
+    "description": "Get symbols (functions, classes, methods) that changed between git refs."
+  },
+  "commit_info": {
+    "package": "history",
+    "description": "Get details of a specific commit - message, author, files changed."
+  },
+  "diff_file": {
+    "package": "history",
+    "description": "Get diff of a file between two commits."
+  },
+  "file_history": {
+    "package": "history",
+    "description": "Get commits that touched a file - understand how code evolved."
+  },
+  "git_add": {
+    "package": "history",
+    "description": "Stage files for commit."
+  },
+  "git_commit": {
+    "package": "history",
+    "description": "Create a commit with staged changes."
+  },
+  "git_status": {
+    "package": "history",
+    "description": "Get current git status - branch, staged/unstaged changes, untracked files."
+  },
+  "recent_changes": {
+    "package": "history",
+    "description": "Get recently changed files across the repository."
+  },
+  "search_commits": {
+    "package": "history",
+    "description": "Search commits by message content - find when a feature or fix was added"
+  },
+  "insight": {
+    "package": "insight",
+    "description": "Get comprehensive understanding of a file, directory, or symbol."
+  },
+  "suggest_refactoring": {
+    "package": "insight",
+    "description": "Analyze code and suggest refactoring opportunities."
+  },
+  "preview_edit": {
+    "package": "preview",
+    "description": "Preview the consequences of an edit BEFORE making it."
+  },
+  "get_project_info": {
+    "package": "project",
+    "description": "Get basic project information - name, type, version, available scripts."
+  },
+  "get_quickstart": {
+    "package": "project",
+    "description": "Get actionable commands to install, build, test, and run this project."
+  },
+  "get_scripts": {
+    "package": "project",
+    "description": "Get available scripts/commands that can be run in this project"
+  },
+  "get_session_guide": {
+    "package": "project",
+    "description": "MANDATORY: Call this at the start of every session and after context compacting."
+  },
+  "get_structure": {
+    "package": "project",
+    "description": "Get an overview of the project"
+  },
+  "get_tech_stack": {
+    "package": "project",
+    "description": "Detect frameworks, libraries, and tools used in this project."
+  },
+  "add_import": {
+    "package": "syntax",
+    "description": "Add import"
+  },
+  "analyze_deps": {
+    "package": "syntax",
+    "description": "Analyze project dependencies and detect circular imports."
+  },
+  "apply_edits": {
+    "package": "syntax",
+    "description": "Apply multiple edits across files atomically."
+  },
+  "batch_edit_symbols": {
+    "package": "syntax",
+    "description": "Edit multiple symbols across files atomically."
+  },
+  "edit_lines": {
+    "package": "syntax",
+    "description": "Replace a range of lines by line number."
+  },
+  "edit_symbol": {
+    "package": "syntax",
+    "description": "Replace a symbol"
+  },
+  "extract_function": {
+    "package": "syntax",
+    "description": "Extract a range of lines into a new function."
+  },
+  "find_dead_code": {
+    "package": "syntax",
+    "description": "Find functions/methods that are never called from any exported entry point."
+  },
+  "find_paths": {
+    "package": "syntax",
+    "description": "Find all paths between two symbols in the call graph."
+  },
+  "find_references": {
+    "package": "syntax",
+    "description": "Find all usages and references of a symbol throughout the codebase."
+  },
+  "find_unused_exports": {
+    "package": "syntax",
+    "description": "Find exports that are not imported anywhere in the codebase."
+  },
+  "get_callees": {
+    "package": "syntax",
+    "description": "Find all functions/methods called by a given symbol."
+  },
+  "get_callers": {
+    "package": "syntax",
+    "description": "Find all functions/methods that call a given symbol."
+  },
+  "get_exports": {
+    "package": "syntax",
+    "description": "Get all export statements from a source file."
+  },
+  "get_imports": {
+    "package": "syntax",
+    "description": "Get all import statements from a source file."
+  },
+  "inline_function": {
+    "package": "syntax",
+    "description": "Replace a function call with the function body."
+  },
+  "list_symbols": {
+    "package": "syntax",
+    "description": "List all symbols (functions, classes, etc."
+  },
+  "move_file": {
+    "package": "syntax",
+    "description": "Move a source file to a new location and update all imports across the codebase."
+  },
+  "move_symbol": {
+    "package": "syntax",
+    "description": "Move a symbol (function, class, interface, etc."
+  },
+  "organize_imports": {
+    "package": "syntax",
+    "description": "Sort and organize import statements in file(s)."
+  },
+  "read_symbol": {
+    "package": "syntax",
+    "description": "Read a specific symbol"
+  },
+  "remove_unused_imports": {
+    "package": "syntax",
+    "description": "Find and remove import statements that aren"
+  },
+  "rename_symbol": {
+    "package": "syntax",
+    "description": "Rename a symbol (variable, function, class, etc."
+  },
+  "search_symbols": {
+    "package": "syntax",
+    "description": "Search for symbols by name pattern across all indexed files."
+  },
+  "trace": {
+    "package": "syntax",
+    "description": "Trace call chains forward (what does this call?"
+  },
+  "task_get": {
+    "package": "task-runner",
+    "description": "Get a task"
+  },
+  "task_kill": {
+    "package": "task-runner",
+    "description": "Stop a running task."
+  },
+  "task_list": {
+    "package": "task-runner",
+    "description": "List all tasks, showing status and duration."
+  },
+  "task_run": {
+    "package": "task-runner",
+    "description": "Run a command and wait for it to complete (or timeout)."
+  },
+  "task_start": {
+    "package": "task-runner",
+    "description": "Start a command in the background and return immediately."
+  },
+  "find_tests_for": {
+    "package": "test-runner",
+    "description": "Find test files related to a source file."
+  },
+  "get_test_failures": {
+    "package": "test-runner",
+    "description": "Get detailed information about failed tests from the last run."
+  },
+  "list_test_files": {
+    "package": "test-runner",
+    "description": "List all test files in the project."
+  },
+  "rerun_failed": {
+    "package": "test-runner",
+    "description": "Rerun only the tests that failed in the last run."
+  },
+  "run_related_tests": {
+    "package": "test-runner",
+    "description": "Run tests related to a source file."
+  },
+  "run_tests": {
+    "package": "test-runner",
+    "description": "Run tests in the project and get structured results."
+  },
+  "check_file": {
+    "package": "types",
+    "description": "Check a single TypeScript file for type errors."
+  },
+  "get_quick_fixes": {
+    "package": "types",
+    "description": "Get available fixes for type errors at a position."
+  },
+  "get_type": {
+    "package": "types",
+    "description": "Get type information at a specific position in a TypeScript file."
+  },
+  "go_to_definition": {
+    "package": "types",
+    "description": "Find where a symbol is defined."
+  }
+}

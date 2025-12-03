@@ -1,0 +1,117 @@
+{
+  "board": {
+    "description": "A simple task board for AI agents - Trello-like MCP tools for managing work",
+    "tools": [
+      "board_add",
+      "board_delete",
+      "board_get",
+      "board_list",
+      "board_move",
+      "board_update"
+    ]
+  },
+  "core": {
+    "description": "Shared utilities for agent-workbench packages",
+    "tools": []
+  },
+  "history": {
+    "description": "MCP server for git history operations. Understand code evolution through blame, history, and commit search.",
+    "tools": [
+      "blame_file",
+      "branch_diff",
+      "changed_symbols",
+      "commit_info",
+      "diff_file",
+      "file_history",
+      "git_add",
+      "git_commit",
+      "git_status",
+      "recent_changes",
+      "search_commits"
+    ]
+  },
+  "insight": {
+    "description": "MCP server for comprehensive code understanding. One call to understand a file, module, or symbol.",
+    "tools": [
+      "insight",
+      "suggest_refactoring"
+    ]
+  },
+  "preview": {
+    "description": "Impact preview and consequence analysis for AI agents",
+    "tools": [
+      "preview_edit"
+    ]
+  },
+  "project": {
+    "description": "MCP server for project metadata operations. Understand project structure, configs, and available commands.",
+    "tools": [
+      "get_project_info",
+      "get_quickstart",
+      "get_scripts",
+      "get_session_guide",
+      "get_structure",
+      "get_tech_stack"
+    ]
+  },
+  "syntax": {
+    "description": "MCP server for symbol-aware code operations. Read and edit code by function/class name, not line numbers.",
+    "tools": [
+      "add_import",
+      "analyze_deps",
+      "apply_edits",
+      "batch_edit_symbols",
+      "edit_lines",
+      "edit_symbol",
+      "extract_function",
+      "find_dead_code",
+      "find_paths",
+      "find_references",
+      "find_unused_exports",
+      "get_callees",
+      "get_callers",
+      "get_exports",
+      "get_imports",
+      "inline_function",
+      "list_symbols",
+      "move_file",
+      "move_symbol",
+      "organize_imports",
+      "read_symbol",
+      "remove_unused_imports",
+      "rename_symbol",
+      "search_symbols",
+      "trace"
+    ]
+  },
+  "task-runner": {
+    "description": "Robust task execution for AI agents with detached processes and JSON persistence",
+    "tools": [
+      "task_get",
+      "task_kill",
+      "task_list",
+      "task_run",
+      "task_start"
+    ]
+  },
+  "test-runner": {
+    "description": "MCP server for running tests with structured results. Framework-agnostic, maps failures to source locations.",
+    "tools": [
+      "find_tests_for",
+      "get_test_failures",
+      "list_test_files",
+      "rerun_failed",
+      "run_related_tests",
+      "run_tests"
+    ]
+  },
+  "types": {
+    "description": "MCP server for TypeScript language service integration. Get type errors, hover info, and go-to-definition.",
+    "tools": [
+      "check_file",
+      "get_quick_fixes",
+      "get_type",
+      "go_to_definition"
+    ]
+  }
+}

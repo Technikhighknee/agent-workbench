@@ -4,6 +4,7 @@
   "description": "Inspired by the concept of IDE – translated into the world of AI-Agents.",
   "type": "module",
   "scripts": {
+    "generate:docs": "npx tsx scripts/generate-docs.ts",
     "build": "npm run build --workspaces",
     "build:core": "npm run build -w @agent-workbench/core",
     "build:syntax": "npm run build -w @agent-workbench/syntax",

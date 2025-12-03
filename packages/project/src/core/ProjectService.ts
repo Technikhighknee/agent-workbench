@@ -11,12 +11,15 @@ import {
   err,
   type ProjectInfo,
   type ProjectType,
-  type Dependency,
-  type Script,
   type ConfigFile,
   type ConfigType,
-  type WorkspacePackage,
 } from "./model.js";
+import {
+  parseNpmProject,
+  parseCargoProject,
+  parsePythonProject,
+  parseGoProject,
+} from "./ProjectParsers.js";
 
 /**
  * Known config files and their types.
@@ -98,7 +101,6 @@ export class ProjectService {
 
   /**
    * Find the project root by walking up directories.
-   * Looks for package.json, Cargo.toml, pyproject.toml, go.mod.
    */
   static async findProjectRoot(startPath: string): Promise<string> {
     const markers = [
@@ -125,7 +127,6 @@ export class ProjectService {
       current = path.dirname(current);
     }
 
-    // No project root found, return original path
     return startPath;
   }
 
@@ -158,7 +159,7 @@ export class ProjectService {
         await fs.access(filePath);
         return type;
       } catch {
-        // File doesn't exist, continue
+        // File doesn't exist
       }
     }
 
@@ -169,17 +170,18 @@ export class ProjectService {
    * Get complete project info.
    */
   async getProjectInfo(): Promise<Result<ProjectInfo, string>> {
+    const projectRoot = await this.getProjectRoot();
     const type = await this.detectType();
 
     switch (type) {
       case "npm":
-        return this.parseNpmProject();
+        return parseNpmProject(projectRoot);
       case "cargo":
-        return this.parseCargoProject();
+        return parseCargoProject(projectRoot);
       case "python":
-        return this.parsePythonProject();
+        return parsePythonProject(projectRoot);
       case "go":
-        return this.parseGoProject();
+        return parseGoProject(projectRoot);
       default:
         return ok({
           name: path.basename(this.rootPath),
@@ -189,297 +191,6 @@ export class ProjectService {
           scripts: [],
           dependencies: [],
         });
-    }
-  }
-
-  /**
-   * Parse npm/Node.js project.
-   */
-  private async parseNpmProject(): Promise<Result<ProjectInfo, string>> {
-    const projectRoot = await this.getProjectRoot();
-    const pkgPath = path.join(projectRoot, "package.json");
-
-    try {
-      const content = await fs.readFile(pkgPath, "utf-8");
-      const pkg = JSON.parse(content);
-
-      const scripts: Script[] = [];
-      if (pkg.scripts) {
-        for (const [name, command] of Object.entries(pkg.scripts)) {
-          scripts.push({ name, command: String(command) });
-        }
-      }
-
-      const dependencies: Dependency[] = [];
-
-      if (pkg.dependencies) {
-        for (const [name, version] of Object.entries(pkg.dependencies)) {
-          dependencies.push({ name, version: String(version), type: "production" });
-        }
-      }
-
-      if (pkg.devDependencies) {
-        for (const [name, version] of Object.entries(pkg.devDependencies)) {
-          dependencies.push({ name, version: String(version), type: "development" });
-        }
-      }
-
-      if (pkg.peerDependencies) {
-        for (const [name, version] of Object.entries(pkg.peerDependencies)) {
-          dependencies.push({ name, version: String(version), type: "peer" });
-        }
-      }
-
-      if (pkg.optionalDependencies) {
-        for (const [name, version] of Object.entries(pkg.optionalDependencies)) {
-          dependencies.push({ name, version: String(version), type: "optional" });
-        }
-      }
-
-      // Detect workspaces
-      let workspaces: WorkspacePackage[] | undefined;
-      if (pkg.workspaces) {
-        workspaces = await this.parseNpmWorkspaces(pkg.workspaces);
-      }
-
-      return ok({
-        name: pkg.name || path.basename(projectRoot),
-        version: pkg.version || "unknown",
-        type: "npm",
-        description: pkg.description,
-        main: pkg.main,
-        rootPath: projectRoot,
-        scripts,
-        dependencies,
-        workspaces,
-      });
-    } catch (error) {
-      return err(`Failed to parse package.json: ${error}`);
-    }
-  }
-
-  /**
-   * Parse npm workspaces and resolve to actual packages.
-   */
-  private async parseNpmWorkspaces(
-    workspacesConfig: string[] | { packages: string[] }
-  ): Promise<WorkspacePackage[]> {
-    const projectRoot = await this.getProjectRoot();
-    const patterns = Array.isArray(workspacesConfig)
-      ? workspacesConfig
-      : workspacesConfig.packages || [];
-
-    const workspaces: WorkspacePackage[] = [];
-
-    for (const pattern of patterns) {
-      // Simple glob expansion - handle "packages/*" pattern
-      if (pattern.includes("*")) {
-        const baseDir = pattern.replace(/\/\*.*$/, "");
-        const basePath = path.join(projectRoot, baseDir);
-
-        try {
-          const entries = await fs.readdir(basePath, { withFileTypes: true });
-          for (const entry of entries) {
-            if (entry.isDirectory()) {
-              const pkgPath = path.join(basePath, entry.name, "package.json");
-              try {
-                const content = await fs.readFile(pkgPath, "utf-8");
-                const pkg = JSON.parse(content);
-                workspaces.push({
-                  name: pkg.name || entry.name,
-                  path: path.join(baseDir, entry.name),
-                  version: pkg.version,
-                });
-              } catch {
-                // Not a package, skip
-              }
-            }
-          }
-        } catch {
-          // Directory doesn't exist, skip
-        }
-      } else {
-        // Direct path
-        const pkgPath = path.join(projectRoot, pattern, "package.json");
-        try {
-          const content = await fs.readFile(pkgPath, "utf-8");
-          const pkg = JSON.parse(content);
-          workspaces.push({
-            name: pkg.name || path.basename(pattern),
-            path: pattern,
-            version: pkg.version,
-          });
-        } catch {
-          // Not a package, skip
-        }
-      }
-    }
-
-    return workspaces.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  /**
-   * Parse Rust/Cargo project.
-   */
-  private async parseCargoProject(): Promise<Result<ProjectInfo, string>> {
-    const projectRoot = await this.getProjectRoot();
-    const cargoPath = path.join(projectRoot, "Cargo.toml");
-
-    try {
-      const content = await fs.readFile(cargoPath, "utf-8");
-
-      // Simple TOML parsing for basic fields
-      const nameMatch = content.match(/^\s*name\s*=\s*"([^"]+)"/m);
-      const versionMatch = content.match(/^\s*version\s*=\s*"([^"]+)"/m);
-      const descMatch = content.match(/^\s*description\s*=\s*"([^"]+)"/m);
-
-      const scripts: Script[] = [
-        { name: "build", command: "cargo build" },
-        { name: "build:release", command: "cargo build --release" },
-        { name: "test", command: "cargo test" },
-        { name: "run", command: "cargo run" },
-        { name: "check", command: "cargo check" },
-        { name: "clippy", command: "cargo clippy" },
-        { name: "fmt", command: "cargo fmt" },
-      ];
-
-      // Parse dependencies
-      const dependencies: Dependency[] = [];
-      const depsSection = content.match(/\[dependencies\]([\s\S]*?)(?=\[|$)/);
-      if (depsSection) {
-        const depLines = depsSection[1].matchAll(/^([a-zA-Z0-9_-]+)\s*=\s*(?:"([^"]+)"|{[^}]*version\s*=\s*"([^"]+)"[^}]*})/gm);
-        for (const match of depLines) {
-          dependencies.push({
-            name: match[1],
-            version: match[2] || match[3] || "unknown",
-            type: "production",
-          });
-        }
-      }
-
-      const devDepsSection = content.match(/\[dev-dependencies\]([\s\S]*?)(?=\[|$)/);
-      if (devDepsSection) {
-        const depLines = devDepsSection[1].matchAll(/^([a-zA-Z0-9_-]+)\s*=\s*(?:"([^"]+)"|{[^}]*version\s*=\s*"([^"]+)"[^}]*})/gm);
-        for (const match of depLines) {
-          dependencies.push({
-            name: match[1],
-            version: match[2] || match[3] || "unknown",
-            type: "development",
-          });
-        }
-      }
-
-      return ok({
-        name: nameMatch?.[1] || path.basename(projectRoot),
-        version: versionMatch?.[1] || "unknown",
-        type: "cargo",
-        description: descMatch?.[1],
-        rootPath: projectRoot,
-        scripts,
-        dependencies,
-      });
-    } catch (error) {
-      return err(`Failed to parse Cargo.toml: ${error}`);
-    }
-  }
-
-  /**
-   * Parse Python project.
-   */
-  private async parsePythonProject(): Promise<Result<ProjectInfo, string>> {
-    const projectRoot = await this.getProjectRoot();
-    // Try pyproject.toml first
-    const pyprojectPath = path.join(projectRoot, "pyproject.toml");
-
-    try {
-      const content = await fs.readFile(pyprojectPath, "utf-8");
-
-      // Simple TOML parsing
-      const nameMatch = content.match(/^\s*name\s*=\s*"([^"]+)"/m);
-      const versionMatch = content.match(/^\s*version\s*=\s*"([^"]+)"/m);
-      const descMatch = content.match(/^\s*description\s*=\s*"([^"]+)"/m);
-
-      const scripts: Script[] = [
-        { name: "install", command: "pip install -e ." },
-        { name: "test", command: "pytest" },
-        { name: "lint", command: "ruff check ." },
-        { name: "format", command: "ruff format ." },
-        { name: "typecheck", command: "mypy ." },
-      ];
-
-      return ok({
-        name: nameMatch?.[1] || path.basename(projectRoot),
-        version: versionMatch?.[1] || "unknown",
-        type: "python",
-        description: descMatch?.[1],
-        rootPath: projectRoot,
-        scripts,
-        dependencies: [], // Python deps are complex, skip for now
-      });
-    } catch {
-      // Fall back to setup.py detection
-      return ok({
-        name: path.basename(projectRoot),
-        version: "unknown",
-        type: "python",
-        rootPath: projectRoot,
-        scripts: [
-          { name: "install", command: "pip install -e ." },
-          { name: "test", command: "pytest" },
-        ],
-        dependencies: [],
-      });
-    }
-  }
-
-  /**
-   * Parse Go project.
-   */
-  private async parseGoProject(): Promise<Result<ProjectInfo, string>> {
-    const projectRoot = await this.getProjectRoot();
-    const goModPath = path.join(projectRoot, "go.mod");
-
-    try {
-      const content = await fs.readFile(goModPath, "utf-8");
-
-      const moduleMatch = content.match(/^module\s+(\S+)/m);
-      const goVersionMatch = content.match(/^go\s+(\S+)/m);
-
-      const scripts: Script[] = [
-        { name: "build", command: "go build ./..." },
-        { name: "test", command: "go test ./..." },
-        { name: "run", command: "go run ." },
-        { name: "fmt", command: "go fmt ./..." },
-        { name: "vet", command: "go vet ./..." },
-        { name: "mod:tidy", command: "go mod tidy" },
-      ];
-
-      // Parse require block
-      const dependencies: Dependency[] = [];
-      const requireMatch = content.match(/require\s*\(([\s\S]*?)\)/);
-      if (requireMatch) {
-        const depLines = requireMatch[1].matchAll(/^\s*(\S+)\s+(\S+)/gm);
-        for (const match of depLines) {
-          if (!match[1].startsWith("//")) {
-            dependencies.push({
-              name: match[1],
-              version: match[2],
-              type: "production",
-            });
-          }
-        }
-      }
-
-      return ok({
-        name: moduleMatch?.[1] || path.basename(projectRoot),
-        version: goVersionMatch?.[1] || "unknown",
-        type: "go",
-        rootPath: projectRoot,
-        scripts,
-        dependencies,
-      });
-    } catch (error) {
-      return err(`Failed to parse go.mod: ${error}`);
     }
   }
 
@@ -527,13 +238,8 @@ export class ProjectService {
         const dirPath = path.join(projectRoot, name);
         try {
           await fs.access(dirPath);
-          // Only add if not already present
-          if (!configs.some(c => c.name === name)) {
-            configs.push({
-              name,
-              path: dirPath,
-              type,
-            });
+          if (!configs.some((c) => c.name === name)) {
+            configs.push({ name, path: dirPath, type });
           }
         } catch {
           // Directory doesn't exist

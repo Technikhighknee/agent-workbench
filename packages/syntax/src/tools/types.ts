@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
 import type { SyntaxService } from "../core/services/SyntaxService.js";
 
 export interface ToolRegistrar {

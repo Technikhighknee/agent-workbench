@@ -4,14 +4,15 @@
  */
 
 import { runServer } from "@agent-workbench/core";
-import { SyntaxService } from "./core/services/SyntaxService.js";
+
 import { ProjectIndex } from "./core/services/ProjectIndex.js";
-import { TreeSitterParser } from "./infrastructure/parsers/TreeSitterParser.js";
-import { NodeFileSystem } from "./infrastructure/filesystem/NodeFileSystem.js";
+import { SyntaxService } from "./core/services/SyntaxService.js";
 import { InMemoryCache } from "./infrastructure/cache/InMemoryCache.js";
+import { NodeFileSystem } from "./infrastructure/filesystem/NodeFileSystem.js";
+import { TreeSitterParser } from "./infrastructure/parsers/TreeSitterParser.js";
 import { NodeProjectScanner } from "./infrastructure/scanner/NodeProjectScanner.js";
 import { NodeFileWatcher } from "./infrastructure/watcher/NodeFileWatcher.js";
-import { registerAllTools, Services } from "./tools/index.js";
+import { Services, registerAllTools } from "./tools/index.js";
 
 runServer<Services>({
   config: {

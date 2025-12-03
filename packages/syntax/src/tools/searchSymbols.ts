@@ -1,9 +1,10 @@
-import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ProjectIndex, IndexedSymbol } from "../core/services/ProjectIndex.js";
-import type { ToolResponse } from "./types.js";
-import { SymbolKindSchema } from "./schemas.js";
+import * as z from "zod/v4";
+
 import type { SymbolKind } from "../core/model.js";
+import type { IndexedSymbol, ProjectIndex } from "../core/services/ProjectIndex.js";
+import { SymbolKindSchema } from "./schemas.js";
+import type { ToolResponse } from "./types.js";
 
 interface SearchSymbolsInput {
   pattern: string;

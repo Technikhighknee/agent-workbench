@@ -3,9 +3,10 @@
  * Helps identify dead code and unused public APIs.
  */
 
-import * as z from "zod/v4";
-import * as path from "path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import * as path from "path";
+import * as z from "zod/v4";
+
 import type { ProjectIndex } from "../core/services/ProjectIndex.js";
 import type { SyntaxService } from "../core/services/SyntaxService.js";
 import type { ToolResponse } from "./types.js";

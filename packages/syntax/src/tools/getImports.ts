@@ -1,9 +1,10 @@
-import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { SyntaxService } from "../core/services/SyntaxService.js";
-import type { ToolResponse } from "./types.js";
-import { ImportInfoSchema } from "./schemas.js";
+import * as z from "zod/v4";
+
 import type { ImportInfo } from "../core/model.js";
+import type { SyntaxService } from "../core/services/SyntaxService.js";
+import { ImportInfoSchema } from "./schemas.js";
+import type { ToolResponse } from "./types.js";
 
 interface GetImportsInput {
   file_path: string;

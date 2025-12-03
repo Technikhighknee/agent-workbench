@@ -1,8 +1,9 @@
+import { Err, Ok, Result } from "@agent-workbench/core";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { FileWatcher, FileWatchCallback, FileWatchEvent } from "../../core/ports/FileWatcher.js";
+
+import type { FileWatchCallback, FileWatchEvent, FileWatcher } from "../../core/ports/FileWatcher.js";
 import type { ProjectScanner } from "../../core/ports/ProjectScanner.js";
-import { type Result, Ok, Err } from "@agent-workbench/core";
 
 /**
  * Node.js implementation of FileWatcher using native fs.watch.

@@ -1,4 +1,4 @@
-import { Symbol, SymbolInfo, Location } from "./model.js";
+import { Location, Symbol, SymbolInfo } from "./model.js";
 
 /**
  * Represents the parsed symbol structure of a source file.

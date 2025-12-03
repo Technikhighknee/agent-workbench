@@ -2,14 +2,17 @@
  * organize_imports tool - Sort and group imports in a file.
  */
 
-import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { glob } from "glob";
+import * as z from "zod/v4";
+
+import type { ImportInfo } from "../core/model.js";
 import type { SyntaxService } from "../core/services/SyntaxService.js";
 import type { ToolResponse } from "./types.js";
-import type { ImportInfo } from "../core/model.js";
 
 interface OrganizeImportsInput {
-  file_path: string;
+  file_path?: string;
+  pattern?: string;
   dry_run?: boolean;
   group_style?: "none" | "type" | "source";
 }
@@ -19,6 +22,7 @@ interface OrganizeImportsOutput extends Record<string, unknown> {
   error?: string;
   importCount: number;
   changes: number;
+  filesProcessed?: number;
   dryRun: boolean;
   newImportBlock?: string;
 }
@@ -31,25 +35,19 @@ export function registerOrganizeImports(
     "organize_imports",
     {
       title: "Organize imports",
-      description: `Sort and organize import statements in a file.
+      description: `Sort and organize import statements in file(s).
 
-This tool:
-1. Groups imports by type (external packages, internal modules, types)
-2. Sorts imports alphabetically within each group
-3. Combines imports from the same source
-4. Adds blank lines between groups
+Supports single file OR glob pattern for batch operations:
+- file_path: Process a single file
+- pattern: Process all files matching glob (e.g., "src/**/*.ts")
 
 Grouping styles:
-- "type": Group by import type (side_effect, default, named, namespace, type)
-- "source": Group by source (node_modules, relative paths)
-- "none": Just sort alphabetically
-
-Use cases:
-- Clean up messy import blocks
-- Enforce consistent import ordering
-- Prepare code for review`,
+- "source": Group by source (external first, then internal)
+- "type": Group by import type (regular, then type-only)
+- "none": Just sort alphabetically`,
       inputSchema: {
-        file_path: z.string().describe("Path to the file to organize"),
+        file_path: z.string().optional().describe("Path to a single file to organize"),
+        pattern: z.string().optional().describe("Glob pattern to match multiple files (e.g., 'src/**/*.ts')"),
         dry_run: z.boolean().optional().describe("If true, show what would change without making changes (default: false)"),
         group_style: z.enum(["none", "type", "source"]).optional().describe("How to group imports (default: 'source')"),
       },
@@ -58,21 +56,26 @@ Use cases:
         error: z.string().optional(),
         importCount: z.number(),
         changes: z.number(),
+        filesProcessed: z.number().optional(),
         dryRun: z.boolean(),
         newImportBlock: z.string().optional(),
       },
     },
     async (input: OrganizeImportsInput): Promise<ToolResponse<OrganizeImportsOutput>> => {
-      const { file_path, dry_run = false, group_style = "source" } = input;
+      const { file_path, pattern, dry_run = false, group_style = "source" } = input;
 
-      // Read the file
-      const readResult = syntax.readFile(file_path);
-      if (!readResult.ok) {
+      // Determine files to process
+      let files: string[] = [];
+      if (pattern) {
+        files = await glob(pattern, { nodir: true, ignore: ['**/node_modules/**', '**/dist/**'] });
+      } else if (file_path) {
+        files = [file_path];
+      } else {
         return {
-          content: [{ type: "text", text: `Error: ${readResult.error.message}` }],
+          content: [{ type: "text", text: "Error: Must provide either file_path or pattern" }],
           structuredContent: {
             success: false,
-            error: readResult.error.message,
+            error: "Must provide either file_path or pattern",
             importCount: 0,
             changes: 0,
             dryRun: dry_run,
@@ -80,118 +83,81 @@ Use cases:
         };
       }
 
-      const content = readResult.value;
+      // Process all files
+      let totalImports = 0;
+      let totalChanges = 0;
 
-      // Get imports
-      const importsResult = await syntax.getImports(file_path);
-      if (!importsResult.ok) {
-        return {
-          content: [{ type: "text", text: `Error getting imports: ${importsResult.error}` }],
-          structuredContent: {
-            success: false,
-            error: importsResult.error,
-            importCount: 0,
-            changes: 0,
-            dryRun: dry_run,
-          },
-        };
+      for (const filePath of files) {
+        const result = await processFileOrganize(syntax, filePath, dry_run, group_style);
+        totalImports += result.importCount;
+        totalChanges += result.changes;
       }
 
-      const imports = importsResult.value;
-
-      if (imports.length === 0) {
-        return {
-          content: [{ type: "text", text: "No imports found in this file." }],
-          structuredContent: {
-            success: true,
-            importCount: 0,
-            changes: 0,
-            dryRun: dry_run,
-          },
-        };
-      }
-
-      // Organize imports
-      const organizedImports = organizeImportStatements(imports, group_style);
-      const newImportBlock = organizedImports.join('\n');
-
-      // Find the import block in the original file
-      const lines = content.split('\n');
-      const importLines = imports.map(i => i.line).sort((a, b) => a - b);
-      const firstImportLine = importLines[0] - 1;
-      const lastImportLine = importLines[importLines.length - 1];
-
-      // Check if anything changed
-      const oldImportBlock = lines.slice(firstImportLine, lastImportLine).join('\n');
-      if (oldImportBlock.trim() === newImportBlock.trim()) {
-        return {
-          content: [{ type: "text", text: "Imports are already organized." }],
-          structuredContent: {
-            success: true,
-            importCount: imports.length,
-            changes: 0,
-            dryRun: dry_run,
-          },
-        };
-      }
-
-      if (dry_run) {
-        const output = [
-          `Would reorganize ${imports.length} import(s):`,
-          '',
-          'New import block:',
-          '```',
-          newImportBlock,
-          '```',
-        ];
-
-        return {
-          content: [{ type: "text", text: output.join('\n') }],
-          structuredContent: {
-            success: true,
-            importCount: imports.length,
-            changes: imports.length,
-            dryRun: true,
-            newImportBlock,
-          },
-        };
-      }
-
-      // Replace the import block
-      const newLines = [
-        ...lines.slice(0, firstImportLine),
-        ...organizedImports,
-        ...lines.slice(lastImportLine),
-      ];
-
-      const newContent = newLines.join('\n');
-      const writeResult = syntax.writeFile(file_path, newContent);
-
-      if (!writeResult.ok) {
-        return {
-          content: [{ type: "text", text: `Error writing file: ${writeResult.error.message}` }],
-          structuredContent: {
-            success: false,
-            error: writeResult.error.message,
-            importCount: imports.length,
-            changes: 0,
-            dryRun: false,
-          },
-        };
-      }
+      const output = pattern
+        ? `Processed ${files.length} files, organized ${totalChanges} import block(s)`
+        : `Organized ${totalImports} import(s)`;
 
       return {
-        content: [{ type: "text", text: `Organized ${imports.length} import(s)` }],
+        content: [{ type: "text", text: output }],
         structuredContent: {
           success: true,
-          importCount: imports.length,
-          changes: imports.length,
-          dryRun: false,
-          newImportBlock,
+          importCount: totalImports,
+          changes: totalChanges,
+          filesProcessed: files.length,
+          dryRun: dry_run,
         },
       };
     }
   );
+}
+
+async function processFileOrganize(
+  syntax: SyntaxService,
+  file_path: string,
+  dry_run: boolean,
+  group_style: "none" | "type" | "source"
+): Promise<{ importCount: number; changes: number }> {
+  const readResult = syntax.readFile(file_path);
+  if (!readResult.ok) {
+    return { importCount: 0, changes: 0 };
+  }
+
+  const content = readResult.value;
+  const importsResult = await syntax.getImports(file_path);
+  if (!importsResult.ok) {
+    return { importCount: 0, changes: 0 };
+  }
+
+  const imports = importsResult.value;
+  if (imports.length === 0) {
+    return { importCount: 0, changes: 0 };
+  }
+
+  const organizedImports = organizeImportStatements(imports, group_style);
+  const newImportBlock = organizedImports.join('\n');
+
+  const lines = content.split('\n');
+  const importLines = imports.map(i => i.line).sort((a, b) => a - b);
+  const firstImportLine = importLines[0] - 1;
+  const lastImportLine = importLines[importLines.length - 1];
+
+  const oldImportBlock = lines.slice(firstImportLine, lastImportLine).join('\n');
+  if (oldImportBlock.trim() === newImportBlock.trim()) {
+    return { importCount: imports.length, changes: 0 };
+  }
+
+  if (dry_run) {
+    return { importCount: imports.length, changes: imports.length };
+  }
+
+  const newLines = [
+    ...lines.slice(0, firstImportLine),
+    ...organizedImports,
+    ...lines.slice(lastImportLine),
+  ];
+
+  syntax.writeFile(file_path, newLines.join('\n'));
+  return { importCount: imports.length, changes: imports.length };
 }
 
 /**
@@ -224,7 +190,6 @@ function organizeImportStatements(
   for (const [source, sourceImports] of bySource) {
     const isExternal = !source.startsWith('.') && !source.startsWith('/');
     const isSideEffect = sourceImports.every(i => i.type === 'side_effect');
-    const hasTypeOnly = sourceImports.some(i => i.raw.includes('import type'));
 
     if (isSideEffect) {
       combined.push({
@@ -237,46 +202,73 @@ function organizeImportStatements(
       continue;
     }
 
-    // Collect all bindings
-    // Default imports have type 'default' and only one binding
+    // Collect all bindings with their type info
     const defaultImportInfo = sourceImports.find(i => i.type === 'default');
-    const defaultImport = defaultImportInfo?.bindings[0]?.name;
+    const defaultBinding = defaultImportInfo?.bindings[0];
 
-    const namespaceImport = sourceImports
-      .find(i => i.type === 'namespace')
-      ?.bindings[0]?.name;
+    const namespaceImportInfo = sourceImports.find(i => i.type === 'namespace');
+    const namespaceBinding = namespaceImportInfo?.bindings[0];
 
-    // Named imports come from imports with type 'named' or 'type'
-    const namedImports = sourceImports
+    // Collect named bindings with isType flag preserved
+    const namedBindings = sourceImports
       .filter(i => i.type !== 'default' && i.type !== 'namespace' && i.type !== 'side_effect')
       .flatMap(i => i.bindings)
-      .map(b => {
-        if (b.originalName && b.originalName !== b.name) {
-          return `${b.originalName} as ${b.name}`;
-        }
-        return b.name;
-      })
-      .filter((v, i, a) => a.indexOf(v) === i) // dedupe
-      .sort();
+      .filter((b, i, arr) => arr.findIndex(x => x.name === b.name) === i); // dedupe by name
 
-    // Build statement
+    // Separate type-only and value bindings
+    const typeBindings = namedBindings.filter(b => b.isType);
+    const valueBindings = namedBindings.filter(b => !b.isType);
+
+    // Check if all imports are type-only
+    const allTypeOnly = valueBindings.length === 0 &&
+      (!defaultBinding || defaultBinding.isType) &&
+      (!namespaceBinding || namespaceBinding.isType);
+
+    // Build statement with inline type syntax when mixing types and values
+    const formatBinding = (b: { name: string; originalName?: string; isType?: boolean }, forceType = false) => {
+      const typePrefix = (b.isType || forceType) && !allTypeOnly ? 'type ' : '';
+      if (b.originalName && b.originalName !== b.name) {
+        return `${typePrefix}${b.originalName} as ${b.name}`;
+      }
+      return `${typePrefix}${b.name}`;
+    };
+
     let statement: string;
-    const typePrefix = hasTypeOnly ? 'type ' : '';
+    const importKeyword = allTypeOnly ? 'import type' : 'import';
 
-    if (namespaceImport) {
-      statement = `import ${typePrefix}* as ${namespaceImport} from "${source}";`;
+    if (namespaceBinding) {
+      statement = `${importKeyword} * as ${namespaceBinding.name} from "${source}";`;
     } else {
       const parts: string[] = [];
-      if (defaultImport) parts.push(defaultImport);
-      if (namedImports.length > 0) parts.push(`{ ${namedImports.join(', ')} }`);
-      statement = `import ${typePrefix}${parts.join(', ')} from "${source}";`;
+
+      // Default import first
+      if (defaultBinding) {
+        parts.push(formatBinding(defaultBinding));
+      }
+
+      // Named imports - combine and sort (values first, then types)
+      const allNamed = [...valueBindings, ...typeBindings]
+        .map(b => formatBinding(b))
+        .sort((a, b) => {
+          // Sort type imports after value imports
+          const aIsType = a.startsWith('type ');
+          const bIsType = b.startsWith('type ');
+          if (aIsType !== bIsType) return aIsType ? 1 : -1;
+          return a.localeCompare(b);
+        });
+
+      if (allNamed.length > 0) {
+        parts.push(`{ ${allNamed.join(', ')} }`);
+      }
+
+      statement = `${importKeyword} ${parts.join(', ')} from "${source}";`;
     }
 
     combined.push({
       source,
       statement,
       isExternal,
-      isType: hasTypeOnly,
+      isType: allTypeOnly,
       isSideEffect: false,
     });
   }

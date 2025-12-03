@@ -89,16 +89,14 @@ Project metadata and orientation. Quickly understand project structure and avail
 - `get_scripts` - Available commands to run
 
 ### [@agent-workbench/types](packages/types/)
-TypeScript language service integration. Get type errors, hover info, and go-to-definition.
-**Auto-syncs** via file watcher (no manual notify needed).
+Fast single-file type checking. Never hangs - all operations complete in <5 seconds.
 
-- `get_diagnostics` - Type errors and warnings for file or project
-- `get_type_at_position` - Hover info and type details
+- `check_file` - Check a single file for type errors (fast, <2s)
+- `get_type` - Hover info and type details at a position
 - `go_to_definition` - Navigate to where symbols are defined
-- `find_type_references` - Type-aware reference finding
-- `get_quick_fixes` - Available fixes for errors
-- `notify_file_changed` - Manual sync if needed
-- `reload` - Re-discover tsconfig.json files (monorepo support)
+- `get_quick_fixes` - Available fixes for errors at a position
+
+For project-wide checks, use `tsc --noEmit` via task-runner instead.
 
 ### [@agent-workbench/test-runner](packages/test-runner/)
 Run tests and get structured results. Framework-agnostic with source-mapped failures.

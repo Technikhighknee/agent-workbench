@@ -1,67 +1,60 @@
 ---
 name: types
-description: "Type errors you can act on, not parse. IDE-quality intelligence."
-allowed-tools: mcp__types__get_diagnostics, mcp__types__get_type_at_position, mcp__types__go_to_definition, mcp__types__find_type_references, mcp__types__get_quick_fixes, mcp__types__notify_file_changed, mcp__types__reload
+description: "Fast type checking for single files. Never hangs, always answers in <5s."
+allowed-tools: mcp__types__check_file, mcp__types__get_type, mcp__types__go_to_definition, mcp__types__get_quick_fixes
 ---
 
 # types
 
-**Type checking that gives you file:line:column with the actual error. No parsing tsc output.**
+**Single-file type checking that never hangs. All operations complete in <5 seconds.**
 
-## First: get_diagnostics
+## First: check_file
 
 After EVERY edit, verify types:
 ```
-get_diagnostics({ file: 'src/edited.ts' })
+check_file({ file: 'src/edited.ts' })
 ```
-
-## Why This Wins
-
-| The Problem | Built-in Failure | types Solution |
-|-------------|------------------|----------------|
-| Check types | tsc output is noisy, needs parsing | `get_diagnostics` returns structured errors |
-| Understand a type | Read code and guess | `get_type_at_position` = IDE hover |
-| Find definition | Grep finds wrong matches | `go_to_definition` is precise |
-| Find usages | Grep matches strings/comments | `find_type_references` is semantic |
 
 ## Quick Reference
 
 | Task | Tool |
 |------|------|
-| Check for errors | `get_diagnostics` |
-| What type is this? | `get_type_at_position` |
+| Check for errors | `check_file` |
+| What type is this? | `get_type` |
 | Where is this defined? | `go_to_definition` |
-| Who uses this type? | `find_type_references` |
 | Auto-fix an error | `get_quick_fixes` |
-| Sync after edit | `notify_file_changed` |
+
+## Design Philosophy
+
+- **Single file focus** - optimized for checking ONE file at a time
+- **No state** - reads fresh from disk every time, never stale
+- **5 second timeout** - fails fast, never hangs
+- **For project-wide checks** - use `tsc --noEmit` via task_runner
 
 ## Common Workflows
 
 ### After Every Edit
 ```
-get_diagnostics({ file: 'src/api.ts' })
+check_file({ file: 'src/api.ts' })
 ```
 
 ### Understanding Unknown Code
 ```
-get_type_at_position({ file: 'src/api.ts', line: 42, column: 15 })
+get_type({ file: 'src/api.ts', line: 42, column: 15 })
 go_to_definition({ file: 'src/api.ts', line: 42, column: 15 })
 ```
 
 ### Fixing Type Errors
 ```
-get_diagnostics({ errors_only: true })
+check_file({ file: 'src/broken.ts' })
 get_quick_fixes({ file: 'src/broken.ts', line: 10, column: 5 })
 ```
 
-### Before Refactoring
+### Project-Wide Checks
 ```
-find_type_references({ file: 'src/types.ts', line: 5, column: 10 })
+task_run({ command: 'tsc --noEmit' })
 ```
 
 ## Integration
 
-Run `get_diagnostics` after using `syntax.edit_symbol` to verify your changes didn't break types.
-
-## Supports
-TypeScript, JavaScript with JSDoc
+Run `check_file` after using `syntax.edit_symbol` to verify your changes.

@@ -27,20 +27,20 @@
       "command": "npx",
       "args": ["-y", "tsx", "--watch", "packages/types/src/server.ts"],
       "agentPreferences": {
-        "description": "Type errors you can act on, not parse. IDE-quality intelligence.",
-        "when": "After any code edit, before committing",
-        "avoidWhen": "Non-TypeScript/JavaScript files",
-        "firstAction": "get_diagnostics() - verify your edit didn't break types",
+        "description": "Fast type checking for single files. Never hangs, always answers in <5s.",
+        "when": "After editing a TypeScript file, need type info",
+        "avoidWhen": "Non-TypeScript files, project-wide checks (use tsc --noEmit instead)",
+        "firstAction": "check_file({ file }) - verify your edit didn't break types",
         "toolGroups": {
-          "verify": { "tools": ["get_diagnostics", "notify_file_changed"] },
-          "understand": { "tools": ["get_type_at_position", "go_to_definition", "find_type_references"] },
-          "fix": { "tools": ["get_quick_fixes"] },
-          "lifecycle": { "tools": ["reload"] }
+          "verify": { "tools": ["check_file"] },
+          "understand": { "tools": ["get_type", "go_to_definition"] },
+          "fix": { "tools": ["get_quick_fixes"] }
         },
         "tips": [
-          "get_diagnostics after EVERY edit - catch errors immediately",
-          "notify_file_changed if diagnostics seem stale",
-          "get_type_at_position = hover info from IDE"
+          "check_file after EVERY edit - fast single-file check (<2s)",
+          "For project-wide checks use `tsc --noEmit` via task_runner instead",
+          "get_type = hover info (what's the type here?)",
+          "All operations timeout after 5s - never hangs"
         ]
       }
     },

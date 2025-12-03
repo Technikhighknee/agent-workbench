@@ -15,8 +15,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { TypeChecker } from "./TypeChecker.js";
 import { registerCheckFile } from "./tools/checkFile.js";
 import { registerGetType } from "./tools/getType.js";
-import { registerGoToDefinitionNew } from "./tools/goToDefinitionNew.js";
-import { registerGetQuickFixesNew } from "./tools/getQuickFixesNew.js";
+import { registerGoToDefinition } from "./tools/goToDefinition.js";
+import { registerGetQuickFixes } from "./tools/getQuickFixes.js";
 
 async function main(): Promise<void> {
   const server = new McpServer({
@@ -30,8 +30,8 @@ async function main(): Promise<void> {
   // Register tools
   registerCheckFile(server, checker);
   registerGetType(server, checker);
-  registerGoToDefinitionNew(server, checker);
-  registerGetQuickFixesNew(server, checker);
+  registerGoToDefinition(server, checker);
+  registerGetQuickFixes(server, checker);
 
   // Start server
   const transport = new StdioServerTransport();

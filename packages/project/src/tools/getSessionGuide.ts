@@ -11,6 +11,17 @@ const SESSION_GUIDE = `# Agent Workbench - MCP Tools Usage Guide
 
 These tools give you: structured data, no timeouts, source-mapped errors, semantic code operations.
 
+## First: Understand Code With One Call
+
+Before diving into unfamiliar code, use **insight** to understand it in one call:
+\`\`\`
+mcp__insight__insight({ target: "src/server.ts" })     // understand a file
+mcp__insight__insight({ target: "src/utils" })         // understand a directory
+mcp__insight__insight({ target: "TaskRunner" })        // understand a class/function
+\`\`\`
+
+Returns: symbols, imports/exports, callers/callees, git history, metrics, and notes - all at once.
+
 ## Critical Rules: NEVER Use Bash For These
 
 ### Git Operations
@@ -86,30 +97,33 @@ When starting in a new codebase:
 - \`get_tech_stack\` - detect frameworks & libraries
 - \`get_structure\` - directory layout with descriptions
 
-### Code Graph (Semantic Analysis)
-For deep code understanding and impact analysis:
-✅ USE: \`mcp__graph__*\` tools
-- \`graph_initialize\` - index a workspace (auto-runs on startup)
-- \`graph_get_symbol\` - get symbol with full source
-- \`graph_get_callers\` / \`graph_get_callees\` - call relationships
-- \`graph_trace\` - call chains forward/backward
-- \`graph_find_paths\` - how does A reach B?
-- \`graph_find_symbols\` - search by pattern/kind
-- \`graph_find_dead_code\` - find unreachable functions
-- \`graph_stats\` - index statistics
+### Understanding Code (Comprehensive)
+For quick orientation and understanding:
+✅ USE: \`mcp__insight__insight\`
+- One call to understand a file, directory, or symbol
+- Returns: symbols, imports, exports, relationships, git history, metrics
+
+For call graph analysis:
+✅ USE: \`mcp__syntax__*\` tools
+- \`get_callers\` / \`get_callees\` - call relationships
+- \`trace\` - call chains forward/backward
+- \`find_paths\` - how does A reach B?
+- \`find_dead_code\` - find unreachable functions
 
 ## Quick Decision Guide
 
 | I want to... | Use |
 |-------------|-----|
+| **Understanding code** | |
+| Understand a file/class/module | \`mcp__insight__insight\` |
 | **Refactoring** | |
-| What breaks if I change X? | \`mcp__graph__graph_get_callers\` |
+| What breaks if I change X? | \`mcp__syntax__get_callers\` |
 | Move file safely | \`mcp__syntax__move_file\` |
 | Move function to another file | \`mcp__syntax__move_symbol\` |
 | Extract code to function | \`mcp__syntax__extract_function\` |
 | Inline a function | \`mcp__syntax__inline_function\` |
 | Find unused exports | \`mcp__syntax__find_unused_exports\` |
-| Find unreachable code | \`mcp__graph__graph_find_dead_code\` |
+| Find unreachable code | \`mcp__syntax__find_dead_code\` |
 | Clean up imports | \`mcp__syntax__remove_unused_imports\` |
 | Organize imports | \`mcp__syntax__organize_imports\` |
 | **Code operations** | |
@@ -131,9 +145,9 @@ For deep code understanding and impact analysis:
 | Build project | \`mcp__task-runner__task_run\` |
 | Start dev server | \`mcp__task-runner__task_start\` |
 | **Deep analysis** | |
-| Who calls X | \`mcp__graph__graph_get_callers\` |
-| Trace call chains | \`mcp__graph__graph_trace\` |
-| Path A→B | \`mcp__graph__graph_find_paths\` |
+| Who calls X | \`mcp__syntax__get_callers\` |
+| Trace call chains | \`mcp__syntax__trace\` |
+| Path A→B | \`mcp__syntax__find_paths\` |
 `;
 
 export function registerGetSessionGuide(server: McpServer): void {
@@ -145,7 +159,7 @@ export function registerGetSessionGuide(server: McpServer): void {
         "MANDATORY: Call this at the start of every session and after context compacting. " +
         "Learn about 60+ specialized MCP tools that replace Bash for git, TypeScript, tests, " +
         "builds, and code editing. These tools give structured results, no timeouts, and " +
-        "semantic operations. Covers: history, types, test-runner, task-runner, syntax, graph packages.",
+        "semantic operations. Covers: insight, history, types, test-runner, task-runner, syntax packages.",
       inputSchema: {},
     },
     async () => {

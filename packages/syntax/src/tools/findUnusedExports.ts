@@ -14,6 +14,9 @@ import type { ToolResponse } from "./types.js";
 interface FindUnusedExportsInput {
   file_pattern?: string;
   include_reexports?: boolean;
+  include_config?: boolean;
+  include_fixtures?: boolean;
+  exclude_patterns?: string[];
 }
 
 interface UnusedExport {
@@ -33,6 +36,29 @@ interface FindUnusedExportsOutput extends Record<string, unknown> {
   filesAnalyzed: number;
 }
 
+/**
+ * Convert a glob pattern to a regex for matching file paths.
+ */
+function globToRegex(glob: string): RegExp {
+  const escaped = glob
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*\*/g, "<<<GLOBSTAR>>>")
+    .replace(/\*/g, "[^/]*")
+    .replace(/<<<GLOBSTAR>>>/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp(`^${escaped}$`);
+}
+
+/**
+ * Check if a file path matches any of the given glob patterns.
+ */
+function matchesAnyPattern(filePath: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => {
+    const regex = globToRegex(pattern);
+    return regex.test(filePath);
+  });
+}
+
 export function registerFindUnusedExports(
   server: McpServer,
   index: ProjectIndex,
@@ -50,6 +76,8 @@ This tool helps identify dead code by finding:
 - Exported types/interfaces that are never used
 - Exported constants that are never referenced
 
+By default, excludes noise like config files and test fixtures.
+
 Use cases:
 - Clean up dead code before refactoring
 - Identify unused public APIs
@@ -62,11 +90,33 @@ Exports used by external packages or entry points (like main exports) may be fla
         file_pattern: z
           .string()
           .optional()
-          .describe("Optional glob pattern to filter files (e.g., 'src/**/*.ts')"),
+          .describe(
+            "Optional glob pattern to filter files (e.g., 'src/**/*.ts')"
+          ),
         include_reexports: z
           .boolean()
           .optional()
-          .describe("Include re-exports (export { x } from './y') in results (default: false)"),
+          .describe(
+            "Include re-exports (export { x } from './y') in results (default: false)"
+          ),
+        include_config: z
+          .boolean()
+          .optional()
+          .describe(
+            "Include config files like *.config.ts, vitest.workspace.ts (default: false)"
+          ),
+        include_fixtures: z
+          .boolean()
+          .optional()
+          .describe(
+            "Include test fixture files in test/fixtures/** (default: false)"
+          ),
+        exclude_patterns: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "Additional glob patterns to exclude (e.g., ['**/generated/**'])"
+          ),
       },
       outputSchema: {
         success: z.boolean(),
@@ -85,12 +135,25 @@ Exports used by external packages or entry points (like main exports) may be fla
         filesAnalyzed: z.number(),
       },
     },
-    async (input: FindUnusedExportsInput): Promise<ToolResponse<FindUnusedExportsOutput>> => {
-      const { file_pattern, include_reexports = false } = input;
+    async (
+      input: FindUnusedExportsInput
+    ): Promise<ToolResponse<FindUnusedExportsOutput>> => {
+      const {
+        file_pattern,
+        include_reexports = false,
+        include_config = false,
+        include_fixtures = false,
+        exclude_patterns = [],
+      } = input;
 
       if (index.isEmpty()) {
         return {
-          content: [{ type: "text", text: "Error: No project indexed. Call index_project first." }],
+          content: [
+            {
+              type: "text",
+              text: "Error: No project indexed. Call index_project first.",
+            },
+          ],
           structuredContent: {
             success: false,
             error: "No project indexed. Call index_project first.",
@@ -104,21 +167,53 @@ Exports used by external packages or entry points (like main exports) may be fla
 
       const indexedFiles = index.getIndexedFiles();
 
-      // Filter files if pattern provided
+      // Filter files
       let filesToAnalyze = indexedFiles;
+
+      // Apply include pattern first
       if (file_pattern) {
-        const globToRegex = (glob: string): RegExp => {
-          const escaped = glob
-            .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-            .replace(/\*\*/g, '<<<GLOBSTAR>>>')
-            .replace(/\*/g, '[^/]*')
-            .replace(/<<<GLOBSTAR>>>/g, '.*')
-            .replace(/\?/g, '.');
-          return new RegExp(`^${escaped}$`);
-        };
         const regex = globToRegex(file_pattern);
-        filesToAnalyze = indexedFiles.filter(f => regex.test(f));
+        filesToAnalyze = filesToAnalyze.filter((f) => regex.test(f));
       }
+
+      // Apply exclusions
+      const originalCount = filesToAnalyze.length;
+      filesToAnalyze = filesToAnalyze.filter((f) => {
+        // Exclude config files by substring match
+        if (!include_config) {
+          if (
+            f.endsWith(".config.ts") ||
+            f.endsWith(".config.js") ||
+            f.endsWith(".config.mts") ||
+            f.endsWith(".config.mjs") ||
+            f.includes("vitest.workspace.")
+          ) {
+            return false;
+          }
+        }
+
+        // Exclude fixture files by substring match
+        if (!include_fixtures) {
+          if (
+            f.includes("/test/fixtures/") ||
+            f.includes("/tests/fixtures/") ||
+            f.includes("/__fixtures__/") ||
+            f.includes("/fixtures/")
+          ) {
+            return false;
+          }
+        }
+
+        // Exclude by custom patterns
+        if (
+          exclude_patterns.length > 0 &&
+          matchesAnyPattern(f, exclude_patterns)
+        ) {
+          return false;
+        }
+        return true;
+      });
+      const filesExcluded = originalCount - filesToAnalyze.length;
 
       // Step 1: Collect all exports from all files
       interface ExportInfo {
@@ -149,7 +244,7 @@ Exports used by external packages or entry points (like main exports) may be fla
               name: binding.name,
               kind: exp.type, // export type (named, default, declaration, etc.)
               line: exp.line,
-              isDefault: exp.type === 'default',
+              isDefault: exp.type === "default",
               isReexport,
             });
           }
@@ -169,7 +264,11 @@ Exports used by external packages or entry points (like main exports) may be fla
 
         for (const imp of importsResult.value) {
           // Resolve the import source to a file path
-          const resolvedFile = resolveImportPath(file, imp.source, indexedFiles);
+          const resolvedFile = resolveImportPath(
+            file,
+            imp.source,
+            indexedFiles
+          );
           if (!resolvedFile) continue;
 
           if (!importedFromFile.has(resolvedFile)) {
@@ -194,14 +293,18 @@ Exports used by external packages or entry points (like main exports) may be fla
         if (!isUsed) {
           // Skip index.ts/index.js barrel exports (they're often entry points)
           const basename = path.basename(exp.file);
-          if (basename === 'index.ts' || basename === 'index.js') {
+          if (basename === "index.ts" || basename === "index.js") {
             continue;
           }
 
           // Skip main entry points (package.json main/exports)
           // This is a heuristic - files named after the package are often entry points
           const filename = path.basename(exp.file, path.extname(exp.file));
-          if (filename === 'main' || filename === 'index' || filename === 'server') {
+          if (
+            filename === "main" ||
+            filename === "index" ||
+            filename === "server"
+          ) {
             continue;
           }
 
@@ -224,28 +327,32 @@ Exports used by external packages or entry points (like main exports) may be fla
       // Build output
       const lines: string[] = [
         `Found ${unusedExports.length} unused export(s) out of ${allExports.length} total export(s)`,
-        `Analyzed ${filesToAnalyze.length} file(s)`,
-        '',
+        `Analyzed ${filesToAnalyze.length} file(s)${filesExcluded > 0 ? `, excluded ${filesExcluded} file(s)` : ""}`,
+        "",
       ];
 
       if (unusedExports.length > 0) {
-        lines.push('Unused exports:');
+        lines.push("Unused exports:");
 
-        let currentFile = '';
+        let currentFile = "";
         for (const exp of unusedExports) {
           if (exp.file !== currentFile) {
             currentFile = exp.file;
             lines.push(`\n  ${exp.file}:`);
           }
-          const defaultMarker = exp.isDefault ? ' (default)' : '';
-          lines.push(`    Line ${exp.line}: ${exp.name} [${exp.kind}]${defaultMarker}`);
+          const defaultMarker = exp.isDefault ? " (default)" : "";
+          lines.push(
+            `    Line ${exp.line}: ${exp.name} [${exp.kind}]${defaultMarker}`
+          );
         }
       } else {
-        lines.push('No unused exports found - all exports are imported somewhere.');
+        lines.push(
+          "No unused exports found - all exports are imported somewhere."
+        );
       }
 
       return {
-        content: [{ type: "text", text: lines.join('\n') }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: {
           success: true,
           unusedExports,
@@ -267,7 +374,7 @@ function resolveImportPath(
   indexedFiles: string[]
 ): string | null {
   // Only handle relative imports
-  if (!importPath.startsWith('.')) {
+  if (!importPath.startsWith(".")) {
     return null;
   }
 
@@ -275,7 +382,7 @@ function resolveImportPath(
   const resolved = path.normalize(path.join(fromDir, importPath));
 
   // Try various extensions
-  const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs'];
+  const extensions = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
 
   // Direct match
   if (indexedFiles.includes(resolved)) return resolved;
@@ -287,22 +394,22 @@ function resolveImportPath(
   }
 
   // Handle .js -> .ts mapping
-  if (resolved.endsWith('.js')) {
-    const tsPath = resolved.slice(0, -3) + '.ts';
+  if (resolved.endsWith(".js")) {
+    const tsPath = resolved.slice(0, -3) + ".ts";
     if (indexedFiles.includes(tsPath)) return tsPath;
-    const tsxPath = resolved.slice(0, -3) + '.tsx';
+    const tsxPath = resolved.slice(0, -3) + ".tsx";
     if (indexedFiles.includes(tsxPath)) return tsxPath;
   }
 
   // Handle .mjs -> .mts mapping
-  if (resolved.endsWith('.mjs')) {
-    const mtsPath = resolved.slice(0, -4) + '.mts';
+  if (resolved.endsWith(".mjs")) {
+    const mtsPath = resolved.slice(0, -4) + ".mts";
     if (indexedFiles.includes(mtsPath)) return mtsPath;
   }
 
   // Index file pattern
   for (const ext of extensions) {
-    const indexPath = path.join(resolved, 'index' + ext);
+    const indexPath = path.join(resolved, "index" + ext);
     if (indexedFiles.includes(indexPath)) return indexPath;
   }
 

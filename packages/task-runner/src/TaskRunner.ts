@@ -743,10 +743,18 @@ export class TaskRunner {
   /**
    * Read last N lines from a file.
    */
+  /**
+   * Read last N lines from a file.
+   */
   private tailFile(filePath: string, lines: number): string {
     try {
       const content = readFileSync(filePath, "utf-8");
+      // Split and filter trailing empty line (from trailing newline)
       const allLines = content.split("\n");
+      // Remove trailing empty string if file ends with newline
+      if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+        allLines.pop();
+      }
       return cleanOutput(allLines.slice(-lines).join("\n"));
     } catch {
       return "";

@@ -2,7 +2,7 @@
  * Formatting utilities for refactoring suggestions.
  */
 
-import type { RefactoringSuggestion, RefactoringAnalysis } from "./suggestRefactoring.js";
+import type { RefactoringSuggestion, RefactoringAnalysis } from "./types.js";
 
 /**
  * Generate a summary of the refactoring suggestions.

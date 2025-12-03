@@ -4,22 +4,15 @@
 
 import { Err, Ok, Result } from "@agent-workbench/core";
 
-import type { SymbolReference } from "../model.js";
+import { escapeRegex } from "../model.js";
+import type { IndexedSymbol, SymbolReference } from "../model.js";
 import type { FileSystem } from "../ports/FileSystem.js";
-import type { IndexedSymbol } from "./ProjectIndex.js";
 
 export interface ReferenceSearchContext {
   indexedFiles: Map<string, unknown>;
   allSymbols: IndexedSymbol[];
   fs: FileSystem;
   resolvePath: (relativePath: string) => string;
-}
-
-/**
- * Escape special regex characters in a string.
- */
-export function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**

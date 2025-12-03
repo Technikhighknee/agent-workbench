@@ -5,41 +5,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { InsightService } from "../InsightService.js";
+import type { RefactoringSuggestion, RefactoringAnalysis } from "./types.js";
 import { analyzeFile, analyzeDirectory, analyzeSymbol } from "./RefactoringAnalyzers.js";
 import { formatAnalysis, generateSummary } from "./RefactoringFormatter.js";
-
-/**
- * Refactoring suggestion with priority and actionable advice.
- */
-export interface RefactoringSuggestion {
-  type:
-    | "extract_function"
-    | "split_file"
-    | "reduce_coupling"
-    | "remove_unused"
-    | "add_tests"
-    | "simplify"
-    | "rename";
-  priority: "high" | "medium" | "low";
-  target: string;
-  description: string;
-  rationale: string;
-  suggestedAction?: string;
-}
-
-/**
- * Refactoring analysis result.
- */
-export interface RefactoringAnalysis {
-  target: string;
-  suggestions: RefactoringSuggestion[];
-  metrics: {
-    complexity: "low" | "medium" | "high";
-    maintainability: "good" | "needs_attention" | "poor";
-    testCoverage: "unknown" | "none" | "partial" | "good";
-  };
-  summary: string;
-}
 
 export function registerSuggestRefactoring(
   server: McpServer,

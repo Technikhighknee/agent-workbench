@@ -48,6 +48,8 @@ import {
   DEFAULT_WAIT_TIMEOUT,
 } from "./model.js";
 import { cleanOutput } from "./cleanOutput.js";
+import { isProcessAlive, isPidAlive, getProcessStartTime } from "./processUtils.js";
+import { tailFile, tailBytes, truncateLogFile } from "./fileUtils.js";
 
 /**
  * Process manager for long-running tasks.
@@ -614,58 +616,21 @@ export class TaskRunner {
    * Check if a PID is alive and matches our expected start time.
    */
   private isProcessAlive(pid: number, expectedStartTime: string): boolean {
-    if (!this.isPidAlive(pid)) {
-      return false;
-    }
-
-    // Get process start time and compare
-    // This handles PID reuse - if the PID was reused for a different process,
-    // its start time will be different
-    try {
-      const procStartTime = this.getProcessStartTime(pid);
-      const taskStartTime = new Date(expectedStartTime).getTime();
-
-      // Allow 5 second tolerance for start time comparison
-      return Math.abs(procStartTime - taskStartTime) < 5000;
-    } catch {
-      // Can't get start time - assume it's our process if PID exists
-      // This is less safe but works on non-Linux systems
-      return true;
-    }
+    return isProcessAlive(pid, expectedStartTime);
   }
 
   /**
    * Check if a PID exists (process is alive).
    */
   private isPidAlive(pid: number): boolean {
-    try {
-      process.kill(pid, 0); // Signal 0 = check existence
-      return true;
-    } catch {
-      return false;
-    }
+    return isPidAlive(pid);
   }
 
   /**
    * Get process start time in milliseconds since epoch.
    */
   private getProcessStartTime(pid: number): number {
-    // On Linux, read from /proc/{pid}/stat
-    // Field 22 is starttime in clock ticks since boot
-    try {
-      const stat = readFileSync(`/proc/${pid}/stat`, "utf-8");
-      const fields = stat.split(" ");
-      const startTimeTicks = parseInt(fields[21], 10);
-      const uptimeSeconds = parseFloat(
-        readFileSync("/proc/uptime", "utf-8").split(" ")[0]
-      );
-      const bootTime = Date.now() - uptimeSeconds * 1000;
-      const ticksPerSecond = 100; // Usually 100 on Linux
-      return bootTime + (startTimeTicks / ticksPerSecond) * 1000;
-    } catch {
-      // Non-Linux: throw to trigger fallback behavior
-      throw new Error("Cannot get process start time on this platform");
-    }
+    return getProcessStartTime(pid);
   }
 
   /**
@@ -746,55 +711,21 @@ export class TaskRunner {
    * Read last N lines from a file.
    */
   private tailFile(filePath: string, lines: number): string {
-    try {
-      const content = readFileSync(filePath, "utf-8");
-      // Split and filter trailing empty line (from trailing newline)
-      const allLines = content.split("\n");
-      // Remove trailing empty string if file ends with newline
-      if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
-        allLines.pop();
-      }
-      return cleanOutput(allLines.slice(-lines).join("\n"));
-    } catch {
-      return "";
-    }
+    return tailFile(filePath, lines);
   }
 
   /**
    * Read last N bytes from a file.
    */
   private tailBytes(filePath: string, bytes: number): string {
-    try {
-      const stats = statSync(filePath);
-      if (stats.size <= bytes) {
-        return readFileSync(filePath, "utf-8");
-      }
-
-      const fd = openSync(filePath, "r");
-      const buffer = Buffer.alloc(bytes);
-      const startPos = stats.size - bytes;
-
-      readSync(fd, buffer, 0, bytes, startPos);
-      closeSync(fd);
-
-      return cleanOutput(buffer.toString("utf-8"));
-    } catch {
-      return "";
-    }
+    return tailBytes(filePath, bytes);
   }
 
   /**
    * Truncate a log file to the specified size (keeping the end).
    */
   private truncateLogFile(filePath: string, maxSize: number): void {
-    try {
-      const content = this.tailBytes(filePath, maxSize - 50);
-      const truncatedContent =
-        "[Log truncated due to size limit]\n\n" + content;
-      writeFileSync(filePath, truncatedContent);
-    } catch {
-      // Ignore truncation errors
-    }
+    return truncateLogFile(filePath, maxSize);
   }
 
   /**

@@ -39,34 +39,43 @@ agent-workbench/
 ## Package Dependency Graph
 
 ```
-                           ┌──────────────────────────────────────────┐
-                           │                  core                     │
-                           │  (Result type, MCP helpers, bootstrap)   │
-                           └────────────────────┬─────────────────────┘
-                                                │
-         ┌──────────────────┬───────────────────┼───────────────────┬────────────────────┐
-         │                  │                   │                   │                    │
-         ▼                  ▼                   ▼                   ▼                    ▼
-    ┌─────────┐      ┌───────────┐       ┌───────────┐       ┌───────────┐        ┌───────────┐
-    │ syntax  │      │  history  │       │  project  │       │   types   │        │task-runner│
-    └────┬────┘      └───────────┘       └───────────┘       └─────┬─────┘        └─────┬─────┘
-         │                                                         │                    │
-         │                                                         │                    │
-         ├─────────────────────────────────────────────────────────┤                    │
-         │                                                         │                    │
-         ▼                                                         ▼                    ▼
-    ┌─────────┐                                              ┌───────────┐       ┌───────────┐
-    │ insight │                                              │  preview  │       │test-runner│
-    └─────────┘                                              └───────────┘       └───────────┘
-
-    ┌─────────┐
-    │  board  │ (standalone, only depends on core)
-    └─────────┘
+                              ┌───────────┐
+                              │   core    │
+                              └─────┬─────┘
+                                    │
+        ┌───────┬───────┬───────┬───┴───┬───────┬───────┐
+        │       │       │       │       │       │       │
+        ▼       ▼       ▼       ▼       ▼       ▼       ▼
+    ┌───────┬───────┬───────┬───────┬───────┬───────┬───────┐
+    │syntax │history│project│ types │task-  │ board │insight│
+    │       │       │       │       │runner │       │       │
+    └───┬───┴───────┴───────┴───┬───┴───┬───┴───────┴───┬───┘
+        │                       │       │               │
+        │                       │       │               │
+        │       ┌───────────────┘       │     (uses syntax)
+        │       │                       │
+        ▼       ▼                       ▼
+    ┌───────────────┐           ┌───────────────┐
+    │    preview    │           │  test-runner  │
+    │(syntax+types) │           │ (task-runner) │
+    └───────────────┘           └───────────────┘
 ```
+
+**10 packages total:**
+- **core** - Shared utilities (no external dependencies)
+- **syntax** - Code parsing and symbol operations
+- **history** - Git operations
+- **project** - Project info and structure
+- **types** - TypeScript type checking
+- **task-runner** - Background task management
+- **board** - Task tracking for agents
+- **test-runner** - Test execution (depends on task-runner)
+- **insight** - Code analysis (depends on syntax)
+- **preview** - Edit impact prediction (depends on syntax, types)
 
 **Build order matters:**
 1. `core` - No dependencies, build first
-2. `syntax`, `history`, `project`, `types`, `task-runner`, `board` - Depend on `core`
+2. `syntax`, `history`, `project`, `types`, `task-runner`, `board` - Depend only on `core`
 3. `test-runner` - Depends on `task-runner`
 4. `insight`, `preview` - Depend on `syntax`, `types`
 

@@ -3,6 +3,25 @@
 
 Back to [main README.md](../../)
 
+## Installation
+
+```bash
+npm install @agent-workbench/syntax
+```
+
+## MCP Configuration
+
+```json
+{
+  "mcpServers": {
+    "syntax": {
+      "command": "npx",
+      "args": ["@agent-workbench/syntax"]
+    }
+  }
+}
+```
+
 ## Tools
 
 ### File Operations

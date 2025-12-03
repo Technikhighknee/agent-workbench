@@ -4,6 +4,25 @@ Fast, single-file TypeScript type checking for AI agents. Never hangs - all oper
 
 **INSTEAD OF:** `tsc --noEmit` in Bash (which can timeout or produce noisy output).
 
+## Installation
+
+```bash
+npm install @agent-workbench/types
+```
+
+## MCP Configuration
+
+```json
+{
+  "mcpServers": {
+    "types": {
+      "command": "npx",
+      "args": ["@agent-workbench/types"]
+    }
+  }
+}
+```
+
 ## Design Philosophy
 
 - **Single file focus** - Optimized for checking ONE file at a time

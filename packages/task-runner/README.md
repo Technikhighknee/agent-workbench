@@ -2,6 +2,25 @@
 
 Minimal, robust task execution for AI agents. Runs commands with SQLite persistence - tasks survive server restarts.
 
+## Installation
+
+```bash
+npm install @agent-workbench/task-runner
+```
+
+## MCP Configuration
+
+```json
+{
+  "mcpServers": {
+    "task-runner": {
+      "command": "npx",
+      "args": ["@agent-workbench/task-runner"]
+    }
+  }
+}
+```
+
 ## Why task-runner?
 
 **Problem:** Bash commands timeout, processes get orphaned, output is lost.

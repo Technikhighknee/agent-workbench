@@ -34,9 +34,16 @@ npm run build
 Or build a specific package:
 
 ```bash
-npm run build:syntax    # Build syntax package
-npm run build:history   # Build history package
-# etc.
+npm run build:core        # Build core (shared utilities)
+npm run build:syntax      # Build syntax
+npm run build:history     # Build history
+npm run build:project     # Build project
+npm run build:types       # Build types
+npm run build:task-runner # Build task-runner
+npm run build:board       # Build board
+npm run build:test-runner # Build test-runner
+npm run build:insight     # Build insight
+npm run build:preview     # Build preview
 ```
 
 ### 4. Run Tests
@@ -87,10 +94,9 @@ git checkout -b feat/your-feature-name
 The packages have dependencies on each other. Build order matters:
 
 1. `core` - No dependencies, build first
-2. `syntax`, `history`, `project`, `types`, `task-runner` - Depend on `core`
+2. `syntax`, `history`, `project`, `types`, `task-runner`, `board` - Depend only on `core`
 3. `test-runner` - Depends on `task-runner`
 4. `insight`, `preview` - Depend on `syntax`, `types`
-5. `board` - Depends on `core`
 
 When in doubt, run `npm run build` to build everything in the correct order.
 

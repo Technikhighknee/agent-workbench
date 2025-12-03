@@ -130,6 +130,23 @@ Impact preview before making changes. See consequences without applying edits.
   - **Related tests**: Tests to run after the change
   - **Impact summary**: Risk assessment and suggestions
 
+### [@agent-workbench/board](packages/board/)
+Task board for AI agents. Track work items with a Trello-like kanban board that persists across sessions.
+
+- `board_list` - List cards with optional filtering by list, labels, priority, or search
+- `board_add` - Create a new card with title, description, priority, labels
+- `board_update` - Update card properties
+- `board_move` - Move a card to a different list
+- `board_get` - Get full details of a specific card
+- `board_delete` - Remove a card from the board
+
+### [@agent-workbench/core](packages/core/)
+Shared utilities used by all packages. Not an MCP server itself.
+
+- `Result<T, E>` type for explicit error handling (no exceptions crossing boundaries)
+- MCP response helpers (`textResponse`, `errorResponse`, `resultToResponse`)
+- Server bootstrap utilities (`runServer`, `bootstrapServer`)
+
 ## For AI Agents
 
 **Start with** `mcp__project__get_session_guide` to learn when to use each tool.
@@ -144,6 +161,7 @@ Key principle: **Use these MCP tools instead of Bash** for:
 - Long builds → `mcp__task-runner__*`
 - Code read/edit → `mcp__syntax__*` (including `batch_edit_symbols` for atomic multi-file edits)
 - Project info → `mcp__project__*`
+- Task tracking → `mcp__board__*` (persistent kanban board across sessions)
 
 Each package has a skill file in `.claude/skills/` with detailed usage patterns.
 

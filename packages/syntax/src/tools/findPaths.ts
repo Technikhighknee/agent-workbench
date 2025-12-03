@@ -13,7 +13,7 @@ interface FindPathsInput {
   max_depth?: number;
 }
 
-interface FindPathsOutput {
+interface FindPathsOutput extends Record<string, unknown> {
   success: boolean;
   error?: string;
   from?: string;

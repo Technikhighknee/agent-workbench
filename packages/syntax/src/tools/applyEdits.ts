@@ -9,7 +9,7 @@
  */
 
 import { z } from "zod";
-import { McpServer } from "@anthropic/sdk-mcp";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SyntaxService } from "../core/services/SyntaxService.js";
 
 const EditSchema = z.object({
@@ -51,7 +51,7 @@ interface EditResult {
   };
 }
 
-interface ApplyEditsOutput {
+interface ApplyEditsOutput extends Record<string, unknown> {
   success: boolean;
   applied: boolean;
   dry_run: boolean;
@@ -73,7 +73,7 @@ export function registerApplyEdits(
     "apply_edits",
     "Apply multiple edits across files atomically. All edits succeed or all fail with rollback.",
     ApplyEditsSchema.shape,
-    async (params): Promise<{ content: Array<{ type: "text"; text: string }>; structuredContent: ApplyEditsOutput }> => {
+    async (params: z.infer<typeof ApplyEditsSchema>): Promise<{ content: Array<{ type: "text"; text: string }>; structuredContent: ApplyEditsOutput }> => {
       const { edits, dry_run } = ApplyEditsSchema.parse(params);
 
       const results: EditResult[] = [];

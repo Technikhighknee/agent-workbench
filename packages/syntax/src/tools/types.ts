@@ -5,7 +5,7 @@ export interface ToolRegistrar {
   (server: McpServer, service: SyntaxService): void;
 }
 
-export type ToolResponse<T extends Record<string, unknown>> = {
+export type ToolResponse<T = Record<string, unknown>> = {
   [key: string]: unknown;
   content: Array<{ type: "text"; text: string }>;
   structuredContent?: T;

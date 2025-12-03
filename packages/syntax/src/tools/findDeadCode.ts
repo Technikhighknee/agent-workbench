@@ -11,7 +11,7 @@ interface FindDeadCodeInput {
   file_pattern?: string;
 }
 
-interface FindDeadCodeOutput {
+interface FindDeadCodeOutput extends Record<string, unknown> {
   success: boolean;
   error?: string;
   totalSymbols?: number;

@@ -13,7 +13,7 @@ interface TraceInput {
   depth?: number;
 }
 
-interface TraceOutput {
+interface TraceOutput extends Record<string, unknown> {
   success: boolean;
   error?: string;
   from?: string;

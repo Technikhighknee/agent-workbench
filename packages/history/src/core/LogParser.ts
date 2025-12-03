@@ -104,13 +104,13 @@ export function parseLogWithStats(output: string): RecentChanges {
  */
 export function parseStatLines(output: string): Array<{
   path: string;
-  status: string;
+  status: "A" | "M" | "D" | "R" | "C" | "T" | "U" | "X";
   additions: number;
   deletions: number;
 }> {
   const files: Array<{
     path: string;
-    status: string;
+    status: "A" | "M" | "D" | "R" | "C" | "T" | "U" | "X";
     additions: number;
     deletions: number;
   }> = [];

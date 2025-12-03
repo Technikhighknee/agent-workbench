@@ -107,11 +107,22 @@ Run tests and get structured results. Framework-agnostic with source-mapped fail
 - `list_test_files` - Discover test files by pattern
 - `rerun_failed` - Re-execute only failing tests
 
+### [@agent-workbench/insight](packages/insight/)
+Comprehensive code understanding in one call. Structure, relationships, and history together.
+
+- `insight` - Understand a file, directory, or symbol
+  - **File**: Language, metrics, symbols, imports/exports, who imports it, git history
+  - **Directory**: Entry points, all files (recursive), key symbols, dependencies, git history
+  - **Symbol**: Code, signature, callers/callees, related symbols, git history
+
+Replaces multiple tool calls (list_symbols + get_imports + get_exports + file_history + find_references) with a single comprehensive view.
+
 ## For AI Agents
 
 **Start with** `mcp__project__get_session_guide` to learn when to use each tool.
 
 Key principle: **Use these MCP tools instead of Bash** for:
+- Understanding code → `mcp__insight__insight` (comprehensive, one call)
 - Git operations → `mcp__history__*`
 - TypeScript checking → `mcp__types__*`
 - Running tests → `mcp__test-runner__*`

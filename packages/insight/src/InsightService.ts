@@ -261,26 +261,44 @@ export class InsightService {
       .filter((e) => e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules" && e.name !== "dist")
       .map((e) => e.name);
 
-    // Recursively collect ALL source files
+    // Recursively collect ALL source files (excluding test files for main metrics)
     const allFiles = this.collectFilesRecursively(dirPath);
+    const sourceFiles = allFiles.filter((f) => !f.relativePath.includes("test/") && !f.relativePath.endsWith(".test.ts") && !f.relativePath.endsWith(".spec.ts"));
+    const testFiles = allFiles.filter((f) => f.relativePath.includes("test/") || f.relativePath.endsWith(".test.ts") || f.relativePath.endsWith(".spec.ts"));
     const fileNames = allFiles.map((f) => f.relativePath);
 
-    // Find entry points (at root level)
-    const rootFiles = entries
-      .filter((e) => e.isFile() && this.isSourceFile(e.name))
-      .map((e) => e.name);
-    const entryPoints = rootFiles.filter(
-      (f) => f === "index.ts" || f === "index.js" || f === "mod.ts" || f === "main.ts"
-    );
+    // Find entry points - check root and src/ directory
+    const entryPointNames = ["index.ts", "index.js", "mod.ts", "main.ts"];
+    const entryPoints: string[] = [];
+    
+    // Check root level
+    for (const name of entryPointNames) {
+      if (entries.some((e) => e.isFile() && e.name === name)) {
+        entryPoints.push(name);
+      }
+    }
+    
+    // Check src/ subdirectory if exists
+    if (subdirectories.includes("src")) {
+      const srcPath = join(dirPath, "src");
+      try {
+        const srcEntries = readdirSync(srcPath, { withFileTypes: true });
+        for (const name of entryPointNames) {
+          if (srcEntries.some((e) => e.isFile() && e.name === name)) {
+            entryPoints.push(`src/${name}`);
+          }
+        }
+      } catch { /* ignore */ }
+    }
 
-    // Collect key symbols from all files
+    // Collect key symbols from source files (not test files)
     const keySymbols: SymbolRef[] = [];
     const allImports: Set<string> = new Set();
     const internalDeps: Set<string> = new Set();
     let totalLines = 0;
     let totalSymbols = 0;
 
-    for (const file of allFiles) {
+    for (const file of sourceFiles) {
       const sourceResult = this.fs.read(file.absolutePath);
       if (!sourceResult.ok) continue;
 
@@ -339,7 +357,7 @@ export class InsightService {
       opts.maxChanges
     );
 
-    // Calculate aggregate metrics
+    // Calculate aggregate metrics (source files only)
     const complexity = totalLines > 1000 ? "high" : totalLines > 300 ? "medium" : "low";
     const metrics: ComplexityMetrics = {
       lines: totalLines,
@@ -352,20 +370,24 @@ export class InsightService {
     // Generate summary
     const summary = this.generateDirectorySummary(
       relativePath,
-      allFiles.length,
+      sourceFiles.length,
       keySymbols
     );
 
     // Collect notes
     const notes: string[] = [];
-    if (entryPoints.length === 0 && rootFiles.length > 0) {
+    if (entryPoints.length === 0 && sourceFiles.length > 0) {
       notes.push("No index/entry point file found");
     }
     if (metrics.complexity === "high") {
       notes.push("High complexity - consider refactoring");
     }
-    if (subdirectories.length > 0) {
-      notes.push(`Includes ${subdirectories.length} subdirectories with ${allFiles.length - rootFiles.length} nested files`);
+    const nestedSourceCount = sourceFiles.filter((f) => f.relativePath.includes("/")).length;
+    if (subdirectories.length > 0 && nestedSourceCount > 0) {
+      notes.push(`Includes ${subdirectories.length} subdirectories with ${nestedSourceCount} nested source files`);
+    }
+    if (testFiles.length > 0) {
+      notes.push(`${testFiles.length} test file(s) not included in metrics`);
     }
 
     return Ok({
@@ -447,16 +469,25 @@ export class InsightService {
 
       const callersResult = await this.index.getCallers(symbol.name);
       if (callersResult.ok) {
-        calledBy = callersResult.value.map((c) => ({
-          symbol: {
-            name: c.fromSymbol ?? "unknown",
-            kind: "function",
-            file: c.filePath,
+        // Deduplicate callers by fromSymbol + file (same function may call multiple times)
+        const seen = new Set<string>();
+        calledBy = callersResult.value
+          .filter((c) => {
+            const key = `${c.fromSymbol}@${c.filePath}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .map((c) => ({
+            symbol: {
+              name: c.fromSymbol ?? "unknown",
+              kind: "function",
+              file: c.filePath,
+              line: c.line,
+            },
             line: c.line,
-          },
-          line: c.line,
-          context: c.context,
-        }));
+            context: c.context,
+          }));
       }
     }
 
@@ -677,6 +708,8 @@ export class InsightService {
     const classes = symbols.filter((s) => s.symbol.kind === "class");
     const functions = symbols.filter((s) => s.symbol.kind === "function");
     const interfaces = symbols.filter((s) => s.symbol.kind === "interface");
+    const typeAliases = symbols.filter((s) => s.symbol.kind === "type_alias");
+    const variables = symbols.filter((s) => s.symbol.kind === "variable" || s.symbol.kind === "constant");
 
     const parts: string[] = [];
 
@@ -698,6 +731,18 @@ export class InsightService {
     if (interfaces.length > 0) {
       parts.push(
         `Defines ${interfaces.length} interface${interfaces.length > 1 ? "s" : ""}`
+      );
+    }
+
+    if (typeAliases.length > 0) {
+      parts.push(
+        `Defines ${typeAliases.length} type${typeAliases.length > 1 ? "s" : ""}`
+      );
+    }
+
+    if (variables.length > 0 && classes.length === 0 && functions.length === 0) {
+      parts.push(
+        `Exports ${variables.length} variable${variables.length > 1 ? "s" : ""}`
       );
     }
 
@@ -748,11 +793,50 @@ export class InsightService {
   }
 
   private extractSignature(code: string, kind: string): string | undefined {
+    // For type aliases and interfaces, the whole thing is the "signature"
+    if (kind === "type_alias" || kind === "interface") {
+      // For short definitions, return the whole thing
+      const lines = code.split("\n");
+      if (lines.length <= 5) {
+        return code.trim();
+      }
+      // For longer ones, just return the first line with ...
+      return lines[0].trim() + " ...";
+    }
+
+    // For classes, return the class declaration line
+    if (kind === "class") {
+      const firstLine = code.split("\n")[0];
+      return firstLine.trim();
+    }
+
+    // For functions/methods, extract everything before the body
     if (kind !== "function" && kind !== "method") return undefined;
 
-    const firstLine = code.split("\n")[0];
-    const match = firstLine.match(/^[^{]+/);
-    return match ? match[0].trim() : firstLine.trim();
+    // Find the signature - everything before the function body
+    // Handle multi-line signatures by finding the opening brace
+    const lines = code.split("\n");
+    let signature = "";
+    let braceDepth = 0;
+    let parenDepth = 0;
+    
+    for (const line of lines) {
+      for (const char of line) {
+        if (char === "(") parenDepth++;
+        if (char === ")") parenDepth--;
+        if (char === "{") {
+          braceDepth++;
+          if (braceDepth === 1 && parenDepth === 0) {
+            // Found the opening brace of the function body
+            return signature.trim();
+          }
+        }
+      }
+      signature += (signature ? "\n" : "") + line;
+    }
+    
+    // Fallback: return first line
+    return lines[0].trim();
   }
 
   private collectFileNotes(metrics: ComplexityMetrics): string[] {

@@ -48,7 +48,7 @@ Use cases:
         };
       }
 
-      const result = service.getDefinition({
+      const result = await service.getDefinition({
         file: input.file,
         line: input.line,
         column: input.column,

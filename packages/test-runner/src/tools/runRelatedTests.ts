@@ -90,7 +90,7 @@ Use cases:
 
       // Format output
       let output = `## Test Results for ${sourceFile}\n\n`;
-      output += `**Status:** ${run.status === "passed" ? "✅ PASSED" : "❌ FAILED"}\n`;
+      output += `**Status:** ${run.success ? "✅ PASSED" : "❌ FAILED"}\n`;
       output += `**Duration:** ${run.duration}ms\n\n`;
 
       output += `### Summary\n`;
@@ -127,8 +127,9 @@ Use cases:
             if (test.line) output += `:${test.line}`;
             output += "\n";
           }
-          if (test.error) {
-            output += `\`\`\`\n${test.error.slice(0, 500)}${test.error.length > 500 ? "..." : ""}\n\`\`\`\n`;
+          if (test.failure) {
+            const errorMsg = test.failure.message;
+            output += `\`\`\`\n${errorMsg.slice(0, 500)}${errorMsg.length > 500 ? "..." : ""}\n\`\`\`\n`;
           }
           output += "\n";
         }

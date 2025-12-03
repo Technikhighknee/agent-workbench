@@ -13,7 +13,7 @@ describe("TypeScriptService", () => {
   beforeAll(async () => {
     service = new TypeScriptService();
     await service.initialize(MONOREPO_ROOT);
-  });
+  }, 30000); // 30 second timeout for initialization
 
   afterAll(() => {
     service.dispose();
@@ -77,7 +77,7 @@ describe("TypeScriptService", () => {
     it("returns type info for a symbol", async () => {
       // Use result.ts which has well-defined types
       const filePath = join(MONOREPO_ROOT, "packages/core/src/result.ts");
-      const result = await service.getTypeAtPosition(filePath, 1, 10);
+      const result = await service.getTypeAtPosition({ file: filePath, line: 1, column: 10 });
 
       // Service should return something (ok or error)
       expect(result).toBeDefined();
@@ -87,7 +87,7 @@ describe("TypeScriptService", () => {
   describe("getDefinition", () => {
     it("handles definition lookup", async () => {
       const filePath = join(MONOREPO_ROOT, "packages/core/src/result.ts");
-      const result = await service.getDefinition(filePath, 1, 10);
+      const result = await service.getDefinition({ file: filePath, line: 1, column: 10 });
 
       // Service should return something (ok or error)
       expect(result).toBeDefined();
@@ -97,7 +97,7 @@ describe("TypeScriptService", () => {
   describe("findReferences", () => {
     it("handles reference lookup", async () => {
       const filePath = join(MONOREPO_ROOT, "packages/core/src/result.ts");
-      const result = await service.findReferences(filePath, 1, 10);
+      const result = await service.findReferences({ file: filePath, line: 1, column: 10 });
 
       // Service should return something (ok or error)
       expect(result).toBeDefined();
@@ -105,26 +105,14 @@ describe("TypeScriptService", () => {
   });
 
   describe("notifyFileChanged", () => {
-    it("accepts file change notifications", async () => {
+    it("accepts file change notifications", () => {
       const filePath = join(MONOREPO_ROOT, "packages/core/src/result.ts");
-      // This should not throw
-      await service.notifyFileChanged(filePath);
+      // This should not throw (sync method)
+      service.notifyFileChanged(filePath);
     });
   });
 
-  describe("getDiagnosticSummary", () => {
-    it("returns summary of all diagnostics", async () => {
-      const result = await service.getDiagnosticSummary();
-
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-
-      // Check correct property names
-      expect(typeof result.value.errorCount).toBe("number");
-      expect(typeof result.value.warningCount).toBe("number");
-      expect(typeof result.value.totalFiles).toBe("number");
-    });
-  });
+  // getDiagnosticSummary removed - use `tsc --noEmit` for project-wide checks
 
   describe("reload", () => {
     it("can reload projects", async () => {

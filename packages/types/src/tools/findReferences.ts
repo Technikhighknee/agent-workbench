@@ -50,7 +50,7 @@ Use cases:
         };
       }
 
-      const result = service.findReferences({
+      const result = await service.findReferences({
         file: input.file,
         line: input.line,
         column: input.column,

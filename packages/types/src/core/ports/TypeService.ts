@@ -104,23 +104,27 @@ export interface TypeService {
   /**
    * Get type information at a specific position.
    * Equivalent to hovering over a symbol in an IDE.
+   * All operations have timeout protection (5s for single-file ops).
    */
-  getTypeAtPosition(options: GetTypeOptions): Result<TypeInfo, Error>;
+  getTypeAtPosition(options: GetTypeOptions): Promise<Result<TypeInfo, Error>>;
 
   /**
    * Go to definition for a symbol at a position.
+   * All operations have timeout protection (5s for single-file ops).
    */
-  getDefinition(options: GetDefinitionOptions): Result<Definition[], Error>;
+  getDefinition(options: GetDefinitionOptions): Promise<Result<Definition[], Error>>;
 
   /**
    * Find all references to a symbol at a position.
+   * All operations have timeout protection (10s for cross-file ops).
    */
-  findReferences(options: GetDefinitionOptions): Result<Definition[], Error>;
+  findReferences(options: GetDefinitionOptions): Promise<Result<Definition[], Error>>;
 
   /**
    * Get available code actions (quick fixes, refactorings) at a position.
+   * All operations have timeout protection (5s for single-file ops).
    */
-  getCodeActions(options: GetCodeActionsOptions): Result<CodeAction[], Error>;
+  getCodeActions(options: GetCodeActionsOptions): Promise<Result<CodeAction[], Error>>;
 
   /**
    * Notify the service that a file has changed.

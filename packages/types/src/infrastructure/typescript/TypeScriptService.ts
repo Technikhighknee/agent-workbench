@@ -46,10 +46,65 @@ interface TypeScriptProject {
  * 4. Error isolation - TS service crashes don't take down server
  * 5. Position fidelity - all positions are 1-indexed for consistency
  */
+/**
+ * TypeScript language service implementation with multi-project support.
+ *
+ * Design principles:
+ * 1. Never hang - all operations have timeouts
+ * 2. Fast for single files - optimize the common case
+ * 3. Lazy loading - don't load files until needed
+ * 4. Graceful degradation - return partial results on timeout
+ * 5. Position fidelity - all positions are 1-indexed for consistency
+ */
 export class TypeScriptService implements TypeService {
   private projects: Map<string, TypeScriptProject> = new Map();
   private workspaceRoot: string = "";
   private initialized: boolean = false;
+
+  /** Default timeout for operations in milliseconds */
+  private static readonly DEFAULT_TIMEOUT = 10000; // 10 seconds
+  
+  /** Timeout for single-file operations (should be fast) */
+  private static readonly SINGLE_FILE_TIMEOUT = 5000; // 5 seconds
+  
+  /** Max files to check in project-wide diagnostics */
+  private static readonly MAX_FILES_TO_CHECK = 500;
+
+  /**
+   * Run an operation with a timeout. Returns Err if timeout is exceeded.
+   */
+  private async withTimeout<T>(
+    operation: () => T | Promise<T>,
+    timeoutMs: number,
+    operationName: string
+  ): Promise<Result<T, Error>> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        resolve(Err(new Error(`${operationName} timed out after ${timeoutMs}ms`)));
+      }, timeoutMs);
+
+      try {
+        const result = operation();
+        if (result instanceof Promise) {
+          result
+            .then((value) => {
+              clearTimeout(timer);
+              resolve(Ok(value));
+            })
+            .catch((error) => {
+              clearTimeout(timer);
+              resolve(Err(error instanceof Error ? error : new Error(String(error))));
+            });
+        } else {
+          clearTimeout(timer);
+          resolve(Ok(result));
+        }
+      } catch (error) {
+        clearTimeout(timer);
+        resolve(Err(error instanceof Error ? error : new Error(String(error))));
+      }
+    });
+  }
 
   /**
    * Initialize the TypeScript language service for a workspace.
@@ -67,7 +122,7 @@ export class TypeScriptService implements TypeService {
         return Err(new Error(`No tsconfig.json found in ${workspacePath} or its subdirectories`));
       }
 
-      // Initialize each project
+      // Initialize each project (lazy - doesn't load all files)
       let totalFiles = 0;
       for (const configPath of configPaths) {
         const projectResult = this.initializeProject(configPath);
@@ -128,35 +183,97 @@ export class TypeScriptService implements TypeService {
 
   /**
    * Get diagnostics for a file or the entire workspace.
+   * 
+   * For single files: fast path with 5s timeout
+   * For workspace: checks up to MAX_FILES_TO_CHECK with 10s timeout
    */
   async getDiagnostics(options?: GetDiagnosticsOptions): Promise<Result<Diagnostic[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
     }
 
+    // Single file - fast path
+    if (options?.file) {
+      return this.getDiagnosticsForSingleFile(options.file, options.errorsOnly);
+    }
+
+    // Project-wide - chunked with timeout
+    return this.getDiagnosticsForWorkspace(options?.limit, options?.errorsOnly);
+  }
+
+  /**
+   * Fast path for single file diagnostics with timeout.
+   */
+  private async getDiagnosticsForSingleFile(
+    file: string,
+    errorsOnly?: boolean
+  ): Promise<Result<Diagnostic[], Error>> {
+    const project = this.findProjectForFile(file);
+    if (!project) {
+      return Err(new Error(`File not in any TypeScript project: ${file}`));
+    }
+
+    return this.withTimeout(
+      () => this.getDiagnosticsForFile(project, file, errorsOnly),
+      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      `getDiagnostics(${path.basename(file)})`
+    );
+  }
+
+  /**
+   * Get diagnostics for entire workspace with chunking and timeout.
+   */
+  private async getDiagnosticsForWorkspace(
+    limit?: number,
+    errorsOnly?: boolean
+  ): Promise<Result<Diagnostic[], Error>> {
+    const startTime = Date.now();
+    const timeoutMs = TypeScriptService.DEFAULT_TIMEOUT;
+    const maxFiles = limit ? Math.min(limit * 2, TypeScriptService.MAX_FILES_TO_CHECK) : TypeScriptService.MAX_FILES_TO_CHECK;
+    
+    const diagnostics: Diagnostic[] = [];
+    let filesChecked = 0;
+
     try {
-      const diagnostics: Diagnostic[] = [];
-
-      if (options?.file) {
-        // Single file - find its project
-        const project = this.findProjectForFile(options.file);
-        if (!project) {
-          return Err(new Error(`File not in any TypeScript project: ${options.file}`));
-        }
-        diagnostics.push(...this.getDiagnosticsForFile(project, options.file, options.errorsOnly));
-      } else {
-        // All projects
-        for (const project of this.projects.values()) {
-          for (const file of project.fileNames) {
-            diagnostics.push(...this.getDiagnosticsForFile(project, file, options?.errorsOnly));
-
-            if (options?.limit && diagnostics.length >= options.limit) {
-              break;
-            }
+      for (const project of this.projects.values()) {
+        for (const file of project.fileNames) {
+          // Check timeout
+          if (Date.now() - startTime > timeoutMs) {
+            // Return what we have so far
+            diagnostics.sort((a, b) => {
+              if (a.file !== b.file) return a.file.localeCompare(b.file);
+              return a.line - b.line;
+            });
+            return Ok(limit ? diagnostics.slice(0, limit) : diagnostics);
           }
-          if (options?.limit && diagnostics.length >= options.limit) {
+
+          // Check file limit
+          if (filesChecked >= maxFiles) {
             break;
           }
+
+          // Skip node_modules, dist, etc.
+          if (file.includes('node_modules') || file.includes('/dist/') || file.includes('/.')) {
+            continue;
+          }
+
+          try {
+            const fileDiags = this.getDiagnosticsForFile(project, file, errorsOnly);
+            diagnostics.push(...fileDiags);
+            filesChecked++;
+
+            // Early termination if we have enough errors
+            if (limit && diagnostics.length >= limit) {
+              break;
+            }
+          } catch {
+            // Skip files that cause errors
+            filesChecked++;
+          }
+        }
+
+        if (limit && diagnostics.length >= limit) {
+          break;
         }
       }
 
@@ -166,7 +283,7 @@ export class TypeScriptService implements TypeService {
         return a.line - b.line;
       });
 
-      return Ok(options?.limit ? diagnostics.slice(0, options.limit) : diagnostics);
+      return Ok(limit ? diagnostics.slice(0, limit) : diagnostics);
     } catch (error) {
       return Err(error instanceof Error ? error : new Error(String(error)));
     }
@@ -185,12 +302,11 @@ export class TypeScriptService implements TypeService {
 
       const syntactic = project.service.getSyntacticDiagnostics(resolvedFile);
       const semantic = project.service.getSemanticDiagnostics(resolvedFile);
-      const suggestion = project.service.getSuggestionDiagnostics(resolvedFile);
-
+      
+      // Skip suggestion diagnostics for performance (they're not critical)
       const allDiags = [
         ...syntactic.map((d) => this.convertDiagnostic(d, "syntactic", project)),
         ...semantic.map((d) => this.convertDiagnostic(d, "semantic", project)),
-        ...suggestion.map((d) => this.convertDiagnostic(d, "suggestion", project)),
       ];
 
       return errorsOnly
@@ -204,7 +320,7 @@ export class TypeScriptService implements TypeService {
   }
 
   async getDiagnosticSummary(): Promise<Result<DiagnosticSummary, Error>> {
-    const diagsResult = await this.getDiagnostics();
+    const diagsResult = await this.getDiagnostics({ limit: 1000 }); // Cap at 1000 for summary
     if (!diagsResult.ok) {
       return diagsResult;
     }
@@ -230,165 +346,181 @@ export class TypeScriptService implements TypeService {
   /**
    * Get type information at a position.
    */
-  getTypeAtPosition(options: GetTypeOptions): Result<TypeInfo, Error> {
+  async getTypeAtPosition(options: GetTypeOptions): Promise<Result<TypeInfo, Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
     }
 
-    try {
-      const project = this.findProjectForFile(options.file);
-      if (!project) {
-        return Err(new Error(`File not in any TypeScript project: ${options.file}`));
-      }
+    return this.withTimeout(
+      () => this.getTypeAtPositionSync(options),
+      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      `getTypeAtPosition(${path.basename(options.file)})`
+    );
+  }
 
-      const file = project.host.resolveFile(options.file);
-      const position = project.host.getPosition(file, options.line, options.column);
-
-      if (position === -1) {
-        return Err(new Error(`Invalid position: ${options.line}:${options.column}`));
-      }
-
-      const quickInfo = project.service.getQuickInfoAtPosition(file, position);
-      if (!quickInfo) {
-        return Err(new Error("No type information at position"));
-      }
-
-      const typeString = ts.displayPartsToString(quickInfo.displayParts);
-      const documentation = ts.displayPartsToString(quickInfo.documentation);
-      const tags = quickInfo.tags?.map((tag) => ({
-        name: tag.name,
-        text: ts.displayPartsToString(tag.text),
-      }));
-
-      return Ok({
-        type: typeString,
-        name: quickInfo.displayParts?.[0]?.text ?? "",
-        kind: this.convertSymbolKind(quickInfo.kind),
-        documentation: documentation || undefined,
-        tags: tags?.length ? tags : undefined,
-      });
-    } catch (error) {
-      return Err(error instanceof Error ? error : new Error(String(error)));
+  private getTypeAtPositionSync(options: GetTypeOptions): TypeInfo {
+    const project = this.findProjectForFile(options.file);
+    if (!project) {
+      throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
+
+    const file = project.host.resolveFile(options.file);
+    const position = project.host.getPosition(file, options.line, options.column);
+
+    if (position === -1) {
+      throw new Error(`Invalid position: ${options.line}:${options.column}`);
+    }
+
+    const quickInfo = project.service.getQuickInfoAtPosition(file, position);
+    if (!quickInfo) {
+      throw new Error("No type information at position");
+    }
+
+    const typeString = ts.displayPartsToString(quickInfo.displayParts);
+    const documentation = ts.displayPartsToString(quickInfo.documentation);
+    const tags = quickInfo.tags?.map((tag) => ({
+      name: tag.name,
+      text: ts.displayPartsToString(tag.text),
+    }));
+
+    return {
+      type: typeString,
+      name: quickInfo.displayParts?.[0]?.text ?? "",
+      kind: this.convertSymbolKind(quickInfo.kind),
+      documentation: documentation || undefined,
+      tags: tags?.length ? tags : undefined,
+    };
   }
 
   /**
    * Get definition locations for a symbol.
    */
-  getDefinition(options: GetDefinitionOptions): Result<Definition[], Error> {
+  async getDefinition(options: GetDefinitionOptions): Promise<Result<Definition[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
     }
 
-    try {
-      const project = this.findProjectForFile(options.file);
-      if (!project) {
-        return Err(new Error(`File not in any TypeScript project: ${options.file}`));
-      }
+    return this.withTimeout(
+      () => this.getDefinitionSync(options),
+      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      `getDefinition(${path.basename(options.file)})`
+    );
+  }
 
-      const file = project.host.resolveFile(options.file);
-      const position = project.host.getPosition(file, options.line, options.column);
-
-      if (position === -1) {
-        return Err(new Error(`Invalid position: ${options.line}:${options.column}`));
-      }
-
-      const definitions = project.service.getDefinitionAtPosition(file, position);
-      if (!definitions || definitions.length === 0) {
-        return Ok([]);
-      }
-
-      return Ok(definitions.map((def) => this.convertDefinition(def, project)));
-    } catch (error) {
-      return Err(error instanceof Error ? error : new Error(String(error)));
+  private getDefinitionSync(options: GetDefinitionOptions): Definition[] {
+    const project = this.findProjectForFile(options.file);
+    if (!project) {
+      throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
+
+    const file = project.host.resolveFile(options.file);
+    const position = project.host.getPosition(file, options.line, options.column);
+
+    if (position === -1) {
+      throw new Error(`Invalid position: ${options.line}:${options.column}`);
+    }
+
+    const definitions = project.service.getDefinitionAtPosition(file, position);
+    if (!definitions || definitions.length === 0) {
+      return [];
+    }
+
+    return definitions.map((def) => this.convertDefinition(def, project));
   }
 
   /**
    * Find all references to a symbol.
    */
-  findReferences(options: GetDefinitionOptions): Result<Definition[], Error> {
+  async findReferences(options: GetDefinitionOptions): Promise<Result<Definition[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
     }
 
-    try {
-      const project = this.findProjectForFile(options.file);
-      if (!project) {
-        return Err(new Error(`File not in any TypeScript project: ${options.file}`));
-      }
+    return this.withTimeout(
+      () => this.findReferencesSync(options),
+      TypeScriptService.DEFAULT_TIMEOUT, // References can take longer
+      `findReferences(${path.basename(options.file)})`
+    );
+  }
 
-      const file = project.host.resolveFile(options.file);
-      const position = project.host.getPosition(file, options.line, options.column);
-
-      if (position === -1) {
-        return Err(new Error(`Invalid position: ${options.line}:${options.column}`));
-      }
-
-      const references = project.service.findReferences(file, position);
-      if (!references || references.length === 0) {
-        return Ok([]);
-      }
-
-      const definitions: Definition[] = [];
-      for (const refEntry of references) {
-        for (const ref of refEntry.references) {
-          definitions.push(this.convertReferenceEntry(ref, project));
-        }
-      }
-
-      return Ok(definitions);
-    } catch (error) {
-      return Err(error instanceof Error ? error : new Error(String(error)));
+  private findReferencesSync(options: GetDefinitionOptions): Definition[] {
+    const project = this.findProjectForFile(options.file);
+    if (!project) {
+      throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
+
+    const file = project.host.resolveFile(options.file);
+    const position = project.host.getPosition(file, options.line, options.column);
+
+    if (position === -1) {
+      throw new Error(`Invalid position: ${options.line}:${options.column}`);
+    }
+
+    const references = project.service.findReferences(file, position);
+    if (!references || references.length === 0) {
+      return [];
+    }
+
+    const definitions: Definition[] = [];
+    for (const refEntry of references) {
+      for (const ref of refEntry.references) {
+        definitions.push(this.convertReferenceEntry(ref, project));
+      }
+    }
+
+    return definitions;
   }
 
   /**
    * Get code actions at a position or for a selection.
    */
-  getCodeActions(options: GetCodeActionsOptions): Result<CodeAction[], Error> {
+  async getCodeActions(options: GetCodeActionsOptions): Promise<Result<CodeAction[], Error>> {
     if (!this.initialized) {
       return Err(new Error("Service not initialized"));
     }
 
-    try {
-      const project = this.findProjectForFile(options.file);
-      if (!project) {
-        return Err(new Error(`File not in any TypeScript project: ${options.file}`));
-      }
+    return this.withTimeout(
+      () => this.getCodeActionsSync(options),
+      TypeScriptService.SINGLE_FILE_TIMEOUT,
+      `getCodeActions(${path.basename(options.file)})`
+    );
+  }
 
-      const file = project.host.resolveFile(options.file);
-      const start = project.host.getPosition(file, options.startLine, options.startColumn);
-      const end = project.host.getPosition(file, options.endLine, options.endColumn);
-
-      if (start === -1 || end === -1) {
-        return Err(new Error("Invalid position range"));
-      }
-
-      const diagnostics = project.service.getSemanticDiagnostics(file)
-        .filter((d) => {
-          if (d.start === undefined) return false;
-          const dEnd = d.start + (d.length ?? 0);
-          return d.start <= end && dEnd >= start;
-        });
-
-      const errorCodes = options.diagnosticCodes
-        ? options.diagnosticCodes.map((c) => parseInt(c.replace(/\D/g, "")))
-        : diagnostics.map((d) => d.code as number);
-
-      const codeActions = project.service.getCodeFixesAtPosition(
-        file,
-        start,
-        end,
-        errorCodes,
-        {},
-        {}
-      );
-
-      return Ok(codeActions.map((action) => this.convertCodeAction(action, project)));
-    } catch (error) {
-      return Err(error instanceof Error ? error : new Error(String(error)));
+  private getCodeActionsSync(options: GetCodeActionsOptions): CodeAction[] {
+    const project = this.findProjectForFile(options.file);
+    if (!project) {
+      throw new Error(`File not in any TypeScript project: ${options.file}`);
     }
+
+    const file = project.host.resolveFile(options.file);
+    const start = project.host.getPosition(file, options.startLine, options.startColumn);
+    const end = project.host.getPosition(file, options.endLine, options.endColumn);
+
+    if (start === -1 || end === -1) {
+      throw new Error("Invalid position range");
+    }
+
+    const diagnostics = project.service.getSemanticDiagnostics(file)
+      .filter((d) => {
+        if (d.start === undefined) return false;
+        const dEnd = d.start + (d.length ?? 0);
+        return d.start <= end && dEnd >= start;
+      });
+
+    const errorCodes = options.diagnosticCodes
+      ? options.diagnosticCodes.map((c) => parseInt(c.replace(/\D/g, "")))
+      : diagnostics.map((d) => d.code as number);
+
+    const codeActions = project.service.getCodeFixesAtPosition(
+      file,
+      start,
+      end,
+      errorCodes,
+      {},
+      {}
+    );
+
+    return codeActions.map((action) => this.convertCodeAction(action, project));
   }
 
   /**
@@ -466,7 +598,8 @@ export class TypeScriptService implements TypeService {
     const { options, fileNames } = configResult.value;
     const rootDir = path.dirname(configPath);
 
-    const host = new TypeScriptLanguageServiceHost(fileNames, options, rootDir);
+    // Create host with lazy loading (don't preload all files)
+    const host = new TypeScriptLanguageServiceHost(fileNames, options, rootDir, false);
     const service = ts.createLanguageService(host, ts.createDocumentRegistry());
 
     const project: TypeScriptProject = {
@@ -794,6 +927,12 @@ export class TypeScriptService implements TypeService {
  * TypeScript LanguageServiceHost implementation.
  * Manages file contents and provides them to the language service.
  */
+/**
+ * TypeScript LanguageServiceHost implementation.
+ * Manages file contents and provides them to the language service.
+ * 
+ * With lazy=true, files are loaded on-demand instead of upfront.
+ */
 class TypeScriptLanguageServiceHost implements ts.LanguageServiceHost {
   private files: Map<string, { version: number; content: string }> = new Map();
   private readonly rootDir: string;
@@ -801,13 +940,16 @@ class TypeScriptLanguageServiceHost implements ts.LanguageServiceHost {
   constructor(
     private readonly fileNames: string[],
     private readonly options: ts.CompilerOptions,
-    rootDir: string
+    rootDir: string,
+    preload: boolean = true
   ) {
     this.rootDir = rootDir;
 
-    // Pre-load all project files
-    for (const fileName of fileNames) {
-      this.ensureFile(fileName);
+    // Only pre-load if requested (for backwards compatibility)
+    if (preload) {
+      for (const fileName of fileNames) {
+        this.ensureFile(fileName);
+      }
     }
   }
 
@@ -890,6 +1032,7 @@ class TypeScriptLanguageServiceHost implements ts.LanguageServiceHost {
    * Get position offset from line/column.
    */
   getPosition(file: string, line: number, column: number): number {
+    this.ensureFile(file);
     const content = this.files.get(file)?.content;
     if (!content) return -1;
 
@@ -920,6 +1063,7 @@ class TypeScriptLanguageServiceHost implements ts.LanguageServiceHost {
    * Get source file for position calculations.
    */
   getSourceFile(fileName: string): ts.SourceFile | undefined {
+    this.ensureFile(fileName);
     const content = this.files.get(fileName)?.content;
     if (!content) return undefined;
 

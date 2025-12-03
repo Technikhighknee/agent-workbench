@@ -48,7 +48,7 @@ Use cases:
         };
       }
 
-      const result = service.getTypeAtPosition({
+      const result = await service.getTypeAtPosition({
         file: input.file,
         line: input.line,
         column: input.column,

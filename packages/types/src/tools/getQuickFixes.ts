@@ -52,7 +52,7 @@ Use cases:
         };
       }
 
-      const result = service.getCodeActions({
+      const result = await service.getCodeActions({
         file: input.file,
         startLine: input.line,
         startColumn: input.column,

@@ -1,7 +1,7 @@
 # agent-workbench
-> Inspired by IDE    
+> Inspired by IDE
 
-**At its current state: A collection of MCP servers that form an extensive operating toolbelt for AI-Agents like Claude Code**  
+**At its current state: A collection of MCP servers that form an extensive operating toolbelt for AI-Agents like Claude Code**
 
 This monorepo provides the agent with:
 
@@ -16,7 +16,20 @@ This monorepo provides the agent with:
 Each package solves one foundational pain point.
 Together, they form a minimal "development environment" for autonomous or semi-autonomous AI coding.
 
-## Packages (./packages)
+## Packages
+
+1. [syntax](#agent-workbenchsyntax) - Symbol-aware code operations `25 tools`
+2. [history](#agent-workbenchhistory) - Git operations and commits `11 tools`
+3. [project](#agent-workbenchproject) - Project orientation and metadata `6 tools`
+4. [types](#agent-workbenchtypes) - Fast TypeScript checking `4 tools`
+5. [task-runner](#agent-workbenchtask-runner) - Persistent task execution `5 tools`
+6. [test-runner](#agent-workbenchtest-runner) - Structured test results `6 tools`
+7. [insight](#agent-workbenchinsight) - Comprehensive code understanding `2 tools`
+8. [preview](#agent-workbenchpreview) - Edit impact prediction `1 tool`
+9. [board](#agent-workbenchboard) - Task tracking board `6 tools`
+10. [core](#agent-workbenchcore) - Shared utilities *(library, not MCP server)*
+
+---
 
 ### [@agent-workbench/syntax](packages/syntax/)
 Symbol-aware code operations for AI agents. Read and edit code by function/class name, not line numbers.
@@ -32,7 +45,7 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 - `remove_unused_imports` - Clean up unused imports
 - `organize_imports` - Sort and group imports
 
-**Project analysis:**
+**Cross-file analysis:**
 - `search_symbols` / `find_references` - Cross-file search
 - `get_callers` / `get_callees` - Call hierarchy
 - `analyze_deps` - Circular dependency detection
@@ -50,16 +63,9 @@ Symbol-aware code operations for AI agents. Read and edit code by function/class
 
 **Multi-file operations:**
 - `apply_edits` - Apply multiple edits atomically with rollback on failure
-- `batch_edit_symbols` - Edit multiple symbols across files atomically (validates all before applying)
+- `batch_edit_symbols` - Edit multiple symbols across files atomically
 
-### [@agent-workbench/task-runner](packages/task-runner/)
-Task execution with SQLite persistence. Tasks survive server restarts.
-
-- `task_run` - Run command, wait for completion (default 30s timeout)
-- `task_start` - Start background task, optionally wait for pattern
-- `task_get` - Get task status and output
-- `task_kill` - Stop a running task
-- `task_list` - See all tasks (including from previous sessions)
+---
 
 ### [@agent-workbench/history](packages/history/)
 Git operations for AI agents. Understand code evolution and create commits.
@@ -78,6 +84,8 @@ Git operations for AI agents. Understand code evolution and create commits.
 - `git_add` - Stage files for commit
 - `git_commit` - Create a commit with staged changes
 
+---
+
 ### [@agent-workbench/project](packages/project/)
 Project metadata and orientation. Quickly understand project structure and available commands.
 
@@ -87,6 +95,8 @@ Project metadata and orientation. Quickly understand project structure and avail
 - `get_structure` - Directory layout with descriptions
 - `get_project_info` - Project name, type, version, scripts overview
 - `get_scripts` - Available commands to run
+
+---
 
 ### [@agent-workbench/types](packages/types/)
 Fast single-file type checking. Never hangs - all operations complete in <5 seconds.
@@ -98,6 +108,19 @@ Fast single-file type checking. Never hangs - all operations complete in <5 seco
 
 For project-wide checks, use `tsc --noEmit` via task-runner instead.
 
+---
+
+### [@agent-workbench/task-runner](packages/task-runner/)
+Task execution with SQLite persistence. Tasks survive server restarts.
+
+- `task_run` - Run command, wait for completion (default 30s timeout)
+- `task_start` - Start background task, optionally wait for pattern
+- `task_get` - Get task status and output
+- `task_kill` - Stop a running task
+- `task_list` - See all tasks (including from previous sessions)
+
+---
+
 ### [@agent-workbench/test-runner](packages/test-runner/)
 Run tests and get structured results. Framework-agnostic with source-mapped failures.
 
@@ -107,6 +130,8 @@ Run tests and get structured results. Framework-agnostic with source-mapped fail
 - `rerun_failed` - Re-execute only failing tests
 - `find_tests_for` - Find tests related to a source file (naming, imports, co-location)
 - `run_related_tests` - Run tests for a specific source file
+
+---
 
 ### [@agent-workbench/insight](packages/insight/)
 Comprehensive code understanding in one call. Structure, relationships, and history together.
@@ -121,6 +146,8 @@ Comprehensive code understanding in one call. Structure, relationships, and hist
 
 Replaces multiple tool calls (list_symbols + get_imports + get_exports + file_history + find_references) with a single comprehensive view.
 
+---
+
 ### [@agent-workbench/preview](packages/preview/)
 Impact preview before making changes. See consequences without applying edits.
 
@@ -129,6 +156,31 @@ Impact preview before making changes. See consequences without applying edits.
   - **Affected callers**: Code that calls the modified symbol
   - **Related tests**: Tests to run after the change
   - **Impact summary**: Risk assessment and suggestions
+
+---
+
+### [@agent-workbench/board](packages/board/)
+Task board for AI agents. Track work items with a persistent kanban board.
+
+- `board_list` - List cards with optional filtering by list, labels, priority
+- `board_add` - Create a new card with title, description, priority, labels
+- `board_update` - Update card properties
+- `board_move` - Move card between lists (backlog → todo → in_progress → done)
+- `board_get` - Get full card details
+- `board_delete` - Remove a card
+
+Board state persists across sessions in SQLite.
+
+---
+
+### [@agent-workbench/core](packages/core/)
+Shared utilities for all packages. **Not an MCP server.**
+
+- `Result<T, E>` type for explicit error handling
+- MCP response helpers (`textResponse`, `errorResponse`, `resultToResponse`)
+- Server bootstrap utilities (`runServer`)
+
+---
 
 ## For AI Agents
 
@@ -140,10 +192,11 @@ Key principle: **Use these MCP tools instead of Bash** for:
 - Preview changes → `mcp__preview__preview_edit` (see consequences before editing)
 - Git operations → `mcp__history__*`
 - TypeScript checking → `mcp__types__*`
-- Running tests → `mcp__test-runner__*` (including `find_tests_for`, `run_related_tests`)
-- Long builds → `mcp__task-runner__*`
+- Running tests → `mcp__test_runner__*` (including `find_tests_for`, `run_related_tests`)
+- Long builds → `mcp__task_runner__*`
 - Code read/edit → `mcp__syntax__*` (including `batch_edit_symbols` for atomic multi-file edits)
 - Project info → `mcp__project__*`
+- Track work → `mcp__board__*`
 
 Each package has a skill file in `.claude/skills/` with detailed usage patterns.
 
